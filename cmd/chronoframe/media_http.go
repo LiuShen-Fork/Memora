@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,6 +49,27 @@ func safePath(base, p string) bool {
 }
 func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	key := strings.TrimPrefix(r.URL.Path, "/image/")
+	if streamStorage, ok := a.storage.(ReaderStorage); ok {
+		reader, object, err := streamStorage.Open(r.Context(), key)
+		if err != nil {
+			errorJSON(w, http.StatusNotFound, "Photo not found")
+			return
+		}
+		defer reader.Close()
+		w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
+		if contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(key))); contentType != "" {
+			w.Header().Set("Content-Type", contentType)
+		}
+		if seeker, ok := reader.(io.ReadSeeker); ok {
+			http.ServeContent(w, r, filepath.Base(key), object.ModTime, seeker)
+			return
+		}
+		if object.Size >= 0 {
+			w.Header().Set("Content-Length", fmt.Sprint(object.Size))
+		}
+		_, _ = io.Copy(w, reader)
+		return
+	}
 	data, err := a.storage.Get(r.Context(), key)
 	if err != nil {
 		errorJSON(w, 404, "Photo not found")

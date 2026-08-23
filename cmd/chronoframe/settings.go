@@ -15,51 +15,125 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 		a.storageConfigRoute(w, r, strings.TrimPrefix(rest, "/storage-config"))
 		return
 	}
-	if rest == "/all" && r.Method == "GET" {
+	if rest == "/all" && r.Method == http.MethodGet {
 		a.allSettings(w, r)
 		return
 	}
-	if rest == "/schema" && r.Method == "GET" {
-		writeJSON(w, 200, map[string]any{"fields": []any{}})
+	if rest == "/schema" && r.Method == http.MethodGet {
+		if !a.requireAdmin(w, r) {
+			return
+		}
+		writeJSON(w, http.StatusOK, a.settingSchema())
 		return
 	}
-	if rest == "/fields" && r.Method == "GET" {
-		writeJSON(w, 200, []any{})
+	if rest == "/fields" && r.Method == http.MethodGet {
+		if !a.requireAdmin(w, r) {
+			return
+		}
+		namespace := r.URL.Query().Get("namespace")
+		fields := a.settingFields(namespace)
+		if fields == nil {
+			errorJSON(w, http.StatusNotFound, "Namespace not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"namespace": namespace, "fields": fields})
 		return
 	}
 	if !a.requireAdmin(w, r) {
 		return
 	}
-	if r.Method == "PUT" && rest == "/batch" {
-		var b map[string]any
-		_ = decodeJSON(r, &b)
-		for key, v := range b {
-			parts := strings.SplitN(key, ":", 2)
-			if len(parts) == 2 {
-				a.setSetting(parts[0], parts[1], v)
+	if r.Method == http.MethodPut && rest == "/batch" {
+		var body struct {
+			Updates []struct {
+				Namespace string `json:"namespace"`
+				Key       string `json:"key"`
+				Value     any    `json:"value"`
+			} `json:"updates"`
+		}
+		if decodeJSON(r, &body) != nil {
+			errorJSON(w, http.StatusBadRequest, "Invalid settings update")
+			return
+		}
+		for _, update := range body.Updates {
+			if err := a.updateSetting(update.Namespace, update.Key, update.Value, nil, false); err != nil {
+				errorJSON(w, http.StatusBadRequest, err.Error())
+				return
 			}
 		}
-		writeJSON(w, 200, map[string]any{"success": true})
+		writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 		return
 	}
 	parts := strings.Split(strings.Trim(rest, "/"), "/")
-	if len(parts) >= 2 && r.Method == "GET" {
-		var value any
-		if a.readSetting(parts[0], parts[1], &value) {
-			writeJSON(w, 200, value)
-		} else {
-			errorJSON(w, 404, "Setting not found")
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		settings := a.namespaceSettings(parts[0])
+		if settings == nil {
+			errorJSON(w, http.StatusNotFound, "Namespace not found")
+			return
 		}
+		writeJSON(w, http.StatusOK, map[string]any{"namespace": parts[0], "settings": settings})
 		return
 	}
-	if len(parts) >= 2 && r.Method == "PUT" {
-		var v any
-		_ = decodeJSON(r, &v)
-		a.setSetting(parts[0], parts[1], v)
-		writeJSON(w, 200, map[string]any{"success": true})
+	if len(parts) >= 2 && r.Method == http.MethodGet {
+		var value any
+		if !a.readSetting(parts[0], strings.Join(parts[1:], "."), &value) {
+			errorJSON(w, http.StatusNotFound, "Setting not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"namespace": parts[0], "key": strings.Join(parts[1:], "."), "value": value})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"success": true})
+	if len(parts) >= 2 && r.Method == http.MethodPut {
+		var body struct {
+			Value any `json:"value"`
+		}
+		if decodeJSON(r, &body) != nil {
+			errorJSON(w, http.StatusBadRequest, "Invalid setting update")
+			return
+		}
+		key := strings.Join(parts[1:], ".")
+		if err := a.updateSetting(parts[0], key, body.Value, nil, false); err != nil {
+			errorJSON(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"namespace": parts[0], "key": key, "value": body.Value})
+		return
+	}
+	errorJSON(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+}
+
+func (a *App) settingSchema() []map[string]any {
+	result := make([]map[string]any, 0, len(defaultSettings))
+	for _, setting := range defaultSettings {
+		var value any
+		a.readSetting(setting.Namespace, setting.Key, &value)
+		result = append(result, map[string]any{"namespace": setting.Namespace, "key": setting.Key, "type": setting.Type, "value": value, "defaultValue": setting.Default, "label": setting.Label, "description": setting.Description, "isPublic": setting.Public, "isReadonly": setting.Readonly, "isSecret": setting.Secret, "enum": setting.Enum})
+	}
+	return result
+}
+
+func (a *App) settingFields(namespace string) []map[string]any {
+	fields := []map[string]any{}
+	for _, setting := range defaultSettings {
+		if setting.Namespace != namespace {
+			continue
+		}
+		var value any
+		a.readSetting(setting.Namespace, setting.Key, &value)
+		fields = append(fields, map[string]any{"namespace": setting.Namespace, "key": setting.Key, "type": setting.Type, "value": value, "defaultValue": setting.Default, "label": setting.Label, "description": setting.Description, "isPublic": setting.Public, "isReadonly": setting.Readonly, "isSecret": setting.Secret, "enum": setting.Enum, "ui": settingUI(setting.Namespace, setting.Key, setting.Type, setting.Enum)})
+	}
+	return fields
+}
+
+func (a *App) namespaceSettings(namespace string) map[string]any {
+	fields := a.settingFields(namespace)
+	if fields == nil || len(fields) == 0 {
+		return nil
+	}
+	result := map[string]any{}
+	for _, field := range fields {
+		result[field["key"].(string)] = field["value"]
+	}
+	return result
 }
 func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
 	rows, err := a.db.Query(`SELECT namespace,key,type,value,default_value,is_public FROM settings WHERE is_public=1 OR (namespace='system' AND key='firstLaunch')`)
@@ -124,19 +198,41 @@ func (a *App) readSetting(ns, key string, out *any) bool {
 	return true
 }
 func (a *App) setSetting(ns, key string, value any) {
-	b := jsonValue(value)
-	typ := "json"
-	switch value.(type) {
-	case string:
-		typ = "string"
-		b = fmt.Sprint(value)
-	case bool:
-		typ = "boolean"
-		b = fmt.Sprint(value)
-	case float64, int, int64:
-		typ = "number"
+	_ = a.updateSetting(ns, key, value, nil, true)
+}
+
+func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool) error {
+	var typ string
+	var readonly int
+	var enumJSON sql.NullString
+	if err := a.db.QueryRow(`SELECT type,is_readonly,enum FROM settings WHERE namespace=? AND key=?`, ns, key).Scan(&typ, &readonly, &enumJSON); err != nil {
+		return fmt.Errorf("setting %s:%s not found", ns, key)
 	}
-	_, _ = a.db.Exec(`INSERT INTO settings(namespace,key,type,value,updated_at) VALUES(?,?,?,?,unixepoch()) ON CONFLICT(namespace,key) DO UPDATE SET type=excluded.type,value=excluded.value,updated_at=unixepoch()`, ns, key, typ, b)
+	if readonly == 1 && !sudo {
+		return fmt.Errorf("setting %s:%s is readonly", ns, key)
+	}
+	if enumJSON.Valid && enumJSON.String != "null" && enumJSON.String != "[]" {
+		var allowed []string
+		if json.Unmarshal([]byte(enumJSON.String), &allowed) == nil && value != nil && !containsString(allowed, fmt.Sprint(value)) {
+			return fmt.Errorf("invalid value for setting %s:%s", ns, key)
+		}
+	}
+	serialized := serializeSetting(typ, value)
+	if updatedBy == nil {
+		_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch() WHERE namespace=? AND key=?`, serialized, ns, key)
+		return err
+	}
+	_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch(),updated_by=? WHERE namespace=? AND key=?`, serialized, updatedBy, ns, key)
+	return err
+}
+
+func containsString(values []string, value string) bool {
+	for _, candidate := range values {
+		if candidate == value {
+			return true
+		}
+	}
+	return false
 }
 func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {

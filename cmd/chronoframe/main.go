@@ -47,6 +47,9 @@ func main() {
 	if err := app.ensureSchema(); err != nil {
 		log.Fatal(err)
 	}
+	if err := app.ensureDefaultSettings(); err != nil {
+		log.Fatal(err)
+	}
 	app.storage = app.loadStorage()
 	app.startWorkers()
 	defer app.stopWorkers()

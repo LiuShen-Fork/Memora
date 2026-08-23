@@ -40,6 +40,9 @@ func newTestApp(t *testing.T) *App {
 	if err := app.ensureSchema(); err != nil {
 		t.Fatal(err)
 	}
+	if err := app.ensureDefaultSettings(); err != nil {
+		t.Fatal(err)
+	}
 	app.storage = &LocalStorage{base: cfg.LocalPath, baseURL: cfg.LocalBaseURL, prefix: cfg.LocalPrefix}
 	return app
 }
@@ -55,6 +58,60 @@ func adminRequest(t *testing.T, app *App, method, target string, body []byte) *h
 	request.Header.Set("Content-Type", "application/json")
 	request.AddCookie(cookieRecorder.Result().Cookies()[0])
 	return request
+}
+
+func TestMediaStreamingAndReactionContracts(t *testing.T) {
+	app := newTestApp(t)
+	key := "photos/blob.bin"
+	payload := []byte("0123456789")
+	if _, err := app.storage.Create(context.Background(), key, payload, "application/octet-stream"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title,storage_key) VALUES('photo-stream','Stream',?)`, key); err != nil {
+		t.Fatal(err)
+	}
+	media := httptest.NewRecorder()
+	app.ServeHTTP(media, httptest.NewRequest(http.MethodGet, "/image/"+key, nil))
+	if media.Code != http.StatusOK || media.Body.String() != string(payload) {
+		t.Fatalf("streaming image failed: %d %q", media.Code, media.Body.String())
+	}
+	rangeRequest := httptest.NewRequest(http.MethodGet, "/image/"+key, nil)
+	rangeRequest.Header.Set("Range", "bytes=2-5")
+	ranged := httptest.NewRecorder()
+	app.ServeHTTP(ranged, rangeRequest)
+	if ranged.Code != http.StatusPartialContent || ranged.Body.String() != "2345" {
+		t.Fatalf("image range failed: %d %q", ranged.Code, ranged.Body.String())
+	}
+
+	post := httptest.NewRecorder()
+	postRequest := httptest.NewRequest(http.MethodPost, "/api/photos/photo-stream/reactions", strings.NewReader(`{"reactionType":"love"}`))
+	postRequest.Header.Set("Content-Type", "application/json")
+	app.ServeHTTP(post, postRequest)
+	if post.Code != http.StatusOK {
+		t.Fatalf("reaction post failed: %d %s", post.Code, post.Body.String())
+	}
+	get := httptest.NewRecorder()
+	app.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/api/photos/photo-stream/reactions", nil))
+	if get.Code != http.StatusOK || !strings.Contains(get.Body.String(), `"love":1`) || !strings.Contains(get.Body.String(), `"userReaction":"love"`) {
+		t.Fatalf("reaction get failed: %d %s", get.Code, get.Body.String())
+	}
+}
+
+func TestQueueResponseContracts(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO pipeline_queue(payload,status,created_at) VALUES('{"type":"photo"}','failed',unixepoch())`); err != nil {
+		t.Fatal(err)
+	}
+	list := httptest.NewRecorder()
+	app.ServeHTTP(list, adminRequest(t, app, http.MethodGet, "/api/queue/task/list?status=failed&type=photo", nil))
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), `"data"`) || !strings.Contains(list.Body.String(), `"status":"failed"`) {
+		t.Fatalf("queue list failed: %d %s", list.Code, list.Body.String())
+	}
+	retry := httptest.NewRecorder()
+	app.ServeHTTP(retry, adminRequest(t, app, http.MethodPost, "/api/queue/task/retry-batch", []byte(`{"retryAll":true}`)))
+	if retry.Code != http.StatusOK || !strings.Contains(retry.Body.String(), `"retriedCount":1`) {
+		t.Fatalf("queue retry-all failed: %d %s", retry.Code, retry.Body.String())
+	}
 }
 
 func TestExifReindexAndLivePhotoDetection(t *testing.T) {
@@ -104,6 +161,32 @@ func TestUploadValidationAndDuplicateContract(t *testing.T) {
 	app.ServeHTTP(duplicate, adminRequest(t, app, http.MethodPost, "/api/photos/check-duplicate", body))
 	if duplicate.Code != http.StatusOK || !strings.Contains(duplicate.Body.String(), `"duplicatesFound":1`) {
 		t.Fatalf("duplicate response failed: %d %s", duplicate.Code, duplicate.Body.String())
+	}
+}
+
+func TestSettingsEndpointContracts(t *testing.T) {
+	app := newTestApp(t)
+	fields := httptest.NewRecorder()
+	app.ServeHTTP(fields, adminRequest(t, app, http.MethodGet, "/api/system/settings/fields?namespace=app", nil))
+	if fields.Code != http.StatusOK || !strings.Contains(fields.Body.String(), `"key":"title"`) {
+		t.Fatalf("settings fields contract failed: %d %s", fields.Code, fields.Body.String())
+	}
+
+	batch := httptest.NewRecorder()
+	batchBody := []byte(`{"updates":[{"namespace":"app","key":"title","value":"Updated"}]}`)
+	app.ServeHTTP(batch, adminRequest(t, app, http.MethodPut, "/api/system/settings/batch", batchBody))
+	if batch.Code != http.StatusOK {
+		t.Fatalf("settings batch failed: %d %s", batch.Code, batch.Body.String())
+	}
+	var title any
+	if !app.readSetting("app", "title", &title) || title != "Updated" {
+		t.Fatalf("batch update was not persisted: %#v", title)
+	}
+
+	provider := httptest.NewRecorder()
+	app.ServeHTTP(provider, adminRequest(t, app, http.MethodGet, "/api/system/settings/storage/provider", nil))
+	if provider.Code != http.StatusOK || !strings.Contains(provider.Body.String(), `"namespace":"storage"`) {
+		t.Fatalf("setting value wrapper failed: %d %s", provider.Code, provider.Body.String())
 	}
 }
 
@@ -238,8 +321,10 @@ func TestWizardSchemaAndSubmit(t *testing.T) {
 
 func TestPublicSettingsExcludeSecrets(t *testing.T) {
 	app := newTestApp(t)
-	_, err := app.db.Exec(`INSERT INTO settings(namespace,key,type,value,is_public) VALUES ('app','title','string','Public Gallery',1),('storage','token','string','secret-token',0)`)
-	if err != nil {
+	if _, err := app.db.Exec(`UPDATE settings SET value='Public Gallery',is_public=1 WHERE namespace='app' AND key='title'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO settings(namespace,key,type,value,is_public) VALUES ('storage','token','string','secret-token',0)`); err != nil {
 		t.Fatal(err)
 	}
 	response := httptest.NewRecorder()

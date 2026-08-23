@@ -135,7 +135,7 @@ func (a *App) processTask(t *Task) error {
 	case "live-photo-video":
 		return a.processLivePhoto(t)
 	case "photo-reverse-geocoding":
-		return nil
+		return a.processReverseGeocoding(t)
 	case "photo-erase-location":
 		return a.eraseLocation(t)
 	default:
@@ -206,7 +206,15 @@ func (a *App) processPhoto(t *Task) error {
 	thumbURL := a.storage.PublicURL(thumbKey)
 	erase, _ := t.Payload["eraseLocation"].(bool)
 	if erase {
-		exif = stripGPS(exif)
+		updated, rewriteErr := a.rewritePhotoMetadata(context.Background(), key, data, locationExifUpdates(nil))
+		if rewriteErr != nil {
+			return rewriteErr
+		}
+		if _, rewriteErr = a.storage.Create(context.Background(), key, updated, mime.TypeByExtension(filepath.Ext(key))); rewriteErr != nil {
+			return rewriteErr
+		}
+		data = updated
+		exif, dateTaken = extractExif(a.cfg.ExifTool, data, filepath.Ext(key))
 	}
 	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=excluded.date_taken,storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,exif=excluded.exif`, id, strings.TrimSuffix(filepath.Base(key), filepath.Ext(key)), nil, width, height, float64(width)/float64(height), dateTaken, key, thumbKey, len(data), last, original, thumbURL, nil, "[]", jsonValue(exif), nil, nil, nil, nil, nil, 0, nil, nil)
 	if err != nil {
@@ -218,7 +226,45 @@ func (a *App) processPhoto(t *Task) error {
 	a.logs.Add("queue", "processed photo "+id)
 	return nil
 }
-func (a *App) processLivePhoto(t *Task) error { return nil }
+func (a *App) processLivePhoto(t *Task) error {
+	key, _ := t.Payload["storageKey"].(string)
+	if key == "" {
+		return errors.New("missing storageKey")
+	}
+	base := strings.TrimSuffix(key, filepath.Ext(key))
+	imageKey := base + ".jpg"
+	var id string
+	if err := a.db.QueryRow(`SELECT id FROM photos WHERE storage_key=? OR id=? LIMIT 1`, imageKey, safePhotoID(imageKey)).Scan(&id); err != nil {
+		return err
+	}
+	url := a.storage.PublicURL(key)
+	if url == "" {
+		url = "/image/" + key
+	}
+	_, err := a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, key, id)
+	return err
+}
+func (a *App) processReverseGeocoding(t *Task) error {
+	photoID, _ := t.Payload["photoId"].(string)
+	latitude, lok := numberValue(t.Payload["latitude"])
+	longitude, ook := numberValue(t.Payload["longitude"])
+	if photoID == "" || !lok || !ook {
+		return errors.New("invalid reverse geocoding task")
+	}
+	return a.reverseGeocode(context.Background(), photoID, latitude, longitude)
+}
+func numberValue(value any) (float64, bool) {
+	switch v := value.(type) {
+	case float64:
+		return v, true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	default:
+		return 0, false
+	}
+}
 func (a *App) eraseLocation(t *Task) error {
 	id, _ := t.Payload["photoId"].(string)
 	var key string
@@ -229,8 +275,7 @@ func (a *App) eraseLocation(t *Task) error {
 	if err != nil {
 		return err
 	}
-	_, err = a.storage.Create(context.Background(), key, data, mime.TypeByExtension(filepath.Ext(key)))
-	return err
+	return a.erasePhotoLocation(context.Background(), id, key, data)
 }
 func nilIf(err error) error { return err }
 func (a *App) setStage(id int64, stage string) {

@@ -44,7 +44,8 @@ func nullString(v sql.NullString) any {
 	return nil
 }
 func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var b struct {
@@ -113,7 +114,8 @@ func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	if len(parts) == 1 && r.Method == "DELETE" {
-		if !a.requireAdmin(w, r) {
+		if _, ok := a.require(r); !ok {
+			errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 		_, _ = a.db.Exec(`DELETE FROM albums WHERE id=?`, id)
@@ -121,7 +123,8 @@ func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	if len(parts) >= 3 && parts[1] == "photos" && r.Method == "DELETE" {
-		if !a.requireAdmin(w, r) {
+		if _, ok := a.require(r); !ok {
+			errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 		_, _ = a.db.Exec(`DELETE FROM album_photos WHERE album_id=? AND photo_id=?`, id, parts[2])
@@ -152,7 +155,8 @@ func (a *App) albumDetail(w http.ResponseWriter, _ *http.Request, id int64) {
 	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "photos": photos})
 }
 func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var b map[string]any
@@ -171,6 +175,18 @@ func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
 	if v, ok := b["isHidden"].(bool); ok {
 		sets = append(sets, "is_hidden=?")
 		args = append(args, boolInt(v))
+	}
+	if photoIDs, ok := b["photoIds"].([]any); ok {
+		_, _ = a.db.Exec(`DELETE FROM album_photos WHERE album_id=?`, id)
+		position := 1000000.0
+		for _, raw := range photoIDs {
+			photoID, ok := raw.(string)
+			if !ok || photoID == "" {
+				continue
+			}
+			_, _ = a.db.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, photoID, position)
+			position += 10
+		}
 	}
 	if len(sets) > 0 {
 		args = append(args, id)

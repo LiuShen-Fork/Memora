@@ -10,6 +10,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,9 +32,29 @@ type Storage interface {
 	Prefix() string
 }
 
+type ReaderStorage interface {
+	Open(context.Context, string) (io.ReadCloser, Object, error)
+}
+
 type LocalStorage struct{ base, baseURL, prefix string }
 
 func (s *LocalStorage) Prefix() string { return strings.Trim(s.prefix, "/") }
+func (s *LocalStorage) Open(_ context.Context, key string) (io.ReadCloser, Object, error) {
+	p, err := s.path(key)
+	if err != nil {
+		return nil, Object{}, err
+	}
+	file, err := os.Open(p)
+	if err != nil {
+		return nil, Object{}, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return nil, Object{}, err
+	}
+	return file, Object{Key: storageKey(s.prefix, key), Size: info.Size(), ModTime: info.ModTime()}, nil
+}
 func (s *LocalStorage) path(key string) (string, error) {
 	rawKey := strings.TrimLeft(strings.ReplaceAll(key, "\\", "/"), "/")
 	cleanedKey := filepath.Clean(filepath.FromSlash(rawKey))
@@ -99,9 +120,7 @@ func (s *LocalStorage) PublicURL(key string) string {
 func (s *LocalStorage) SignedURL(_ context.Context, key, _ string) (string, error) {
 	return "/api/photos/upload?key=" + urlQueryEscape(storageKey(s.prefix, key)), nil
 }
-func urlQueryEscape(v string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(v, "%", "%25"), " ", "%20")
-}
+func urlQueryEscape(v string) string { return url.QueryEscape(v) }
 
 type S3Storage struct {
 	client              *minio.Client
@@ -111,7 +130,11 @@ type S3Storage struct {
 func NewS3Storage(c Config) (*S3Storage, error) {
 	endpoint := strings.TrimPrefix(strings.TrimPrefix(c.S3Endpoint, "https://"), "http://")
 	secure := strings.HasPrefix(c.S3Endpoint, "https://")
-	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(c.S3AccessKey, c.S3SecretKey, c.S3Region), Secure: secure, Region: c.S3Region})
+	clientOptions := minio.Options{Creds: credentials.NewStaticV4(c.S3AccessKey, c.S3SecretKey, c.S3Region), Secure: secure, Region: c.S3Region}
+	if c.S3PathStyle {
+		clientOptions.BucketLookup = minio.BucketLookupPath
+	}
+	client, err := minio.New(endpoint, &clientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +147,21 @@ func (s *S3Storage) Create(ctx context.Context, k string, d []byte, ct string) (
 	_, err := s.client.PutObject(ctx, s.bucket, k, bytes.NewReader(d), int64(len(d)), minio.PutObjectOptions{ContentType: ct})
 	return Object{Key: k, Size: int64(len(d)), ModTime: time.Now()}, err
 }
+func (s *S3Storage) Open(ctx context.Context, k string) (io.ReadCloser, Object, error) {
+	key := s.key(k)
+	reader, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, Object{}, err
+	}
+	meta, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	if err != nil {
+		reader.Close()
+		return nil, Object{}, err
+	}
+	return reader, Object{Key: key, Size: meta.Size, ModTime: meta.LastModified}, nil
+}
 func (s *S3Storage) Get(ctx context.Context, k string) ([]byte, error) {
-	o, err := s.client.GetObject(ctx, s.bucket, k, minio.GetObjectOptions{})
+	o, _, err := s.Open(ctx, k)
 	if err != nil {
 		return nil, err
 	}
@@ -133,20 +169,22 @@ func (s *S3Storage) Get(ctx context.Context, k string) ([]byte, error) {
 	return io.ReadAll(o)
 }
 func (s *S3Storage) Delete(ctx context.Context, k string) error {
-	return s.client.RemoveObject(ctx, s.bucket, k, minio.RemoveObjectOptions{})
+	return s.client.RemoveObject(ctx, s.bucket, s.key(k), minio.RemoveObjectOptions{})
 }
 func (s *S3Storage) Meta(ctx context.Context, k string) (Object, error) {
-	st, err := s.client.StatObject(ctx, s.bucket, k, minio.StatObjectOptions{})
-	return Object{Key: k, Size: st.Size, ModTime: st.LastModified}, err
+	key := s.key(k)
+	st, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	return Object{Key: key, Size: st.Size, ModTime: st.LastModified}, err
 }
 func (s *S3Storage) PublicURL(k string) string {
+	key := s.key(k)
 	if s.cdn != "" {
-		return s.cdn + "/" + k
+		return s.cdn + "/" + key
 	}
 	return ""
 }
 func (s *S3Storage) SignedURL(ctx context.Context, k, ct string) (string, error) {
-	u, err := s.client.PresignedPutObject(ctx, s.bucket, k, time.Hour)
+	u, err := s.client.PresignedPutObject(ctx, s.bucket, s.key(k), time.Hour)
 	return u.String(), err
 }
 
@@ -174,7 +212,7 @@ func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct str
 		return Object{}, err
 	}
 	req.Header.Set("Authorization", s.token)
-	req.Header.Set("File-Path", s.full(k))
+	req.Header.Set("File-Path", url.QueryEscape(s.full(k)))
 	req.Header.Set("Content-Type", ct)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -186,22 +224,30 @@ func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct str
 	}
 	return Object{Key: storageKey(s.root, k), Size: int64(len(d)), ModTime: time.Now()}, nil
 }
-func (s *OpenListStorage) Get(ctx context.Context, k string) ([]byte, error) {
+func (s *OpenListStorage) Open(ctx context.Context, k string) (io.ReadCloser, Object, error) {
 	endpoint := s.download
 	if endpoint == "" {
 		endpoint = "/d" + s.full(k)
 	} else {
-		endpoint += "?" + s.pathField + "=" + urlQueryEscape(s.full(k))
+		endpoint += "?" + s.pathField + "=" + url.QueryEscape(s.full(k))
 	}
-	resp, err := s.request(ctx, "GET", endpoint, nil)
+	resp, err := s.request(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, Object{}, err
+	}
+	if resp.StatusCode >= 300 {
+		resp.Body.Close()
+		return nil, Object{}, fmt.Errorf("openlist get: %s", resp.Status)
+	}
+	return resp.Body, Object{Key: storageKey(s.root, k), Size: resp.ContentLength, ModTime: time.Time{}}, nil
+}
+func (s *OpenListStorage) Get(ctx context.Context, k string) ([]byte, error) {
+	reader, _, err := s.Open(ctx, k)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("openlist get: %s", resp.Status)
-	}
-	return io.ReadAll(resp.Body)
+	defer reader.Close()
+	return io.ReadAll(reader)
 }
 func (s *OpenListStorage) Delete(ctx context.Context, k string) error {
 	endpoint := s.delete

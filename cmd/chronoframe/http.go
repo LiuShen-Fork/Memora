@@ -101,7 +101,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "/api/wizard/"):
 		a.wizardRoute(w, r, strings.TrimPrefix(path, "/api/wizard/"))
 	case path == "/api/auth/github":
-		errorJSON(w, http.StatusNotImplemented, "GitHub OAuth must be configured in the Go backend")
+		a.githubAuth(w, r)
 	default:
 		errorJSON(w, http.StatusNotFound, "Not Found")
 	}

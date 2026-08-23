@@ -1,0 +1,115 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+type settingDefault struct {
+	Namespace   string
+	Key         string
+	Type        string
+	Default     any
+	Public      bool
+	Readonly    bool
+	Secret      bool
+	Enum        []string
+	Label       string
+	Description string
+}
+
+var defaultSettings = []settingDefault{
+	{Namespace: "system", Key: "firstLaunch", Type: "boolean", Default: true, Readonly: true, Label: "settings.system.firstLaunch.label", Description: "settings.system.firstLaunch.description"},
+	{Namespace: "app", Key: "title", Type: "string", Default: "ChronoFrame", Public: true, Label: "settings.app.title.label", Description: "settings.app.title.description"},
+	{Namespace: "app", Key: "slogan", Type: "string", Default: "", Public: true, Label: "settings.app.slogan.label", Description: "settings.app.slogan.description"},
+	{Namespace: "app", Key: "author", Type: "string", Default: "", Public: true, Label: "settings.app.author.label", Description: "settings.app.author.description"},
+	{Namespace: "app", Key: "avatarUrl", Type: "string", Default: "", Public: true, Label: "settings.app.avatarUrl.label", Description: "settings.app.avatarUrl.description"},
+	{Namespace: "app", Key: "appearance.theme", Type: "string", Default: "system", Public: true, Enum: []string{"light", "dark", "system"}, Label: "settings.app.appearance.theme.label", Description: "settings.app.appearance.theme.description"},
+	{Namespace: "system", Key: "upload.maxFileSize", Type: "number", Default: 256, Public: true, Label: "settings.app.upload.maxFileSize.label", Description: "settings.app.upload.maxFileSize.description"},
+	{Namespace: "system", Key: "upload.duplicateCheck.enabled", Type: "boolean", Default: true, Public: true, Label: "settings.system.upload.duplicateCheck.enabled.label", Description: "settings.system.upload.duplicateCheck.enabled.description"},
+	{Namespace: "system", Key: "upload.duplicateCheck.mode", Type: "string", Default: "skip", Public: true, Enum: []string{"warn", "block", "skip"}, Label: "settings.system.upload.duplicateCheck.mode.label", Description: "settings.system.upload.duplicateCheck.mode.description"},
+	{Namespace: "system", Key: "webglImageViewerDebug", Type: "boolean", Default: false, Public: true, Label: "settings.system.webglImageViewerDebug.label", Description: "settings.system.webglImageViewerDebug.description"},
+	{Namespace: "system", Key: "auth.github.enabled", Type: "boolean", Default: false, Public: true, Label: "settings.system.auth.github.enabled.label", Description: "settings.system.auth.github.enabled.description"},
+	{Namespace: "system", Key: "auth.github.clientId", Type: "string", Default: "", Label: "settings.system.auth.github.clientId.label", Description: "settings.system.auth.github.clientId.description"},
+	{Namespace: "system", Key: "auth.github.clientSecret", Type: "string", Default: "", Secret: true, Label: "settings.system.auth.github.clientSecret.label", Description: "settings.system.auth.github.clientSecret.description"},
+	{Namespace: "privacy", Key: "upload.autoEraseLocation", Type: "boolean", Default: false, Public: true, Label: "settings.privacy.upload.autoEraseLocation.label", Description: "settings.privacy.upload.autoEraseLocation.description"},
+	{Namespace: "map", Key: "provider", Type: "string", Default: "maplibre", Public: true, Enum: []string{"mapbox", "maplibre"}, Label: "settings.map.provider.label", Description: "settings.map.provider.description"},
+	{Namespace: "map", Key: "mapbox.token", Type: "string", Default: "", Public: true, Label: "settings.map.mapbox.token.label", Description: "settings.map.mapbox.token.description"},
+	{Namespace: "map", Key: "mapbox.style", Type: "string", Default: "", Public: true, Label: "settings.map.mapbox.style.label", Description: "settings.map.mapbox.style.description"},
+	{Namespace: "map", Key: "maplibre.token", Type: "string", Default: "", Public: true, Label: "settings.map.maplibre.token.label", Description: "settings.map.maplibre.token.description"},
+	{Namespace: "map", Key: "maplibre.style", Type: "string", Default: "", Public: true, Label: "settings.map.maplibre.style.label", Description: "settings.map.maplibre.style.description"},
+	{Namespace: "location", Key: "language", Type: "string", Default: "en", Public: true, Label: "settings.location.language.label", Description: "settings.location.language.description"},
+	{Namespace: "location", Key: "mapbox.token", Type: "string", Default: "", Public: true, Label: "settings.location.mapbox.token.label", Description: "settings.location.mapbox.token.description"},
+	{Namespace: "location", Key: "nominatim.baseUrl", Type: "string", Default: "", Public: true, Label: "settings.location.nominatim.baseUrl.label", Description: "settings.location.nominatim.baseUrl.description"},
+	{Namespace: "storage", Key: "provider", Type: "number", Default: nil, Label: "settings.storage_provider.provider.label", Description: "settings.storage_provider.provider.description"},
+	{Namespace: "analytics", Key: "headScripts", Type: "string", Default: "", Public: true, Label: "settings.analytics.headScripts.label", Description: "settings.analytics.headScripts.description"},
+	{Namespace: "analytics", Key: "bodyScripts", Type: "string", Default: "", Public: true, Label: "settings.analytics.bodyScripts.label", Description: "settings.analytics.bodyScripts.description"},
+}
+
+func (a *App) ensureDefaultSettings() error {
+	for _, setting := range defaultSettings {
+		var exists int
+		if err := a.db.QueryRow(`SELECT 1 FROM settings WHERE namespace=? AND key=?`, setting.Namespace, setting.Key).Scan(&exists); err == nil {
+			continue
+		}
+		value := serializeSetting(setting.Type, setting.Default)
+		enum, err := json.Marshal(setting.Enum)
+		if err != nil {
+			return err
+		}
+		_, err = a.db.Exec(`INSERT INTO settings(namespace,key,type,value,default_value,label,description,is_public,is_readonly,is_secret,enum,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,unixepoch())`, setting.Namespace, setting.Key, setting.Type, value, value, setting.Label, setting.Description, boolInt(setting.Public), boolInt(setting.Readonly), boolInt(setting.Secret), enum)
+		if err != nil {
+			return fmt.Errorf("default setting %s:%s: %w", setting.Namespace, setting.Key, err)
+		}
+	}
+	return nil
+}
+
+func serializeSetting(typ string, value any) any {
+	if value == nil {
+		return nil
+	}
+	if typ == "string" {
+		return fmt.Sprint(value)
+	}
+	if typ == "boolean" {
+		return fmt.Sprint(value == true)
+	}
+	if typ == "number" {
+		switch v := value.(type) {
+		case int:
+			return v
+		case int64:
+			return v
+		case float64:
+			return v
+		}
+	}
+	return jsonValue(value)
+}
+
+func settingUI(namespace, key, typ string, enum []string) map[string]any {
+	uiType := "input"
+	switch typ {
+	case "boolean":
+		uiType = "toggle"
+	case "number":
+		uiType = "number"
+	}
+	if len(enum) > 0 {
+		uiType = "tabs"
+	}
+	ui := map[string]any{"type": uiType, "required": false}
+	if key == "auth.github.clientSecret" || strings.HasSuffix(key, ".token") {
+		ui["type"] = "password"
+	}
+	if len(enum) > 0 {
+		options := make([]map[string]any, 0, len(enum))
+		for _, value := range enum {
+			options = append(options, map[string]any{"label": value, "value": value})
+		}
+		ui["options"] = options
+	}
+	return ui
+}

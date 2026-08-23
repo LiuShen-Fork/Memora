@@ -20,7 +20,47 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusBadRequest, "Action is required")
 		return
 	}
+	if body.Action == "scan" {
+		rows, err := a.db.Query(`SELECT id FROM photos WHERE storage_key IS NOT NULL`)
+		if err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to scan photos")
+			return
+		}
+		defer rows.Close()
+		results := []map[string]any{}
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) != nil {
+				continue
+			}
+			success, key, err := a.detectLivePhoto(r, id)
+			result := map[string]any{"photoId": id, "success": success, "videoKey": key}
+			if err != nil {
+				result["error"] = err.Error()
+			}
+			results = append(results, result)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Scan completed", "results": results})
+		return
+	}
+	if body.Action == "process" {
+		if body.PhotoID == "" {
+			errorJSON(w, http.StatusBadRequest, "photoId is required for process action")
+			return
+		}
+		success, key, err := a.detectLivePhoto(r, body.PhotoID)
+		if err != nil {
+			errorJSON(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": "LivePhoto processed", "success": success, "videoKey": key})
+		return
+	}
 	if body.Action == "update-photo" {
+		if body.PhotoID == "" {
+			errorJSON(w, http.StatusBadRequest, "photoId is required for update-photo action")
+			return
+		}
 		success, key, err := a.detectLivePhoto(r, body.PhotoID)
 		if err != nil {
 			errorJSON(w, http.StatusNotFound, err.Error())
@@ -46,7 +86,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"success": true, "results": results})
 		return
 	}
-	errorJSON(w, http.StatusBadRequest, "Supported actions are update-photo and detect")
+	errorJSON(w, http.StatusBadRequest, "Supported actions are scan, detect, process, and update-photo")
 }
 
 func (a *App) detectLivePhoto(r *http.Request, photoID string) (bool, string, error) {

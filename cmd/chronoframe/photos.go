@@ -3,10 +3,11 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Photo struct {
@@ -283,35 +284,134 @@ func (a *App) photoRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	errorJSON(w, 404, "Not Found")
 }
 func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	var b map[string]any
-	if decodeJSON(r, &b) != nil {
-		errorJSON(w, 400, "Invalid request")
+	var body struct {
+		Title       *string          `json:"title"`
+		Description *string          `json:"description"`
+		Tags        *[]string        `json:"tags"`
+		Location    json.RawMessage  `json:"location"`
+		Rating      *json.RawMessage `json:"rating"`
+	}
+	if decodeJSON(r, &body) != nil {
+		errorJSON(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	allowed := map[string]string{"title": "title", "description": "description", "tags": "tags", "latitude": "latitude", "longitude": "longitude"}
+	if body.Title == nil && body.Description == nil && body.Tags == nil && body.Location == nil && body.Rating == nil {
+		errorJSON(w, http.StatusBadRequest, "No changes provided")
+		return
+	}
+	var key string
+	if err := a.db.QueryRow(`SELECT storage_key FROM photos WHERE id=?`, id).Scan(&key); err != nil {
+		errorJSON(w, http.StatusNotFound, "Photo not found")
+		return
+	}
+	data, err := a.storage.Get(r.Context(), key)
+	if err != nil {
+		errorJSON(w, http.StatusNotFound, "Photo file missing")
+		return
+	}
+	updates := map[string]any{}
 	sets := []string{}
 	args := []any{}
-	for key, col := range allowed {
-		if v, ok := b[key]; ok {
-			sets = append(sets, col+"=?")
-			if key == "tags" {
-				args = append(args, jsonValue(v))
-			} else {
-				args = append(args, v)
+	if body.Title != nil {
+		title := strings.TrimSpace(*body.Title)
+		updates["Title"] = title
+		updates["XPTitle"] = title
+		sets = append(sets, "title=?")
+		args = append(args, nullIfEmpty(title))
+	}
+	if body.Description != nil {
+		description := strings.TrimSpace(*body.Description)
+		updates["Description"] = description
+		updates["ImageDescription"] = description
+		updates["UserComment"] = description
+		sets = append(sets, "description=?")
+		args = append(args, nullIfEmpty(description))
+	}
+	if body.Tags != nil {
+		tags := normalizeTags(*body.Tags)
+		updates["Subject"] = tags
+		updates["Keywords"] = tags
+		updates["XPKeywords"] = strings.Join(tags, "; ")
+		sets = append(sets, "tags=?")
+		args = append(args, jsonValue(tags))
+	}
+	if body.Location != nil {
+		var location map[string]any
+		if string(body.Location) != "null" && json.Unmarshal(body.Location, &location) != nil {
+			errorJSON(w, http.StatusBadRequest, "Invalid location")
+			return
+		}
+		if location != nil {
+			latitude, lok := location["latitude"].(float64)
+			longitude, ook := location["longitude"].(float64)
+			if !lok || !ook || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 {
+				errorJSON(w, http.StatusBadRequest, "Invalid location")
+				return
 			}
+			sets = append(sets, "latitude=?", "longitude=?", "country=NULL", "city=NULL", "location_name=NULL")
+			args = append(args, latitude, longitude)
+		} else {
+			sets = append(sets, "latitude=NULL", "longitude=NULL", "country=NULL", "city=NULL", "location_name=NULL")
+		}
+		updatesMap := locationExifUpdates(location)
+		for field, value := range updatesMap {
+			updates[field] = value
 		}
 	}
-	if len(sets) > 0 {
-		args = append(args, id)
-		_, _ = a.db.Exec(`UPDATE photos SET `+strings.Join(sets, ",")+` WHERE id=?`, args...)
+	if body.Rating != nil {
+		var rating any
+		if json.Unmarshal(*body.Rating, &rating) != nil {
+			errorJSON(w, http.StatusBadRequest, "Invalid rating")
+			return
+		}
+		if rating != nil {
+			value, ok := rating.(float64)
+			if !ok || value < 0 || value > 5 || value != float64(int(value)) {
+				errorJSON(w, http.StatusBadRequest, "Invalid rating")
+				return
+			}
+		}
+		updates["Rating"] = rating
 	}
-	writeJSON(w, 200, map[string]any{"success": true})
+	updatedData, err := a.rewritePhotoMetadata(r.Context(), key, data, updates)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to write photo metadata")
+		return
+	}
+	if _, err := a.storage.Create(r.Context(), key, updatedData, "application/octet-stream"); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to save photo")
+		return
+	}
+	exif, _ := extractExif(a.cfg.ExifTool, updatedData, filepath.Ext(key))
+	sets = append(sets, "exif=?", "file_size=?", "last_modified=?")
+	args = append(args, jsonValue(exif), len(updatedData), metadataTimestamp(), id)
+	if _, err := a.db.Exec(`UPDATE photos SET `+strings.Join(sets, ",")+` WHERE id=?`, args...); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update photo")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func normalizeTags(tags []string) []string {
+	seen := map[string]bool{}
+	result := []string{}
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		key := strings.ToLower(tag)
+		if tag != "" && !seen[key] {
+			seen[key] = true
+			result = append(result, tag)
+		}
+	}
+	return result
 }
 func (a *App) deletePhoto(w http.ResponseWriter, r *http.Request, id string) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var key, thumb string
@@ -327,42 +427,86 @@ func (a *App) deletePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNoContent)
 }
 func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
-	u, _ := a.user(r)
-	fingerprint := r.RemoteAddr
-	if u != nil {
-		fingerprint = fmt.Sprint(u["id"])
-	}
-	if r.Method == "GET" {
-		rows, _ := a.db.Query(`SELECT reaction_type,count(*) FROM photo_reactions WHERE photo_id=? GROUP BY reaction_type`, id)
-		out := newReactionCounts()
-		for rows != nil && rows.Next() {
+	fingerprint := reactionFingerprint(r)
+	if r.Method == http.MethodGet {
+		rows, err := a.db.Query(`SELECT reaction_type,count(*) FROM photo_reactions WHERE photo_id=? GROUP BY reaction_type`, id)
+		if err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to load reactions")
+			return
+		}
+		defer rows.Close()
+		counts := newReactionCounts()
+		for rows.Next() {
 			var typ string
 			var count int
-			_ = rows.Scan(&typ, &count)
-			out[typ] = count
+			if rows.Scan(&typ, &count) == nil && counts[typ] >= 0 {
+				counts[typ] = count
+			}
 		}
-		if rows != nil {
-			rows.Close()
+		var current sql.NullString
+		_ = a.db.QueryRow(`SELECT reaction_type FROM photo_reactions WHERE photo_id=? AND fingerprint=? ORDER BY id DESC LIMIT 1`, id, fingerprint).Scan(&current)
+		var userReaction any
+		if current.Valid {
+			userReaction = current.String
 		}
-		writeJSON(w, 200, out)
+		writeJSON(w, http.StatusOK, map[string]any{"photoId": id, "reactions": counts, "userReaction": userReaction})
 		return
 	}
-	if r.Method == "DELETE" {
+	if r.Method == http.MethodDelete {
 		_, _ = a.db.Exec(`DELETE FROM photo_reactions WHERE photo_id=? AND fingerprint=?`, id, fingerprint)
 		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPost {
+		errorJSON(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	var body struct {
 		ReactionType string `json:"reactionType"`
 	}
-	if decodeJSON(r, &body) != nil || body.ReactionType == "" {
-		errorJSON(w, 400, "reactionType is required")
+	if decodeJSON(r, &body) != nil || !validReactionType(body.ReactionType) {
+		errorJSON(w, http.StatusBadRequest, "Invalid reaction type")
 		return
 	}
-	_, err := a.db.Exec(`INSERT INTO photo_reactions(photo_id,reaction_type,fingerprint,ip_address,user_agent) VALUES(?,?,?,?,?)`, id, body.ReactionType, fingerprint, r.RemoteAddr, r.UserAgent())
-	if err != nil {
-		errorJSON(w, 500, err.Error())
+	var photoExists int
+	if err := a.db.QueryRow(`SELECT 1 FROM photos WHERE id=?`, id).Scan(&photoExists); err != nil {
+		errorJSON(w, http.StatusNotFound, "Photo not found")
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"success": true})
+	var recent int
+	_ = a.db.QueryRow(`SELECT count(*) FROM photo_reactions WHERE fingerprint=? AND created_at>?`, fingerprint, time.Now().Add(-time.Minute).Unix()).Scan(&recent)
+	if recent >= 10 {
+		errorJSON(w, http.StatusTooManyRequests, "Too many reactions. Please try again later.")
+		return
+	}
+	var existingID int64
+	var saveErr error
+	if err := a.db.QueryRow(`SELECT id FROM photo_reactions WHERE photo_id=? AND fingerprint=? ORDER BY id DESC LIMIT 1`, id, fingerprint).Scan(&existingID); err == nil {
+		_, saveErr = a.db.Exec(`UPDATE photo_reactions SET reaction_type=?,updated_at=unixepoch(),ip_address=?,user_agent=? WHERE id=?`, body.ReactionType, remoteIP(r), r.UserAgent(), existingID)
+	} else {
+		_, saveErr = a.db.Exec(`INSERT INTO photo_reactions(photo_id,reaction_type,fingerprint,ip_address,user_agent,created_at,updated_at) VALUES(?,?,?,?,?,unixepoch(),unixepoch())`, id, body.ReactionType, fingerprint, remoteIP(r), r.UserAgent())
+	}
+	if saveErr != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to save reaction")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"photoId": id, "reactionType": body.ReactionType, "success": true})
+}
+
+func reactionFingerprint(r *http.Request) string {
+	return remoteIP(r) + "|" + r.UserAgent() + "|" + r.Header.Get("Accept-Language") + "|" + r.Header.Get("Accept-Encoding")
+}
+func remoteIP(r *http.Request) string {
+	if forwarded := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]); forwarded != "" {
+		return forwarded
+	}
+	return r.RemoteAddr
+}
+func validReactionType(value string) bool {
+	switch value {
+	case "like", "love", "amazing", "funny", "wow", "sad", "fire", "sparkle":
+		return true
+	default:
+		return false
+	}
 }
