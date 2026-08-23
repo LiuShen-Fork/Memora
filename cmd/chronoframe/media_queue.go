@@ -216,7 +216,20 @@ func (a *App) processPhoto(t *Task) error {
 		data = updated
 		exif, dateTaken = extractExif(a.cfg.ExifTool, data, filepath.Ext(key))
 	}
-	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=excluded.date_taken,storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,exif=excluded.exif`, id, strings.TrimSuffix(filepath.Base(key), filepath.Ext(key)), nil, width, height, float64(width)/float64(height), dateTaken, key, thumbKey, len(data), last, original, thumbURL, nil, "[]", jsonValue(exif), nil, nil, nil, nil, nil, 0, nil, nil)
+	motionVideoKey, motionErr := a.extractMotionPhoto(context.Background(), id, key, data, exif)
+	if motionErr != nil {
+		a.logs.Add("queue", motionError(key, motionErr).Error())
+	}
+	var liveVideoURL any
+	var isLivePhoto int
+	if motionVideoKey != "" {
+		isLivePhoto = 1
+		liveVideoURL = a.storage.PublicURL(motionVideoKey)
+		if liveVideoURL == "" {
+			liveVideoURL = "/image/" + motionVideoKey
+		}
+	}
+	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=excluded.date_taken,storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,exif=excluded.exif,is_live_photo=excluded.is_live_photo,live_photo_video_url=excluded.live_photo_video_url,live_photo_video_key=excluded.live_photo_video_key`, id, strings.TrimSuffix(filepath.Base(key), filepath.Ext(key)), nil, width, height, float64(width)/float64(height), dateTaken, key, thumbKey, len(data), last, original, thumbURL, nil, "[]", jsonValue(exif), nil, nil, nil, nil, nil, isLivePhoto, liveVideoURL, motionVideoKey)
 	if err != nil {
 		return err
 	}
