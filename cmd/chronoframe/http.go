@@ -107,7 +107,7 @@ func (a *App) user(r *http.Request) (map[string]any, bool) {
 		return nil, false
 	}
 	parts := strings.Split(c.Value, ".")
-	if len(parts) != 3 {
+	if len(parts) != 2 {
 		return nil, false
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
@@ -116,7 +116,7 @@ func (a *App) user(r *http.Request) (map[string]any, bool) {
 	}
 	mac := hmac.New(sha256.New, a.cfg.SessionKey)
 	mac.Write([]byte(parts[0]))
-	if subtle.ConstantTimeCompare(mac.Sum(nil), mustDecode(parts[2])) != 1 {
+	if subtle.ConstantTimeCompare(mac.Sum(nil), mustDecode(parts[1])) != 1 {
 		return nil, false
 	}
 	var id int64

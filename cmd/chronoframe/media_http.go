@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,8 +18,8 @@ func (a *App) serveStorage(w http.ResponseWriter, r *http.Request) {
 	}
 	s := a.storage.(*LocalStorage)
 	key := strings.TrimPrefix(r.URL.Path, "/storage/")
-	p := s.path(key)
-	if !safePath(s.base, p) {
+	p, err := s.path(key)
+	if err != nil || !safePath(s.base, p) {
 		errorJSON(w, 400, "Invalid path")
 		return
 	}
@@ -53,7 +54,7 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
-	http.ServeContent(w, r, filepath.Base(key), time.Time{}, strings.NewReader(string(data)))
+	http.ServeContent(w, r, filepath.Base(key), time.Time{}, bytes.NewReader(data))
 }
 func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	target := strings.TrimPrefix(r.URL.Path, "/thumb/")
@@ -87,7 +88,7 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 	}
 	file := filepath.Join(a.cfg.WebDir, filepath.FromSlash(strings.TrimPrefix(path, "/")))
 	if data, err := os.ReadFile(file); err == nil {
-		http.ServeContent(w, r, filepath.Base(file), time.Time{}, strings.NewReader(string(data)))
+		http.ServeContent(w, r, filepath.Base(file), time.Time{}, bytes.NewReader(data))
 		return
 	}
 	index := filepath.Join(a.cfg.WebDir, "index.html")

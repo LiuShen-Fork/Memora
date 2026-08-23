@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -33,12 +34,20 @@ type Storage interface {
 type LocalStorage struct{ base, baseURL, prefix string }
 
 func (s *LocalStorage) Prefix() string { return strings.Trim(s.prefix, "/") }
-func (s *LocalStorage) path(key string) string {
-	key = storageKey(s.prefix, key)
-	return filepath.Join(s.base, filepath.FromSlash(key))
+func (s *LocalStorage) path(key string) (string, error) {
+	rawKey := strings.TrimLeft(strings.ReplaceAll(key, "\\", "/"), "/")
+	cleanedKey := filepath.Clean(filepath.FromSlash(rawKey))
+	if rawKey == "" || cleanedKey == "." || cleanedKey == ".." || strings.HasPrefix(cleanedKey, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("invalid storage key")
+	}
+	key = strings.TrimLeft(storageKey(s.prefix, filepath.ToSlash(cleanedKey)), "/")
+	return filepath.Join(s.base, filepath.FromSlash(key)), nil
 }
 func (s *LocalStorage) Create(_ context.Context, key string, data []byte, _ string) (Object, error) {
-	p := s.path(key)
+	p, err := s.path(key)
+	if err != nil {
+		return Object{}, err
+	}
 	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 		return Object{}, err
 	}
@@ -56,17 +65,29 @@ func (s *LocalStorage) Create(_ context.Context, key string, data []byte, _ stri
 	return Object{Key: storageKey(s.prefix, key), Size: st.Size(), ModTime: st.ModTime()}, nil
 }
 func (s *LocalStorage) Get(_ context.Context, key string) ([]byte, error) {
-	return os.ReadFile(s.path(key))
+	p, err := s.path(key)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(p)
 }
 func (s *LocalStorage) Delete(_ context.Context, key string) error {
-	err := os.Remove(s.path(key))
+	p, err := s.path(key)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(p)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	return err
 }
 func (s *LocalStorage) Meta(_ context.Context, key string) (Object, error) {
-	st, err := os.Stat(s.path(key))
+	p, err := s.path(key)
+	if err != nil {
+		return Object{}, err
+	}
+	st, err := os.Stat(p)
 	if err != nil {
 		return Object{}, err
 	}
@@ -100,7 +121,7 @@ func (s *S3Storage) Prefix() string      { return s.prefix }
 func (s *S3Storage) key(k string) string { return storageKey(s.prefix, k) }
 func (s *S3Storage) Create(ctx context.Context, k string, d []byte, ct string) (Object, error) {
 	k = s.key(k)
-	_, err := s.client.PutObject(ctx, s.bucket, k, strings.NewReader(string(d)), int64(len(d)), minio.PutObjectOptions{ContentType: ct})
+	_, err := s.client.PutObject(ctx, s.bucket, k, bytes.NewReader(d), int64(len(d)), minio.PutObjectOptions{ContentType: ct})
 	return Object{Key: k, Size: int64(len(d)), ModTime: time.Now()}, err
 }
 func (s *S3Storage) Get(ctx context.Context, k string) ([]byte, error) {
@@ -148,7 +169,7 @@ func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct str
 	if endpoint == "" {
 		endpoint = "/api/fs/put"
 	}
-	req, err := http.NewRequestWithContext(ctx, "PUT", strings.TrimRight(s.baseURL, "/")+endpoint, strings.NewReader(string(d)))
+	req, err := http.NewRequestWithContext(ctx, "PUT", strings.TrimRight(s.baseURL, "/")+endpoint, bytes.NewReader(d))
 	if err != nil {
 		return Object{}, err
 	}
@@ -194,7 +215,7 @@ func (s *OpenListStorage) Delete(ctx context.Context, k string) error {
 		dir, name = "/"+normalized[:idx], normalized[idx+1:]
 	}
 	payload, _ := json.Marshal(map[string]any{"dir": dir, "names": []string{name}})
-	resp, err := s.request(ctx, "POST", endpoint, strings.NewReader(string(payload)))
+	resp, err := s.request(ctx, "POST", endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}
@@ -210,7 +231,7 @@ func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
 		endpoint = "/api/fs/get"
 	}
 	payload, _ := json.Marshal(map[string]any{s.pathField: s.full(k), "password": "", "page": 1, "per_page": 0, "refresh": false})
-	resp, err := s.request(ctx, "POST", endpoint, strings.NewReader(string(payload)))
+	resp, err := s.request(ctx, "POST", endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return Object{}, err
 	}

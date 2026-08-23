@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -12,7 +13,6 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
 	"mime"
 	"os"
 	"os/exec"
@@ -185,7 +185,7 @@ func (a *App) processPhoto(t *Task) error {
 	a.setStage(t.ID, "metadata")
 	width, height := imageSize(data)
 	if width == 0 || height == 0 {
-		width, height = probeSize(a.cfg.FFmpeg, data)
+		width, height = probeSize(a.cfg.FFprobe, data)
 	}
 	if width == 0 || height == 0 {
 		return errors.New("unable to read image dimensions")
@@ -238,39 +238,34 @@ func (a *App) setStage(id int64, stage string) {
 }
 
 func imageSize(data []byte) (int, int) {
-	config, _, err := image.DecodeConfig(strings.NewReader(string(data)))
-	if err != nil {
-		config, _, err = image.DecodeConfig(bytesReader(data))
-	}
+	config, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return 0, 0
 	}
 	return config.Width, config.Height
 }
 
-type byteReader struct {
-	data []byte
-	pos  int
-}
-
-func (r *byteReader) Read(p []byte) (int, error) {
-	if r.pos >= len(r.data) {
-		return 0, io.EOF
+func probeSize(ffprobe string, data []byte) (int, int) {
+	cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json", "pipe:0")
+	cmd.Stdin = bytes.NewReader(data)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0
 	}
-	n := copy(p, r.data[r.pos:])
-	r.pos += n
-	return n, nil
-}
-func bytesReader(b []byte) io.Reader { return &byteReader{data: b} }
-func probeSize(ffmpeg string, data []byte) (int, int) {
-	cmd := exec.Command(ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-f", "null", "-")
-	cmd.Stdin = bytesReader(data)
-	_ = cmd.Run()
-	return 0, 0
+	var result struct {
+		Streams []struct {
+			Width  int `json:"width"`
+			Height int `json:"height"`
+		} `json:"streams"`
+	}
+	if json.Unmarshal(out, &result) != nil || len(result.Streams) == 0 {
+		return 0, 0
+	}
+	return result.Streams[0].Width, result.Streams[0].Height
 }
 func ffmpegThumbnail(ffmpeg string, data []byte) ([]byte, error) {
 	cmd := exec.Command(ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", "scale='min(600,iw)':-2", "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
-	cmd.Stdin = bytesReader(data)
+	cmd.Stdin = bytes.NewReader(data)
 	return cmd.Output()
 }
 

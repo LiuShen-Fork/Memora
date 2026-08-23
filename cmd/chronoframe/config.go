@@ -23,6 +23,7 @@ type Config struct {
 	SessionKey    []byte
 	WorkerCount   int
 	FFmpeg        string
+	FFprobe       string
 	ExifTool      string
 	Provider      string
 	LocalPath     string
@@ -82,6 +83,7 @@ func loadConfig() Config {
 		SessionKey:    []byte(secret),
 		WorkerCount:   envInt("CFRAME_WORKERS", 2),
 		FFmpeg:        env("CFRAME_FFMPEG_PATH", "ffmpeg"),
+		FFprobe:       env("CFRAME_FFPROBE_PATH", "ffprobe"),
 		ExifTool:      env("EXIFTOOL_PATH", "exiftool"),
 		Provider:      env("NUXT_STORAGE_PROVIDER", "local"),
 		LocalPath:     env("NUXT_PROVIDER_LOCAL_PATH", filepath.Join(dataDir, "storage")),
