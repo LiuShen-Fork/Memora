@@ -50,6 +50,7 @@ func main() {
 	if err := app.ensureDefaultSettings(); err != nil {
 		log.Fatal(err)
 	}
+	app.migrateEnvironmentSettings()
 	app.storage = app.loadStorage()
 	app.startWorkers()
 	defer app.stopWorkers()

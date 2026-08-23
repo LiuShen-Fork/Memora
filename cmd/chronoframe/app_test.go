@@ -164,6 +164,22 @@ func TestUploadValidationAndDuplicateContract(t *testing.T) {
 	}
 }
 
+func TestEnvironmentSettingsMigrationPreservesStoredValues(t *testing.T) {
+	app := newTestApp(t)
+	t.Setenv("NUXT_PUBLIC_APP_TITLE", "From Environment")
+	app.migrateEnvironmentSettings()
+	var title any
+	if !app.readSetting("app", "title", &title) || title != "From Environment" {
+		t.Fatalf("environment setting was not migrated: %#v", title)
+	}
+	app.setSetting("app", "title", "Stored Value")
+	t.Setenv("NUXT_PUBLIC_APP_TITLE", "New Environment Value")
+	app.migrateEnvironmentSettings()
+	if !app.readSetting("app", "title", &title) || title != "Stored Value" {
+		t.Fatalf("stored setting was overwritten: %#v", title)
+	}
+}
+
 func TestSettingsEndpointContracts(t *testing.T) {
 	app := newTestApp(t)
 	fields := httptest.NewRecorder()
