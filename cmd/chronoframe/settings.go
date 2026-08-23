@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,10 @@ import (
 )
 
 func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string) {
+	if strings.HasPrefix(rest, "/storage-config") {
+		a.storageConfigRoute(w, r, strings.TrimPrefix(rest, "/storage-config"))
+		return
+	}
 	if rest == "/all" && r.Method == "GET" {
 		a.allSettings(w, r)
 		return
@@ -59,13 +62,21 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 	writeJSON(w, 200, map[string]any{"success": true})
 }
 func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
-	rows, _ := a.db.Query(`SELECT namespace,key,type,value,default_value,is_public FROM settings`)
+	rows, err := a.db.Query(`SELECT namespace,key,type,value,default_value,is_public FROM settings WHERE is_public=1 OR (namespace='system' AND key='firstLaunch')`)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
+		return
+	}
+	defer rows.Close()
 	data := map[string]map[string]any{}
-	for rows != nil && rows.Next() {
+	for rows.Next() {
 		var ns, key, typ string
 		var value, def sql.NullString
 		var pub int
-		_ = rows.Scan(&ns, &key, &typ, &value, &def, &pub)
+		if err := rows.Scan(&ns, &key, &typ, &value, &def, &pub); err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
+			return
+		}
 		if data[ns] == nil {
 			data[ns] = map[string]any{}
 		}
@@ -75,9 +86,6 @@ func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
 			}
 			return def.String
 		}())
-	}
-	if rows != nil {
-		rows.Close()
 	}
 	if data["app"] == nil {
 		data["app"] = map[string]any{}
@@ -154,34 +162,4 @@ func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 	case <-r.Context().Done():
 	case <-time.After(30 * time.Second):
 	}
-}
-
-func (a *App) wizardRoute(w http.ResponseWriter, r *http.Request, rest string) {
-	if rest == "schema" && r.Method == "GET" {
-		writeJSON(w, 200, map[string]any{"namespace": r.URL.Query().Get("namespace"), "fields": []any{}})
-		return
-	}
-	if rest == "complete" && r.Method == "POST" {
-		writeJSON(w, 200, map[string]any{"success": true})
-		return
-	}
-	if rest == "submit" && r.Method == "POST" {
-		var b struct {
-			Admin   struct{ Email, Password, Username string }
-			Site    map[string]any
-			Storage map[string]any
-			Map     map[string]any
-		}
-		if decodeJSON(r, &b) != nil {
-			errorJSON(w, 400, "Invalid request")
-			return
-		}
-		if b.Admin.Email != "" {
-			hash, _ := bcrypt.GenerateFromPassword([]byte(b.Admin.Password), bcrypt.DefaultCost)
-			_, _ = a.db.Exec(`INSERT INTO users(name,email,password,is_admin,created_at) VALUES(?,?,?,?,unixepoch()) ON CONFLICT(email) DO UPDATE SET name=excluded.name,password=excluded.password,is_admin=1`, b.Admin.Username, b.Admin.Email, string(hash), 1)
-		}
-		writeJSON(w, 200, map[string]any{"success": true})
-		return
-	}
-	writeJSON(w, 200, map[string]any{"success": true})
 }
