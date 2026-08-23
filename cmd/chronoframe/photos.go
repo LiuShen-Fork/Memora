@@ -109,8 +109,26 @@ func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		found = true
 	}
-	if found && !b.SkipDuplicateCheck {
-		writeJSON(w, 200, map[string]any{"skipped": true, "duplicate": true, "existingPhoto": existing, "fileKey": key, "title": "Duplicate file", "message": "File already exists"})
+	if found && !b.SkipDuplicateCheck && duplicateCheckEnabled(a) {
+		mode := duplicateMode(a)
+		response := map[string]any{"duplicate": true, "existingPhoto": existing, "fileKey": key, "title": "Duplicate file", "message": "File already exists"}
+		if mode == "block" {
+			writeJSON(w, http.StatusConflict, response)
+			return
+		}
+		if mode == "skip" {
+			response["skipped"] = true
+			writeJSON(w, http.StatusOK, response)
+			return
+		}
+		response["warningInfo"] = map[string]any{"title": "Duplicate file", "message": "File already exists"}
+		signed, err := a.storage.SignedURL(r.Context(), key, b.ContentType)
+		if err != nil {
+			signed = "/api/photos/upload?key=" + urlQueryEscape(key)
+		}
+		response["signedUrl"] = signed
+		response["expiresIn"] = 3600
+		writeJSON(w, http.StatusOK, response)
 		return
 	}
 	signed, err := a.storage.SignedURL(r.Context(), key, b.ContentType)
@@ -129,19 +147,27 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, 401, "Unauthorized")
 		return
 	}
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if !uploadMIMEAllowed(contentType) {
+		errorJSON(w, http.StatusUnsupportedMediaType, "Unsupported media type")
+		return
+	}
 	key := r.URL.Query().Get("key")
 	if key == "" {
 		errorJSON(w, 400, "key is required")
 		return
 	}
-	max := int64(envInt("CFRAME_MAX_UPLOAD_MB", 256)) * 1024 * 1024
+	max := a.maxUploadBytes()
 	r.Body = http.MaxBytesReader(w, r.Body, max)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		errorJSON(w, 413, "Upload too large")
 		return
 	}
-	if _, err = a.storage.Create(r.Context(), key, data, r.Header.Get("Content-Type")); err != nil {
+	if _, err = a.storage.Create(r.Context(), key, data, contentType); err != nil {
 		errorJSON(w, 500, "Upload failed")
 		return
 	}
@@ -151,15 +177,42 @@ func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
 		return
 	}
-	var b struct{ FileName string }
-	if decodeJSON(r, &b) != nil {
-		errorJSON(w, 400, "Invalid request")
+	var body struct {
+		FileNames   []string `json:"fileNames"`
+		StorageKeys []string `json:"storageKeys"`
+	}
+	if decodeJSON(r, &body) != nil || (len(body.FileNames) == 0 && len(body.StorageKeys) == 0) {
+		errorJSON(w, http.StatusBadRequest, "fileNames or storageKeys is required")
 		return
 	}
-	id := safePhotoID(storageKey(a.storage.Prefix(), b.FileName))
-	var count int
-	a.db.QueryRow(`SELECT count(*) FROM photos WHERE id=?`, id).Scan(&count)
-	writeJSON(w, 200, map[string]any{"duplicate": count > 0})
+	results := []map[string]any{}
+	check := func(key, fileName string) {
+		id := safePhotoID(key)
+		var photo Photo
+		var tags, exif sql.NullString
+		err := a.db.QueryRow(photoSelect+` WHERE id=?`, id).Scan(&photo.ID, &photo.Title, &photo.Description, &photo.Width, &photo.Height, &photo.AspectRatio, &photo.DateTaken, &photo.StorageKey, &photo.ThumbnailKey, &photo.FileSize, &photo.LastModified, &photo.OriginalURL, &photo.ThumbnailURL, &photo.ThumbnailHash, &tags, &exif, &photo.Latitude, &photo.Longitude, &photo.Country, &photo.City, &photo.LocationName, &photo.IsLivePhoto, &photo.LivePhotoVideoURL, &photo.LivePhotoVideoKey)
+		result := map[string]any{"storageKey": key, "photoId": id, "exists": err == nil, "photo": nil}
+		if fileName != "" {
+			result["fileName"] = fileName
+		}
+		if err == nil {
+			result["photo"] = photo
+		}
+		results = append(results, result)
+	}
+	for _, fileName := range body.FileNames {
+		check(storageKey(a.storage.Prefix(), fileName), fileName)
+	}
+	for _, key := range body.StorageKeys {
+		check(key, "")
+	}
+	duplicates := 0
+	for _, result := range results {
+		if result["exists"] == true {
+			duplicates++
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "results": results, "duplicatesFound": duplicates, "summary": map[string]any{"title": "Duplicate check completed", "message": "Duplicate check completed"}})
 }
 func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {

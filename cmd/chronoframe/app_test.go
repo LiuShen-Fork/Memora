@@ -57,6 +57,28 @@ func adminRequest(t *testing.T, app *App, method, target string, body []byte) *h
 	return request
 }
 
+func TestUploadValidationAndDuplicateContract(t *testing.T) {
+	app := newTestApp(t)
+	unsupported := httptest.NewRecorder()
+	request := adminRequest(t, app, http.MethodPut, "/api/photos/upload?key=photos/unsafe.exe", []byte("payload"))
+	request.Header.Set("Content-Type", "application/x-msdownload")
+	app.ServeHTTP(unsupported, request)
+	if unsupported.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("expected unsupported media type, got %d: %s", unsupported.Code, unsupported.Body.String())
+	}
+
+	key := storageKey(app.storage.Prefix(), "existing.jpg")
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title) VALUES(?,?)`, safePhotoID(key), "Existing"); err != nil {
+		t.Fatal(err)
+	}
+	body := []byte(`{"fileNames":["existing.jpg"]}`)
+	duplicate := httptest.NewRecorder()
+	app.ServeHTTP(duplicate, adminRequest(t, app, http.MethodPost, "/api/photos/check-duplicate", body))
+	if duplicate.Code != http.StatusOK || !strings.Contains(duplicate.Body.String(), `"duplicatesFound":1`) {
+		t.Fatalf("duplicate response failed: %d %s", duplicate.Code, duplicate.Body.String())
+	}
+}
+
 func TestPhotoRelationshipAndReactionContracts(t *testing.T) {
 	app := newTestApp(t)
 	if _, err := app.db.Exec(`INSERT INTO photos(id,title,is_live_photo) VALUES('photo-1','Test photo',1)`); err != nil {
