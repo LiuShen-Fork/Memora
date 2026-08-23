@@ -72,6 +72,10 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.prepareUpload(w, r)
 	case path == "/api/photos/upload" && r.Method == "PUT":
 		a.upload(w, r)
+	case path == "/api/photos/exif/reindex" && r.Method == "POST":
+		a.reindexExif(w, r)
+	case path == "/api/photos/livephoto/manage" && r.Method == "POST":
+		a.manageLivePhoto(w, r)
 	case path == "/api/photos/check-duplicate" && r.Method == "POST":
 		a.checkDuplicate(w, r)
 	case path == "/api/photos/reactions" && r.Method == "GET":

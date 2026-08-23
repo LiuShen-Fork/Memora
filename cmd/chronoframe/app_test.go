@@ -57,6 +57,34 @@ func adminRequest(t *testing.T, app *App, method, target string, body []byte) *h
 	return request
 }
 
+func TestExifReindexAndLivePhotoDetection(t *testing.T) {
+	app := newTestApp(t)
+	imageKey := "photos/sample.jpg"
+	if _, err := app.storage.Create(context.Background(), imageKey, []byte("not-a-jpeg"), "image/jpeg"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title,storage_key,is_live_photo) VALUES('photo-1','Old title',?,0)`, imageKey); err != nil {
+		t.Fatal(err)
+	}
+	reindex := httptest.NewRecorder()
+	app.ServeHTTP(reindex, adminRequest(t, app, http.MethodPost, "/api/photos/exif/reindex", []byte(`{"action":"single-reindex","photoId":"photo-1"}`)))
+	if reindex.Code != http.StatusOK || !strings.Contains(reindex.Body.String(), `"updated":1`) {
+		t.Fatalf("EXIF reindex failed: %d %s", reindex.Code, reindex.Body.String())
+	}
+	if _, err := app.storage.Create(context.Background(), "photos/sample.mov", []byte("video"), "video/quicktime"); err != nil {
+		t.Fatal(err)
+	}
+	live := httptest.NewRecorder()
+	app.ServeHTTP(live, adminRequest(t, app, http.MethodPost, "/api/photos/livephoto/manage", []byte(`{"action":"update-photo","photoId":"photo-1"}`)))
+	if live.Code != http.StatusOK || !strings.Contains(live.Body.String(), `"success":true`) {
+		t.Fatalf("Live Photo detection failed: %d %s", live.Code, live.Body.String())
+	}
+	var isLive int
+	if err := app.db.QueryRow(`SELECT is_live_photo FROM photos WHERE id='photo-1'`).Scan(&isLive); err != nil || isLive != 1 {
+		t.Fatalf("Live Photo state not persisted: %d %v", isLive, err)
+	}
+}
+
 func TestUploadValidationAndDuplicateContract(t *testing.T) {
 	app := newTestApp(t)
 	unsupported := httptest.NewRecorder()
