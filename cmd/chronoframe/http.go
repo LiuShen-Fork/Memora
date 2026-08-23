@@ -56,6 +56,8 @@ func decodeJSON(r *http.Request, v any) error {
 func (a *App) api(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSuffix(r.URL.Path, "/")
 	switch {
+	case path == "/api/health" && r.Method == "GET":
+		a.health(w, r)
 	case path == "/api/login" && r.Method == "POST":
 		a.login(w, r)
 	case path == "/api/logout":
@@ -99,6 +101,14 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 	default:
 		errorJSON(w, http.StatusNotFound, "Not Found")
 	}
+}
+
+func (a *App) health(w http.ResponseWriter, r *http.Request) {
+	if err := a.db.PingContext(r.Context()); err != nil {
+		errorJSON(w, http.StatusServiceUnavailable, "Database unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (a *App) user(r *http.Request) (map[string]any, bool) {

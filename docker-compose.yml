@@ -1,6 +1,9 @@
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chronoframe:go
     container_name: chronoframe
     restart: unless-stopped
     ports:
@@ -9,18 +12,9 @@ services:
       - ./data:/app/data
     env_file:
       - .env
-
-  # database:
-  #   image: postgres:15-alpine
-  #   container_name: chronoframe_db
-  #   environment:
-  #     POSTGRES_DB: chronoframe
-  #     POSTGRES_USER: chronoframe
-  #     POSTGRES_PASSWORD: your-password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-
-# volumes:
-#   postgres_data:
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3000/api/health']
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

@@ -44,7 +44,8 @@
 
 ### 🔧 现代技术栈
 
-- **Nuxt 4** - 基于最新的 Nuxt 框架，提供 SSR/SSG 支持
+- **Go 服务端** - 单进程提供 API、媒体文件和静态前端，直接复用 SQLite 与既有存储对象
+- **Nuxt 4 静态前端** - 预生成 SPA，不在生产环境运行 Nitro/Node 服务端
 - **TypeScript** - 完整的类型安全保障
 - **TailwindCSS** - 现代化的 CSS 框架
 - **Drizzle ORM** - 类型安全的数据库 ORM
@@ -58,7 +59,7 @@
 
 推荐使用预构建的 docker 镜像部署，[在 ghcr 上查看镜像](https://github.com/HoshinoSuzumi/chronoframe/pkgs/container/chronoframe)
 
-创建 `.env` 文件并配置。
+镜像采用多阶段构建：Node 仅用于生成静态前端，运行时只包含 Go 服务、FFmpeg、ExifTool 与静态资源。已有的 `./data` 挂载保持不变，SQLite、图库文件和本地存储路径不需要迁移。
 
 下面是**最小化配置**示例，完整的配置项参考 [配置指南](https://chronoframe.bh8.ga/zh/guide/configuration.html)：
 

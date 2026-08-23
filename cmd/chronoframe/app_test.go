@@ -40,6 +40,18 @@ func newTestApp(t *testing.T) *App {
 	return app
 }
 
+func TestHealth(t *testing.T) {
+	app := newTestApp(t)
+	recorder := httptest.NewRecorder()
+	app.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/health", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if got := recorder.Body.String(); got != "{\"status\":\"ok\"}\n" {
+		t.Fatalf("unexpected response: %s", got)
+	}
+}
+
 func TestSessionRoundTrip(t *testing.T) {
 	app := newTestApp(t)
 	if _, err := app.db.Exec(`INSERT INTO users(name,email,password,created_at,is_admin) VALUES('admin','admin@example.com','password',unixepoch(),1)`); err != nil {

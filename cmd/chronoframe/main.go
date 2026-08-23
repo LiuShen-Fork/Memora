@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -9,10 +10,13 @@ import (
 	_ "modernc.org/sqlite"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 )
 
 type App struct {
@@ -50,8 +54,30 @@ func main() {
 	server := &http.Server{Addr: cfg.Addr, Handler: app}
 	app.logs.Add("server", "ChronoFrame Go backend listening on "+cfg.Addr)
 	log.Printf("ChronoFrame Go backend listening on %s", cfg.Addr)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := app.serve(server); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func (a *App) serve(server *http.Server) error {
+	errorsCh := make(chan error, 1)
+	go func() { errorsCh <- server.ListenAndServe() }()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
+
+	select {
+	case err := <-errorsCh:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case sig := <-signals:
+		a.logs.Add("server", "received "+sig.String()+", shutting down")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		return server.Shutdown(ctx)
 	}
 }
 
