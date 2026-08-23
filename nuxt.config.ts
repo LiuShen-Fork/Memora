@@ -5,23 +5,23 @@ import i18n, { dayjsLocales } from './i18n/i18n.options'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
+  ssr: false,
+  // The legacy Nitro implementation remains in server/ only as a migration
+  // reference. Static builds must never register or execute it.
+  serverDir: 'server-go-disabled',
   devtools: { enabled: true },
 
   modules: [
     'reka-ui/nuxt',
     '@nuxt/ui',
-    '@nuxt/fonts',
     '@nuxt/icon',
-    '@nuxt/test-utils',
     '@pinia/nuxt',
     'motion-v/nuxt',
-    'nuxt-auth-utils',
     '@vueuse/nuxt',
     'dayjs-nuxt',
     '@nuxtjs/i18n',
     'nuxt-mapbox',
     'nuxt-maplibre',
-    'nuxt-og-image',
     'nuxt-gtag',
   ],
 
@@ -131,7 +131,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    preset: 'node_server',
+    preset: 'static',
     experimental: {
       websocket: true,
       tasks: true,
@@ -239,13 +239,6 @@ export default defineNuxtConfig({
     clientBundle: {
       scan: true,
     },
-  },
-
-  fonts: {
-    families: [
-      { name: "Rubik", weights: [400, 500, 600, 700], global: true },
-      { name: "Noto Sans SC", weights: [400, 500, 600, 700], global: true },
-    ],
   },
 
   dayjs: {

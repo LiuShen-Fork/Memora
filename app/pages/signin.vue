@@ -3,7 +3,7 @@ useHead({
   title: () => $t('auth.form.signin.title'),
 })
 
-const { fetch: fetchUserSession } = useUserSession()
+const session = useUserSession()
 const config = useRuntimeConfig()
 const settingsStore = useSettingsStore()
 const toast = useToast()
@@ -28,7 +28,7 @@ const onAuthSubmit = async (event: any) => {
     body: event.data,
   })
     .then(async () => {
-      await fetchUserSession()
+      await session.fetch()
       router.push(route.query.redirect?.toString() || '/')
     })
     .catch((error) => {

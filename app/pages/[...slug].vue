@@ -19,10 +19,6 @@ const currentPhoto = computed(() =>
   photos.value.find((photo) => photo.id === photoId.value),
 )
 
-defineOgImage('Photo', {
-  photo: currentPhoto.value || undefined,
-})
-
 // 处理标签查询参数
 const { clearAllFilters, toggleFilter } = usePhotoFilters()
 
