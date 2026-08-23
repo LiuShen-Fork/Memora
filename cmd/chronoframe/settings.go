@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var processStartedAt = time.Now()
 
 func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	if strings.HasPrefix(rest, "/storage-config") {
@@ -238,9 +242,60 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
 		return
 	}
-	var total int
-	a.db.QueryRow(`SELECT count(*) FROM photos`).Scan(&total)
-	writeJSON(w, 200, map[string]any{"total": total, "dateRange": nil, "storage": map[string]any{}})
+	var total, today, week, month int
+	_ = a.db.QueryRow(`SELECT count(*) FROM photos`).Scan(&total)
+	_ = a.db.QueryRow(`SELECT count(*) FROM photos WHERE date_taken >= datetime('now','start of day')`).Scan(&today)
+	_ = a.db.QueryRow(`SELECT count(*) FROM photos WHERE date_taken >= datetime('now','-7 days')`).Scan(&week)
+	_ = a.db.QueryRow(`SELECT count(*) FROM photos WHERE date_taken >= date('now','start of month')`).Scan(&month)
+
+	var totalSize, averageSize, maxSize sql.NullFloat64
+	_ = a.db.QueryRow(`SELECT COALESCE(sum(file_size),0), COALESCE(avg(file_size),0), COALESCE(max(file_size),0) FROM photos`).Scan(&totalSize, &averageSize, &maxSize)
+
+	type trend struct {
+		Date  string `json:"date"`
+		Count int    `json:"count"`
+	}
+	trendByDate := map[string]int{}
+	rows, err := a.db.Query(`SELECT date(date_taken), count(*) FROM photos WHERE date_taken >= datetime('now','-6 days','start of day') GROUP BY date(date_taken)`)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var date string
+			var count int
+			if rows.Scan(&date, &count) == nil {
+				trendByDate[date] = count
+			}
+		}
+	}
+	trends := make([]trend, 0, 7)
+	for i := 0; i < 7; i++ {
+		day := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
+		trends = append(trends, trend{Date: day, Count: trendByDate[day]})
+	}
+
+	var memory runtime.MemStats
+	runtime.ReadMemStats(&memory)
+	runningOn := runtime.GOOS
+	if _, err := os.Stat(`/.dockerenv`); err == nil {
+		runningOn = "docker"
+	}
+	writeJSON(w, 200, map[string]any{
+		"uptime":     time.Since(processStartedAt).Seconds(),
+		"runningOn":  runningOn,
+		"memory":     map[string]any{"used": memory.Alloc, "total": memory.Sys},
+		"photos":     map[string]any{"total": total, "today": today, "thisWeek": week, "thisMonth": month},
+		"workerPool": nil,
+		"storage":    map[string]any{"totalSize": nullFloat(totalSize), "averageSize": nullFloat(averageSize), "maxSize": nullFloat(maxSize)},
+		"trends":     trends,
+		"timestamp":  time.Now().UTC().Format(time.RFC3339Nano),
+	})
+}
+
+func nullFloat(value sql.NullFloat64) float64 {
+	if value.Valid {
+		return value.Float64
+	}
+	return 0
 }
 func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
