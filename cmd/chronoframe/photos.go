@@ -178,7 +178,7 @@ func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 	out := map[string]map[string]int{}
 	for _, id := range ids {
 		rows, _ := a.db.Query(`SELECT reaction_type,count(*) FROM photo_reactions WHERE photo_id=? GROUP BY reaction_type`, id)
-		m := map[string]int{}
+		m := newReactionCounts()
 		for rows != nil && rows.Next() {
 			var typ string
 			var n int
@@ -191,6 +191,10 @@ func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 		out[id] = m
 	}
 	writeJSON(w, 200, out)
+}
+
+func newReactionCounts() map[string]int {
+	return map[string]int{"like": 0, "love": 0, "amazing": 0, "funny": 0, "wow": 0, "sad": 0, "fire": 0, "sparkle": 0}
 }
 
 func (a *App) photoRoute(w http.ResponseWriter, r *http.Request, rest string) {
@@ -208,7 +212,7 @@ func (a *App) photoRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	if len(parts) >= 2 && parts[1] == "albums" && r.Method == "GET" {
-		writeJSON(w, 200, []any{})
+		a.photoAlbums(w, id)
 		return
 	}
 	if len(parts) >= 2 && parts[1] == "livephoto" {
@@ -277,7 +281,7 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	if r.Method == "GET" {
 		rows, _ := a.db.Query(`SELECT reaction_type,count(*) FROM photo_reactions WHERE photo_id=? GROUP BY reaction_type`, id)
-		out := map[string]int{}
+		out := newReactionCounts()
 		for rows != nil && rows.Next() {
 			var typ string
 			var count int
@@ -308,17 +312,4 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true})
-}
-func (a *App) photoLive(w http.ResponseWriter, _ *http.Request, id string) {
-	var row Photo
-	rows, err := a.db.Query(photoSelect+` WHERE id=?`, id)
-	if err != nil {
-		errorJSON(w, 500, err.Error())
-		return
-	}
-	defer rows.Close()
-	if rows.Next() {
-		row, _ = scanPhoto(rows)
-	}
-	writeJSON(w, 200, map[string]any{"photo": row, "originalUrl": row.OriginalURL, "thumbnailUrl": row.ThumbnailURL, "livePhotoVideoUrl": row.LivePhotoVideoURL})
 }

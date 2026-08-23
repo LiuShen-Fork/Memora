@@ -57,6 +57,39 @@ func adminRequest(t *testing.T, app *App, method, target string, body []byte) *h
 	return request
 }
 
+func TestPhotoRelationshipAndReactionContracts(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title,is_live_photo) VALUES('photo-1','Test photo',1)`); err != nil {
+		t.Fatal(err)
+	}
+	result, err := app.db.Exec(`INSERT INTO albums(title,created_at,updated_at) VALUES('Summer',unixepoch(),unixepoch())`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	albumID, _ := result.LastInsertId()
+	if _, err := app.db.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,1)`, albumID, "photo-1"); err != nil {
+		t.Fatal(err)
+	}
+
+	albums := httptest.NewRecorder()
+	app.ServeHTTP(albums, httptest.NewRequest(http.MethodGet, "/api/photos/photo-1/albums", nil))
+	if albums.Code != http.StatusOK || !strings.Contains(albums.Body.String(), "Summer") {
+		t.Fatalf("photo albums contract failed: %d %s", albums.Code, albums.Body.String())
+	}
+
+	reactions := httptest.NewRecorder()
+	app.ServeHTTP(reactions, httptest.NewRequest(http.MethodGet, "/api/photos/reactions?ids=photo-1", nil))
+	if reactions.Code != http.StatusOK || !strings.Contains(reactions.Body.String(), `"sparkle":0`) {
+		t.Fatalf("reaction defaults contract failed: %d %s", reactions.Code, reactions.Body.String())
+	}
+
+	live := httptest.NewRecorder()
+	app.ServeHTTP(live, adminRequest(t, app, http.MethodGet, "/api/photos/photo-1/livephoto", nil))
+	if live.Code != http.StatusOK || !strings.Contains(live.Body.String(), `"isLivePhoto":true`) {
+		t.Fatalf("live photo contract failed: %d %s", live.Code, live.Body.String())
+	}
+}
+
 func TestStorageConfigurationCRUD(t *testing.T) {
 	app := newTestApp(t)
 	createBody, err := json.Marshal(map[string]any{
