@@ -1,0 +1,245 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+type Object struct {
+	Key     string
+	Size    int64
+	ModTime time.Time
+}
+type Storage interface {
+	Create(context.Context, string, []byte, string) (Object, error)
+	Get(context.Context, string) ([]byte, error)
+	Delete(context.Context, string) error
+	Meta(context.Context, string) (Object, error)
+	PublicURL(string) string
+	SignedURL(context.Context, string, string) (string, error)
+	Prefix() string
+}
+
+type LocalStorage struct{ base, baseURL, prefix string }
+
+func (s *LocalStorage) Prefix() string { return strings.Trim(s.prefix, "/") }
+func (s *LocalStorage) path(key string) string {
+	key = storageKey(s.prefix, key)
+	return filepath.Join(s.base, filepath.FromSlash(key))
+}
+func (s *LocalStorage) Create(_ context.Context, key string, data []byte, _ string) (Object, error) {
+	p := s.path(key)
+	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+		return Object{}, err
+	}
+	tmp := p + fmt.Sprintf(".tmp-%d", time.Now().UnixNano())
+	if err := os.WriteFile(tmp, data, 0644); err != nil {
+		return Object{}, err
+	}
+	if err := os.Rename(tmp, p); err != nil {
+		return Object{}, err
+	}
+	st, err := os.Stat(p)
+	if err != nil {
+		return Object{}, err
+	}
+	return Object{Key: storageKey(s.prefix, key), Size: st.Size(), ModTime: st.ModTime()}, nil
+}
+func (s *LocalStorage) Get(_ context.Context, key string) ([]byte, error) {
+	return os.ReadFile(s.path(key))
+}
+func (s *LocalStorage) Delete(_ context.Context, key string) error {
+	err := os.Remove(s.path(key))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+func (s *LocalStorage) Meta(_ context.Context, key string) (Object, error) {
+	st, err := os.Stat(s.path(key))
+	if err != nil {
+		return Object{}, err
+	}
+	return Object{Key: storageKey(s.prefix, key), Size: st.Size(), ModTime: st.ModTime()}, nil
+}
+func (s *LocalStorage) PublicURL(key string) string {
+	return strings.TrimRight(s.baseURL, "/") + "/" + storageKey(s.prefix, key)
+}
+func (s *LocalStorage) SignedURL(_ context.Context, key, _ string) (string, error) {
+	return "/api/photos/upload?key=" + urlQueryEscape(storageKey(s.prefix, key)), nil
+}
+func urlQueryEscape(v string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(v, "%", "%25"), " ", "%20")
+}
+
+type S3Storage struct {
+	client              *minio.Client
+	bucket, prefix, cdn string
+}
+
+func NewS3Storage(c Config) (*S3Storage, error) {
+	endpoint := strings.TrimPrefix(strings.TrimPrefix(c.S3Endpoint, "https://"), "http://")
+	secure := strings.HasPrefix(c.S3Endpoint, "https://")
+	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(c.S3AccessKey, c.S3SecretKey, c.S3Region), Secure: secure, Region: c.S3Region})
+	if err != nil {
+		return nil, err
+	}
+	return &S3Storage{client: client, bucket: c.S3Bucket, prefix: strings.Trim(c.S3Prefix, "/"), cdn: strings.TrimRight(c.S3CDN, "/")}, nil
+}
+func (s *S3Storage) Prefix() string      { return s.prefix }
+func (s *S3Storage) key(k string) string { return storageKey(s.prefix, k) }
+func (s *S3Storage) Create(ctx context.Context, k string, d []byte, ct string) (Object, error) {
+	k = s.key(k)
+	_, err := s.client.PutObject(ctx, s.bucket, k, strings.NewReader(string(d)), int64(len(d)), minio.PutObjectOptions{ContentType: ct})
+	return Object{Key: k, Size: int64(len(d)), ModTime: time.Now()}, err
+}
+func (s *S3Storage) Get(ctx context.Context, k string) ([]byte, error) {
+	o, err := s.client.GetObject(ctx, s.bucket, k, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer o.Close()
+	return io.ReadAll(o)
+}
+func (s *S3Storage) Delete(ctx context.Context, k string) error {
+	return s.client.RemoveObject(ctx, s.bucket, k, minio.RemoveObjectOptions{})
+}
+func (s *S3Storage) Meta(ctx context.Context, k string) (Object, error) {
+	st, err := s.client.StatObject(ctx, s.bucket, k, minio.StatObjectOptions{})
+	return Object{Key: k, Size: st.Size, ModTime: st.LastModified}, err
+}
+func (s *S3Storage) PublicURL(k string) string {
+	if s.cdn != "" {
+		return s.cdn + "/" + k
+	}
+	return ""
+}
+func (s *S3Storage) SignedURL(ctx context.Context, k, ct string) (string, error) {
+	u, err := s.client.PresignedPutObject(ctx, s.bucket, k, time.Hour)
+	return u.String(), err
+}
+
+type OpenListStorage struct{ baseURL, root, token, upload, download, list, delete, meta, pathField, cdn string }
+
+func (s *OpenListStorage) Prefix() string { return strings.Trim(s.root, "/") }
+func (s *OpenListStorage) full(k string) string {
+	return "/" + strings.Trim(storageKey(s.root, k), "/")
+}
+func (s *OpenListStorage) request(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(s.baseURL, "/")+path, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", s.token)
+	return http.DefaultClient.Do(req)
+}
+func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct string) (Object, error) {
+	endpoint := s.upload
+	if endpoint == "" {
+		endpoint = "/api/fs/put"
+	}
+	req, err := http.NewRequestWithContext(ctx, "PUT", strings.TrimRight(s.baseURL, "/")+endpoint, strings.NewReader(string(d)))
+	if err != nil {
+		return Object{}, err
+	}
+	req.Header.Set("Authorization", s.token)
+	req.Header.Set("File-Path", s.full(k))
+	req.Header.Set("Content-Type", ct)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return Object{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return Object{}, fmt.Errorf("openlist upload: %s", resp.Status)
+	}
+	return Object{Key: storageKey(s.root, k), Size: int64(len(d)), ModTime: time.Now()}, nil
+}
+func (s *OpenListStorage) Get(ctx context.Context, k string) ([]byte, error) {
+	endpoint := s.download
+	if endpoint == "" {
+		endpoint = "/d" + s.full(k)
+	} else {
+		endpoint += "?" + s.pathField + "=" + urlQueryEscape(s.full(k))
+	}
+	resp, err := s.request(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("openlist get: %s", resp.Status)
+	}
+	return io.ReadAll(resp.Body)
+}
+func (s *OpenListStorage) Delete(ctx context.Context, k string) error {
+	endpoint := s.delete
+	if endpoint == "" {
+		endpoint = "/api/fs/remove"
+	}
+	normalized := strings.Trim(s.full(k), "/")
+	idx := strings.LastIndex(normalized, "/")
+	dir, name := "/", normalized
+	if idx >= 0 {
+		dir, name = "/"+normalized[:idx], normalized[idx+1:]
+	}
+	payload, _ := json.Marshal(map[string]any{"dir": dir, "names": []string{name}})
+	resp, err := s.request(ctx, "POST", endpoint, strings.NewReader(string(payload)))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("openlist delete: %s", resp.Status)
+	}
+	return nil
+}
+func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
+	endpoint := s.meta
+	if endpoint == "" {
+		endpoint = "/api/fs/get"
+	}
+	payload, _ := json.Marshal(map[string]any{s.pathField: s.full(k), "password": "", "page": 1, "per_page": 0, "refresh": false})
+	resp, err := s.request(ctx, "POST", endpoint, strings.NewReader(string(payload)))
+	if err != nil {
+		return Object{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return Object{}, fmt.Errorf("openlist meta: %s", resp.Status)
+	}
+	var body struct {
+		Data struct {
+			Size     int64  `json:"size"`
+			Modified string `json:"modified"`
+			RawURL   string `json:"raw_url"`
+		} `json:"data"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	return Object{Key: storageKey(s.root, k), Size: body.Data.Size, ModTime: parseTime(body.Data.Modified)}, nil
+}
+func parseTime(value string) time.Time {
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		return t
+	}
+	return time.Time{}
+}
+func (s *OpenListStorage) PublicURL(k string) string {
+	if s.cdn != "" {
+		return strings.TrimRight(s.cdn, "/") + "/" + storageKey(s.root, k)
+	}
+	return strings.TrimRight(s.baseURL, "/") + "/d" + s.full(k)
+}
+func (s *OpenListStorage) SignedURL(_ context.Context, _ string, _ string) (string, error) {
+	return "", errors.New("openlist does not support signed uploads")
+}
