@@ -9,6 +9,16 @@ interface SettingsState {
   error: Error | null
 }
 
+type SettingsResponse = {
+  timestamp: number
+  data: Record<string, Record<string, SettingValue>>
+}
+
+// app.vue and the route middleware can initialize Pinia during the same
+// navigation. Reuse the in-flight request so a cold page load does not issue
+// duplicate database requests or hold rendering behind two network waits.
+let pendingSettingsRequest: Promise<SettingsResponse> | null = null
+
 /**
  * 设置存储 - 使用 Pinia
  *
@@ -54,15 +64,22 @@ export const useSettingsStore = defineStore('settings', {
         return
       }
 
+      if (pendingSettingsRequest) {
+        const response = await pendingSettingsRequest
+        this.data = response.data
+        this.isInitialized = true
+        return
+      }
+
       this.isLoading = true
       this.error = null
 
-      try {
-        const response = await $fetch<{
-          timestamp: number
-          data: Record<string, Record<string, SettingValue>>
-        }>('/api/system/settings/all')
+      pendingSettingsRequest = $fetch<SettingsResponse>(
+        '/api/system/settings/all',
+      )
 
+      try {
+        const response = await pendingSettingsRequest
         this.data = response.data
         this.isInitialized = true
       } catch (error) {
@@ -71,6 +88,7 @@ export const useSettingsStore = defineStore('settings', {
         throw error
       } finally {
         this.isLoading = false
+        pendingSettingsRequest = null
       }
     },
 
@@ -109,15 +127,22 @@ export const useSettingsStore = defineStore('settings', {
      * 刷新设置
      */
     async refreshSettings(): Promise<void> {
+      if (pendingSettingsRequest) {
+        const response = await pendingSettingsRequest
+        this.data = response.data
+        this.isInitialized = true
+        return
+      }
+
       this.isLoading = true
       this.error = null
 
-      try {
-        const response = await $fetch<{
-          timestamp: number
-          data: Record<string, Record<string, SettingValue>>
-        }>('/api/system/settings/all')
+      pendingSettingsRequest = $fetch<SettingsResponse>(
+        '/api/system/settings/all',
+      )
 
+      try {
+        const response = await pendingSettingsRequest
         this.data = response.data
         this.isInitialized = true
       } catch (error) {
@@ -126,6 +151,7 @@ export const useSettingsStore = defineStore('settings', {
         throw error
       } finally {
         this.isLoading = false
+        pendingSettingsRequest = null
       }
     },
   },
