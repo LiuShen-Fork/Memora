@@ -200,6 +200,9 @@ func (s *OpenListStorage) request(ctx context.Context, method, path string, body
 		return nil, err
 	}
 	req.Header.Set("Authorization", s.token)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	return http.DefaultClient.Do(req)
 }
 func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct string) (Object, error) {

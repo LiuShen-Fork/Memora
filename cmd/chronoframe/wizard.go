@@ -31,6 +31,10 @@ func (a *App) wizardRoute(w http.ResponseWriter, r *http.Request, rest string) {
 
 func (a *App) wizardSchema(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
+	if strings.TrimSpace(namespace) == "" {
+		errorJSON(w, http.StatusBadRequest, "namespace is required")
+		return
+	}
 	fields := wizardFields(namespace)
 	if fields == nil {
 		errorJSON(w, http.StatusNotFound, "Unknown wizard namespace")
@@ -81,8 +85,10 @@ func wizardFields(namespace string) []map[string]any {
 			field("s3.region", "string", "settings.storage.s3.region.label", "auto", visible("s3", true, false)),
 			field("s3.accessKeyId", "string", "settings.storage.s3.accessKeyId.label", "", visible("s3", true, false)),
 			field("s3.secretAccessKey", "string", "settings.storage.s3.secretAccessKey.label", "", visible("s3", true, true)),
-			field("s3.prefix", "string", "settings.storage.s3.prefix.label", "photos/", visible("s3", false, false)),
+			field("s3.prefix", "string", "settings.storage.s3.prefix.label", "/photos", visible("s3", false, false)),
 			field("s3.cdnUrl", "string", "settings.storage.s3.cdnUrl.label", "", visible("s3", false, false)),
+			field("s3.forcePathStyle", "boolean", "settings.storage.s3.forcePathStyle.label", false, visible("s3", false, false)),
+			field("s3.maxKeys", "number", "settings.storage.s3.maxKeys.label", 1000, visible("s3", false, false)),
 			field("openlist.baseUrl", "string", "settings.storage.openlist.baseUrl.label", "", visible("openlist", true, false)),
 			field("openlist.rootPath", "string", "settings.storage.openlist.rootPath.label", "/photos", visible("openlist", true, false)),
 			field("openlist.token", "string", "settings.storage.openlist.token.label", "", visible("openlist", true, true)),
@@ -181,7 +187,14 @@ func (a *App) wizardSubmit(w http.ResponseWriter, r *http.Request) {
 		} `json:"storage"`
 		Map wizardMapInput `json:"map"`
 	}
-	if decodeJSON(r, &body) != nil || !validAdmin(body.Admin.Email, body.Admin.Password, body.Admin.Username) || strings.TrimSpace(stringValue(body.Site["title"])) == "" {
+	if decodeJSON(r, &body) != nil {
+		errorJSON(w, http.StatusBadRequest, "Invalid setup data")
+		return
+	}
+	if strings.TrimSpace(body.Admin.Username) == "" {
+		body.Admin.Username = "admin"
+	}
+	if !validAdmin(body.Admin.Email, body.Admin.Password, body.Admin.Username) || strings.TrimSpace(stringValue(body.Site["title"])) == "" {
 		errorJSON(w, http.StatusBadRequest, "Invalid setup data")
 		return
 	}
@@ -243,7 +256,8 @@ func (a *App) writeMapSettings(input wizardMapInput) {
 }
 
 func validAdmin(email, password, username string) bool {
-	return strings.Contains(email, "@") && len(password) >= 6 && len(strings.TrimSpace(username)) >= 2
+	parts := strings.Split(strings.TrimSpace(email), "@")
+	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= 6 && len(strings.TrimSpace(username)) >= 2
 }
 
 func validMap(input wizardMapInput) bool {

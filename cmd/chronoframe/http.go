@@ -171,7 +171,7 @@ func (a *App) setSession(w http.ResponseWriter, id int64) {
 }
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	var body struct{ Email, Password string }
-	if decodeJSON(r, &body) != nil {
+	if decodeJSON(r, &body) != nil || !validLoginCredentials(body.Email, body.Password) {
 		errorJSON(w, 400, "Invalid request")
 		return
 	}
@@ -183,6 +183,11 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	}
 	a.setSession(w, id)
 	w.WriteHeader(http.StatusCreated)
+}
+
+func validLoginCredentials(email, password string) bool {
+	parts := strings.Split(strings.TrimSpace(email), "@")
+	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= 6
 }
 func verifyPassword(hash, password string) bool {
 	if strings.HasPrefix(hash, "$2") {

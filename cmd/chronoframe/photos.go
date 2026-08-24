@@ -300,7 +300,7 @@ func (a *App) photoRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		a.photoAlbums(w, id)
 		return
 	}
-	if len(parts) >= 2 && parts[1] == "livephoto" {
+	if len(parts) >= 2 && parts[1] == "livephoto" && r.Method == http.MethodGet {
 		a.photoLive(w, r, id)
 		return
 	}
