@@ -333,28 +333,23 @@ func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 	defer ticker.Stop()
 	deadline := time.NewTimer(30 * time.Second)
 	defer deadline.Stop()
-	select {
-	case <-r.Context().Done():
-	case <-deadline.C:
-	case <-ticker.C:
-		// The first tick is handled below so a newly appended line is not lost.
-		for {
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-deadline.C:
+			return
+		case <-ticker.C:
 			lines, next, readErr := a.logs.Since(offset)
-			if readErr == nil {
-				for _, line := range lines {
-					fmt.Fprintf(w, "data: %s\n\n", line)
-				}
-				offset = next
-				if canFlush {
-					flusher.Flush()
-				}
+			if readErr != nil {
+				continue
 			}
-			select {
-			case <-r.Context().Done():
-				return
-			case <-deadline.C:
-				return
-			case <-ticker.C:
+			for _, line := range lines {
+				fmt.Fprintf(w, "data: %s\n\n", line)
+			}
+			offset = next
+			if canFlush {
+				flusher.Flush()
 			}
 		}
 	}

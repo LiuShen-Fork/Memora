@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 )
@@ -111,5 +110,3 @@ func nonEmptyLines(value string) []string {
 	}
 	return result
 }
-
-var _ = sort.Strings
