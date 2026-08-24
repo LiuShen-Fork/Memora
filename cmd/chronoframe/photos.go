@@ -554,6 +554,9 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 				counts[typ] = count
 			}
 		}
+		// The application intentionally uses one SQLite connection. Close the
+		// aggregate result before issuing the per-client reaction query.
+		_ = rows.Close()
 		var current sql.NullString
 		_ = a.db.QueryRow(`SELECT reaction_type FROM photo_reactions WHERE photo_id=? AND fingerprint=? ORDER BY id DESC LIMIT 1`, id, fingerprint).Scan(&current)
 		var userReaction any

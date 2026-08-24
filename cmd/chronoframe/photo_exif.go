@@ -44,13 +44,13 @@ func (a *App) reindexExif(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusInternalServerError, "Unable to list photos")
 			return
 		}
-		defer rows.Close()
 		for rows.Next() {
 			var id string
 			if rows.Scan(&id) == nil {
 				ids = append(ids, id)
 			}
 		}
+		_ = rows.Close()
 	}
 	if body.Action == "single-reindex" {
 		if body.PhotoID == "" {

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func newTestApp(t *testing.T) *App {
@@ -61,6 +62,28 @@ func TestNormalizeFirstLaunchForExistingDatabase(t *testing.T) {
 	}
 	if value != "false" {
 		t.Fatalf("firstLaunch = %q, want false", value)
+	}
+}
+
+func TestPhotoReactionReadDoesNotHoldSQLiteConnection(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO photos(id,storage_key) VALUES('reaction-photo','photos/reaction.jpg')`); err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/photos/reaction-photo/reactions", nil)
+	response := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() {
+		app.ServeHTTP(response, request)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("reaction request remained blocked by an open SQLite rows cursor")
+	}
+	if response.Code != http.StatusOK {
+		t.Fatalf("reaction response status = %d, body = %s", response.Code, response.Body.String())
 	}
 }
 

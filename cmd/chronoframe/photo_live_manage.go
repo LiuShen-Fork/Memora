@@ -28,13 +28,17 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusInternalServerError, "Unable to scan photos")
 			return
 		}
-		defer rows.Close()
-		results := []map[string]any{}
+		photoIDs := []string{}
 		for rows.Next() {
 			var id string
 			if rows.Scan(&id) != nil {
 				continue
 			}
+			photoIDs = append(photoIDs, id)
+		}
+		_ = rows.Close()
+		results := []map[string]any{}
+		for _, id := range photoIDs {
 			success, key, err := a.detectLivePhoto(r, id)
 			result := map[string]any{"photoId": id, "success": success, "videoKey": key}
 			if err != nil {

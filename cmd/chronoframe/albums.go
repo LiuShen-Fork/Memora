@@ -15,17 +15,26 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, 500, err.Error())
 		return
 	}
-	defer rows.Close()
-	out := []map[string]any{}
+	type albumRow struct {
+		id                 int64
+		title              string
+		description, cover sql.NullString
+		hidden             int
+		created, updated   int64
+	}
+	albumRows := []albumRow{}
 	for rows.Next() {
-		var id int64
-		var title string
-		var description, cover sql.NullString
-		var hidden int
-		var created, updated int64
-		_ = rows.Scan(&id, &title, &description, &cover, &hidden, &created, &updated)
+		var album albumRow
+		if rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated) != nil {
+			continue
+		}
+		albumRows = append(albumRows, album)
+	}
+	_ = rows.Close()
+	out := []map[string]any{}
+	for _, album := range albumRows {
 		ids := []string{}
-		pRows, _ := a.db.Query(`SELECT photo_id FROM album_photos WHERE album_id=? ORDER BY position`, id)
+		pRows, _ := a.db.Query(`SELECT photo_id FROM album_photos WHERE album_id=? ORDER BY position`, album.id)
 		for pRows != nil && pRows.Next() {
 			var photoID string
 			_ = pRows.Scan(&photoID)
@@ -34,7 +43,7 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		if pRows != nil {
 			pRows.Close()
 		}
-		out = append(out, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0), "photoIds": ids})
+		out = append(out, map[string]any{"id": album.id, "title": album.title, "description": nullString(album.description), "coverPhotoId": nullString(album.cover), "isHidden": album.hidden == 1, "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "photoIds": ids})
 	}
 	writeJSON(w, 200, out)
 }
