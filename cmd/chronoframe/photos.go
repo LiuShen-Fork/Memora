@@ -432,14 +432,28 @@ func (a *App) deletePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	var key, thumb string
-	if a.db.QueryRow(`SELECT storage_key,thumbnail_key FROM photos WHERE id=?`, id).Scan(&key, &thumb) != nil {
+	var key, thumb, liveVideo string
+	if a.db.QueryRow(`SELECT storage_key,thumbnail_key,COALESCE(live_photo_video_key,'') FROM photos WHERE id=?`, id).Scan(&key, &thumb, &liveVideo) != nil {
 		errorJSON(w, 404, "Photo not found")
 		return
 	}
 	_ = a.storage.Delete(r.Context(), key)
 	if thumb != "" {
 		_ = a.storage.Delete(r.Context(), thumb)
+	}
+	if liveVideo != "" {
+		_ = a.storage.Delete(r.Context(), liveVideo)
+	}
+	// HEIC processing may leave a converted JPEG alongside the original.
+	lowerKey := strings.ToLower(key)
+	for _, ext := range []string{".heic", ".heif", ".hif"} {
+		if strings.HasSuffix(lowerKey, ext) {
+			jpegKey := key[:len(key)-len(ext)] + ".jpeg"
+			if jpegKey != key {
+				_ = a.storage.Delete(r.Context(), jpegKey)
+			}
+			break
+		}
 	}
 	_, _ = a.db.Exec(`DELETE FROM photos WHERE id=?`, id)
 	writeJSON(w, http.StatusOK, map[string]any{"statusCode": 200, "statusMessage": "Photo deleted successfully"})
