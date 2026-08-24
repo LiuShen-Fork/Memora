@@ -291,6 +291,28 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+func TestPhotoStatusAndPublicGalleryContracts(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title,last_modified) VALUES('recent','Recent','2026-01-01T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	public := httptest.NewRecorder()
+	app.ServeHTTP(public, httptest.NewRequest(http.MethodGet, "/api/photos", nil))
+	if public.Code != http.StatusOK || !strings.Contains(public.Body.String(), `"id":"recent"`) {
+		t.Fatalf("public gallery failed: %d %s", public.Code, public.Body.String())
+	}
+	status := httptest.NewRecorder()
+	app.ServeHTTP(status, adminRequest(t, app, http.MethodGet, "/api/photos/status", nil))
+	if status.Code != http.StatusOK || !strings.Contains(status.Body.String(), `"recentPhotos"`) || !strings.Contains(status.Body.String(), `"timestamp"`) {
+		t.Fatalf("photo status contract failed: %d %s", status.Code, status.Body.String())
+	}
+	unauthorized := httptest.NewRecorder()
+	app.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, "/api/photos", strings.NewReader(`{"fileName":"x.jpg"}`)))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("prepare upload should require a session: %d %s", unauthorized.Code, unauthorized.Body.String())
+	}
+}
+
 func TestWizardSchemaAndSubmit(t *testing.T) {
 	app := newTestApp(t)
 

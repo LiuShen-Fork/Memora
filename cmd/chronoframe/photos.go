@@ -97,6 +97,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 
 func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var b struct {
@@ -185,6 +186,7 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 }
 func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var body struct {
@@ -226,12 +228,28 @@ func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
 }
 func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	var total, processed int
-	a.db.QueryRow(`SELECT count(*) FROM photos`).Scan(&total)
-	a.db.QueryRow(`SELECT count(*) FROM pipeline_queue WHERE status='completed'`).Scan(&processed)
-	writeJSON(w, 200, map[string]any{"total": total, "processed": processed})
+	rows, err := a.db.Query(photoSelect + ` ORDER BY last_modified LIMIT 10`)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photo status")
+		return
+	}
+	defer rows.Close()
+	recentPhotos := []Photo{}
+	for rows.Next() {
+		photo, scanErr := scanPhoto(rows)
+		if scanErr != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to read photo status")
+			return
+		}
+		recentPhotos = append(recentPhotos, photo)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"recentPhotos": recentPhotos,
+		"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+	})
 }
 func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 	ids := r.URL.Query()["ids"]
