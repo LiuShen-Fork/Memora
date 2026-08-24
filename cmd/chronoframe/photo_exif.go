@@ -109,11 +109,11 @@ func (a *App) reindexOneExif(ctx context.Context, id string) error {
 	if strings.TrimSpace(key) == "" {
 		return errors.New("Photo has no storage key")
 	}
-	data, err := a.storage.Get(ctx, key)
+	data, err := a.readStorageBytes(ctx, key)
 	if err != nil {
 		return errors.New("File not found in storage")
 	}
-	exif, dateTaken := extractExif(a.cfg.ExifTool, data, filepath.Ext(key))
+	exif, dateTaken := extractExifContext(ctx, a.cfg.ExifTool, data, filepath.Ext(key))
 	title := strings.TrimSuffix(filepath.Base(key), filepath.Ext(key))
 	tags := exifTags(exif)
 	thumbKey := storageKey(a.storage.Prefix(), "thumbnails/"+id+".webp")

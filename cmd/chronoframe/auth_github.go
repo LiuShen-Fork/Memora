@@ -171,7 +171,7 @@ func exchangeGithubCode(ctx context.Context, clientID, clientSecret, code, callb
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := externalHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -221,7 +221,7 @@ func githubJSON(ctx context.Context, token, endpoint string, output any) error {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "ChronoFrame/1.0")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := externalHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}

@@ -24,6 +24,7 @@ type Object struct {
 }
 
 var storageHTTPClient = &http.Client{Timeout: 2 * time.Minute}
+var externalHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 type Storage interface {
 	Create(context.Context, string, []byte, string) (Object, error)

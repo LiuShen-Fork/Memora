@@ -109,7 +109,7 @@ func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string
 	}
 	size := object.Size
 	if size <= 0 {
-		data, getErr := a.storage.Get(ctx, videoKey)
+		data, getErr := a.readStorageBytes(ctx, videoKey)
 		if getErr != nil {
 			return false, nil
 		}

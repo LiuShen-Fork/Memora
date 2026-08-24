@@ -140,18 +140,28 @@ func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
 		maxAttempts = []int{body.MaxAttempts}
 	}
 	ids := []int64{}
+	tx, err := a.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to queue tasks")
+		return
+	}
+	defer tx.Rollback()
 	for _, payload := range items {
 		if payload == nil {
 			continue
 		}
 		data, _ := json.Marshal(payload)
-		res, err := a.db.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(data), priorities[len(ids)], maxAttempts[len(ids)])
+		res, err := tx.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(data), priorities[len(ids)], maxAttempts[len(ids)])
 		if err != nil {
-			errorJSON(w, 500, err.Error())
+			errorJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		id, _ := res.LastInsertId()
 		ids = append(ids, id)
+	}
+	if err := tx.Commit(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to queue tasks")
+		return
 	}
 	a.wakeQueue()
 	if batch {
@@ -178,6 +188,13 @@ func validateQueuePayload(payload map[string]any) error {
 	case "photo", "live-photo-video":
 		if key, _ := payload["storageKey"].(string); key == "" {
 			return fmt.Errorf("payload.storageKey is required")
+		}
+	case "photo-metadata-update":
+		if id, _ := payload["photoId"].(string); id == "" {
+			return fmt.Errorf("payload.photoId is required")
+		}
+		if updates, ok := payload["updates"].(map[string]any); !ok || len(updates) == 0 {
+			return fmt.Errorf("payload.updates is required")
 		}
 	case "photo-reverse-geocoding":
 		if id, _ := payload["photoId"].(string); id == "" {

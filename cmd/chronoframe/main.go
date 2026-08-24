@@ -30,6 +30,7 @@ type App struct {
 	queueClaimMu   sync.Mutex
 	settingsMu     sync.RWMutex
 	publicSettings map[string]map[string]any
+	mediaSlots     chan struct{}
 }
 
 func main() {
@@ -49,7 +50,7 @@ func main() {
 	// media/database operation cannot serialize every HTTP request.
 	db.SetMaxOpenConns(cfg.DBMaxOpenConns)
 	db.SetMaxIdleConns(cfg.DBMaxOpenConns)
-	app := &App{cfg: cfg, db: db, queueWake: make(chan struct{}, 1), stop: make(chan struct{}), logs: NewLogBuffer(filepath.Join(cfg.DataDir, "logs", "app.log"))}
+	app := &App{cfg: cfg, db: db, queueWake: make(chan struct{}, 1), stop: make(chan struct{}), logs: NewLogBuffer(filepath.Join(cfg.DataDir, "logs", "app.log")), mediaSlots: make(chan struct{}, cfg.MediaConcurrency)}
 	if err := app.ensureSchema(); err != nil {
 		log.Fatal(err)
 	}

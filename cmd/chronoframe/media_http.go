@@ -54,8 +54,10 @@ func safePath(base, p string) bool {
 }
 func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	key := strings.TrimPrefix(r.URL.Path, "/image/")
+	mediaCtx, cancel := a.mediaContext(r.Context())
+	defer cancel()
 	if streamStorage, ok := a.storage.(ReaderStorage); ok {
-		reader, object, err := streamStorage.Open(r.Context(), key)
+		reader, object, err := streamStorage.Open(mediaCtx, key)
 		if err != nil {
 			errorJSON(w, http.StatusNotFound, "Photo not found")
 			return
@@ -70,7 +72,7 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.Header.Get("Range") != "" {
-			data, err := io.ReadAll(reader)
+			data, err := readLimited(reader, a.mediaLimit())
 			if err != nil {
 				errorJSON(w, http.StatusBadGateway, "Unable to read photo")
 				return
@@ -84,7 +86,7 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(w, reader)
 		return
 	}
-	data, err := a.storage.Get(r.Context(), key)
+	data, err := a.readStorageBytes(mediaCtx, key)
 	if err != nil {
 		errorJSON(w, 404, "Photo not found")
 		return
@@ -97,7 +99,7 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	target, _ = urlPathUnescape(target)
 	if strings.HasPrefix(target, "/storage/") || strings.HasPrefix(target, "/image/") {
 		key := strings.TrimPrefix(strings.TrimPrefix(target, "/storage/"), "/image/")
-		data, err := a.storage.Get(r.Context(), key)
+		data, err := a.readStorageBytes(r.Context(), key)
 		if err != nil {
 			errorJSON(w, 404, "Photo not found")
 			return
@@ -111,7 +113,10 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, 404, "Photo not found")
 			return
 		}
-		resp, err := http.DefaultClient.Do(req)
+		mediaCtx, cancel := a.mediaContext(r.Context())
+		defer cancel()
+		req = req.WithContext(mediaCtx)
+		resp, err := storageHTTPClient.Do(req)
 		if err != nil {
 			errorJSON(w, 404, "Photo not found")
 			return
@@ -121,7 +126,7 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusNotFound, "Photo not found")
 			return
 		}
-		data, err := io.ReadAll(resp.Body)
+		data, err := readLimited(resp.Body, a.mediaLimit())
 		if err != nil {
 			errorJSON(w, http.StatusBadGateway, "Unable to read photo")
 			return
@@ -129,7 +134,7 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 		a.writeThumbnail(w, r, data, resp.Header.Get("Content-Type"))
 		return
 	}
-	data, err := a.storage.Get(r.Context(), target)
+	data, err := a.readStorageBytes(r.Context(), target)
 	if err != nil {
 		errorJSON(w, 404, "Photo not found")
 		return
@@ -140,8 +145,10 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 // writeThumbnail mirrors the Nuxt Sharp route: every source is normalized to
 // an auto-oriented JPEG, while retaining a readable source as a fallback when
 // FFmpeg cannot decode a legacy format.
-func (a *App) writeThumbnail(w http.ResponseWriter, _ *http.Request, data []byte, sourceType string) {
-	thumbnail, err := ffmpegJPEG(a.cfg.FFmpeg, data)
+func (a *App) writeThumbnail(w http.ResponseWriter, r *http.Request, data []byte, sourceType string) {
+	mediaCtx, cancel := a.mediaContext(r.Context())
+	defer cancel()
+	thumbnail, err := ffmpegJPEGContext(mediaCtx, a.cfg.FFmpeg, data)
 	if err == nil && len(thumbnail) > 0 {
 		data = thumbnail
 		sourceType = "image/jpeg"

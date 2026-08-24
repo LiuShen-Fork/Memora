@@ -143,16 +143,28 @@ func (a *App) wakeQueue() {
 }
 
 func (a *App) processTask(t *Task) error {
+	ctx, cancel := a.mediaContext(context.Background())
+	defer cancel()
 	typeName, _ := t.Payload["type"].(string)
+	heavy := typeName == "photo" || typeName == "photo-metadata-update" || typeName == "live-photo-video" || typeName == "photo-erase-location"
+	if heavy {
+		release, err := a.acquireMedia(ctx)
+		if err != nil {
+			return err
+		}
+		defer release()
+	}
 	switch typeName {
 	case "photo":
-		return a.processPhoto(t)
+		return a.processPhoto(ctx, t)
+	case "photo-metadata-update":
+		return a.processPhotoMetadata(ctx, t)
 	case "live-photo-video":
-		return a.processLivePhoto(t)
+		return a.processLivePhoto(ctx, t)
 	case "photo-reverse-geocoding":
-		return a.processReverseGeocoding(t)
+		return a.processReverseGeocoding(ctx, t)
 	case "photo-erase-location":
-		return a.eraseLocation(t)
+		return a.eraseLocation(ctx, t)
 	default:
 		return fmt.Errorf("unknown task type: %s", typeName)
 	}
@@ -185,15 +197,14 @@ func storageKey(prefix, key string) string {
 }
 func jsonValue(value any) string { b, _ := json.Marshal(value); return string(b) }
 
-func (a *App) processPhoto(t *Task) error {
+func (a *App) processPhoto(ctx context.Context, t *Task) error {
 	key, _ := t.Payload["storageKey"].(string)
 	if key == "" {
 		return errors.New("missing storageKey")
 	}
 	id := safePhotoID(key)
-	ctx := context.Background()
 	a.setStage(t.ID, "preprocessing")
-	raw, err := a.storage.Get(ctx, key)
+	raw, err := a.readStorageBytes(ctx, key)
 	if err != nil {
 		return err
 	}
@@ -225,7 +236,7 @@ func (a *App) processPhoto(t *Task) error {
 	}
 	a.setStage(t.ID, "metadata")
 	a.setStage(t.ID, "thumbnail")
-	thumbnail, err := ffmpegThumbnail(a.cfg.FFmpeg, processed.image)
+	thumbnail, err := ffmpegThumbnailContext(ctx, a.cfg.FFmpeg, processed.image)
 	if err != nil {
 		return fmt.Errorf("thumbnail: %w", err)
 	}
@@ -235,7 +246,7 @@ func (a *App) processPhoto(t *Task) error {
 	}
 	thumbnailHash := thumbnailPlaceholder(thumbnail)
 	a.setStage(t.ID, "exif")
-	exif, dateTaken := extractExif(a.cfg.ExifTool, raw, filepath.Ext(key))
+	exif, dateTaken := extractExifContext(ctx, a.cfg.ExifTool, raw, filepath.Ext(key))
 	title, description, tags := photoInfoFromExif(key, exif)
 	if erase {
 		exif = stripGPS(exif)
@@ -289,7 +300,42 @@ func (a *App) processPhoto(t *Task) error {
 	a.logs.Add("queue", "processed photo "+id)
 	return nil
 }
-func (a *App) processLivePhoto(t *Task) error {
+
+// processPhotoMetadata keeps ExifTool and the storage round-trip off the
+// request path. The database fields are updated before this task is queued,
+// so the gallery immediately reflects the user's edit while the original
+// file catches up in the durable queue.
+func (a *App) processPhotoMetadata(ctx context.Context, t *Task) error {
+	photoID, _ := t.Payload["photoId"].(string)
+	if photoID == "" {
+		return errors.New("missing photoId")
+	}
+	var key string
+	if err := a.db.QueryRow(`SELECT storage_key FROM photos WHERE id=?`, photoID).Scan(&key); err != nil {
+		return err
+	}
+	updates, ok := t.Payload["updates"].(map[string]any)
+	if !ok {
+		return errors.New("missing metadata updates")
+	}
+	a.setStage(t.ID, "metadata")
+	data, err := a.readStorageBytes(ctx, key)
+	if err != nil {
+		return err
+	}
+	updated, err := a.rewritePhotoMetadata(ctx, key, data, updates)
+	if err != nil {
+		return err
+	}
+	if _, err := a.storage.Create(ctx, key, updated, mime.TypeByExtension(filepath.Ext(key))); err != nil {
+		return err
+	}
+	exif, _ := extractExifContext(ctx, a.cfg.ExifTool, updated, filepath.Ext(key))
+	_, err = a.db.Exec(`UPDATE photos SET exif=?,file_size=?,last_modified=? WHERE id=?`, jsonValue(exif), len(updated), metadataTimestamp(), photoID)
+	return err
+}
+
+func (a *App) processLivePhoto(ctx context.Context, t *Task) error {
 	key, _ := t.Payload["storageKey"].(string)
 	if key == "" {
 		return errors.New("missing storageKey")
@@ -318,14 +364,14 @@ func (a *App) processLivePhoto(t *Task) error {
 	_, err := a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, key, id)
 	return err
 }
-func (a *App) processReverseGeocoding(t *Task) error {
+func (a *App) processReverseGeocoding(ctx context.Context, t *Task) error {
 	photoID, _ := t.Payload["photoId"].(string)
 	latitude, lok := numberValue(t.Payload["latitude"])
 	longitude, ook := numberValue(t.Payload["longitude"])
 	if photoID == "" || !lok || !ook {
 		return errors.New("invalid reverse geocoding task")
 	}
-	return a.reverseGeocode(context.Background(), photoID, latitude, longitude)
+	return a.reverseGeocode(ctx, photoID, latitude, longitude)
 }
 func numberValue(value any) (float64, bool) {
 	switch v := value.(type) {
@@ -339,17 +385,17 @@ func numberValue(value any) (float64, bool) {
 		return 0, false
 	}
 }
-func (a *App) eraseLocation(t *Task) error {
+func (a *App) eraseLocation(ctx context.Context, t *Task) error {
 	id, _ := t.Payload["photoId"].(string)
 	var key string
 	if err := a.db.QueryRow(`SELECT storage_key FROM photos WHERE id=?`, id).Scan(&key); err != nil {
 		return err
 	}
-	data, err := a.storage.Get(context.Background(), key)
+	data, err := a.readStorageBytes(ctx, key)
 	if err != nil {
 		return err
 	}
-	return a.erasePhotoLocation(context.Background(), id, key, data)
+	return a.erasePhotoLocation(ctx, id, key, data)
 }
 func nilIf(err error) error { return err }
 func (a *App) setStage(id int64, stage string) {
@@ -382,7 +428,11 @@ func imageSize(data []byte) (int, int) {
 }
 
 func probeSize(ffprobe string, data []byte) (int, int) {
-	cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json", "pipe:0")
+	return probeSizeContext(context.Background(), ffprobe, data)
+}
+
+func probeSizeContext(ctx context.Context, ffprobe string, data []byte) (int, int) {
+	cmd := exec.CommandContext(ctx, ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "json", "pipe:0")
 	cmd.Stdin = bytes.NewReader(data)
 	out, err := cmd.Output()
 	if err != nil {
@@ -400,12 +450,20 @@ func probeSize(ffprobe string, data []byte) (int, int) {
 	return result.Streams[0].Width, result.Streams[0].Height
 }
 func ffmpegThumbnail(ffmpeg string, data []byte) ([]byte, error) {
-	cmd := exec.Command(ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", "scale='min(600,iw)':-2", "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
+	return ffmpegThumbnailContext(context.Background(), ffmpeg, data)
+}
+
+func ffmpegThumbnailContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", "scale='min(600,iw)':-2", "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
 	return cmd.Output()
 }
 
 func extractExif(tool string, data []byte, ext string) (map[string]any, string) {
+	return extractExifContext(context.Background(), tool, data, ext)
+}
+
+func extractExifContext(ctx context.Context, tool string, data []byte, ext string) (map[string]any, string) {
 	result := map[string]any{}
 	dir, err := os.MkdirTemp("", "cframe-exif-")
 	if err != nil {
@@ -416,7 +474,7 @@ func extractExif(tool string, data []byte, ext string) (map[string]any, string) 
 	if os.WriteFile(file, data, 0600) != nil {
 		return result, ""
 	}
-	out, err := exec.Command(tool, "-j", "-n", "-s", file).Output()
+	out, err := exec.CommandContext(ctx, tool, "-j", "-n", "-s", file).Output()
 	if err == nil {
 		var rows []map[string]any
 		if json.Unmarshal(out, &rows) == nil && len(rows) > 0 {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -414,12 +415,20 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	var key string
-	if err := a.db.QueryRow(`SELECT storage_key FROM photos WHERE id=?`, id).Scan(&key); err != nil {
+	var rawExif sql.NullString
+	if err := a.db.QueryRow(`SELECT storage_key,exif FROM photos WHERE id=?`, id).Scan(&key, &rawExif); err != nil {
 		errorJSON(w, http.StatusNotFound, "Photo not found")
 		return
 	}
-	data, err := a.storage.Get(r.Context(), key)
-	if err != nil {
+	// A quick metadata probe preserves the existing missing-file response for
+	// local storage. Remote providers are allowed a short probe window; if a
+	// provider is merely slow, the durable task will report/retry the failure
+	// without holding the HTTP request open.
+	probeCtx, probeCancel := context.WithTimeout(r.Context(), 750*time.Millisecond)
+	_, probeErr := a.storage.Meta(probeCtx, key)
+	probeTimedOut := probeCtx.Err() != nil
+	probeCancel()
+	if probeErr != nil && !probeTimedOut {
 		errorJSON(w, http.StatusNotFound, "Photo file missing")
 		return
 	}
@@ -489,22 +498,42 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		}
 		updates["Rating"] = rating
 	}
-	updatedData, err := a.rewritePhotoMetadata(r.Context(), key, data, updates)
+	currentExif := map[string]any{}
+	if rawExif.Valid {
+		_ = json.Unmarshal([]byte(rawExif.String), &currentExif)
+	}
+	mergedExif := mergeExif(currentExif, updates)
+	sets = append(sets, "exif=?", "last_modified=?")
+	args = append(args, jsonValue(mergedExif), metadataTimestamp(), id)
+	metadataPayload, err := json.Marshal(map[string]any{
+		"type":       "photo-metadata-update",
+		"photoId":    id,
+		"storageKey": key,
+		"updates":    updates,
+	})
 	if err != nil {
-		errorJSON(w, http.StatusInternalServerError, "Failed to write photo metadata")
+		errorJSON(w, http.StatusInternalServerError, "Failed to queue photo metadata")
 		return
 	}
-	if _, err := a.storage.Create(r.Context(), key, updatedData, "application/octet-stream"); err != nil {
-		errorJSON(w, http.StatusInternalServerError, "Failed to save photo")
-		return
-	}
-	exif, _ := extractExif(a.cfg.ExifTool, updatedData, filepath.Ext(key))
-	sets = append(sets, "exif=?", "file_size=?", "last_modified=?")
-	args = append(args, jsonValue(exif), len(updatedData), metadataTimestamp(), id)
-	if _, err := a.db.Exec(`UPDATE photos SET `+strings.Join(sets, ",")+` WHERE id=?`, args...); err != nil {
+	tx, err := a.db.BeginTx(r.Context(), nil)
+	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to update photo")
 		return
 	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE photos SET `+strings.Join(sets, ",")+` WHERE id=?`, args...); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update photo")
+		return
+	}
+	if _, err := tx.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(metadataPayload), 5, 3); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to queue photo metadata")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update photo")
+		return
+	}
+	a.wakeQueue()
 	if body.Location != nil && location != nil {
 		latitude, _ := location["latitude"].(float64)
 		longitude, _ := location["longitude"].(float64)

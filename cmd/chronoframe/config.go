@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -26,6 +27,9 @@ type Config struct {
 	DBMaxOpenConns     int
 	SessionKey         []byte
 	WorkerCount        int
+	MediaConcurrency   int
+	MediaMaxBytes      int64
+	MediaTimeout       time.Duration
 	FFmpeg             string
 	FFprobe            string
 	ExifTool           string
@@ -79,6 +83,26 @@ func envInt(key string, fallback int) int {
 	return value
 }
 
+func envBytesMB(key string, fallback int64) int64 {
+	value, err := strconv.ParseInt(env(key, ""), 10, 64)
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value * 1024 * 1024
+}
+
+func envDuration(key string, fallback time.Duration) time.Duration {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil || duration <= 0 {
+		return fallback
+	}
+	return duration
+}
+
 func loadConfig() Config {
 	dataDir := env("CFRAME_DATA_DIR", "./data")
 	secret := env("NUXT_SESSION_PASSWORD", env("CFRAME_SESSION_SECRET", "change-me-in-production"))
@@ -90,6 +114,9 @@ func loadConfig() Config {
 		DBMaxOpenConns:     envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
 		SessionKey:         []byte(secret),
 		WorkerCount:        envInt("CFRAME_WORKERS", 2),
+		MediaConcurrency:   envInt("CFRAME_MEDIA_CONCURRENCY", 1),
+		MediaMaxBytes:      envBytesMB("CFRAME_MEDIA_MAX_MB", 256),
+		MediaTimeout:       envDuration("CFRAME_MEDIA_TIMEOUT", 2*time.Minute),
 		FFmpeg:             env("CFRAME_FFMPEG_PATH", "ffmpeg"),
 		FFprobe:            env("CFRAME_FFPROBE_PATH", "ffprobe"),
 		ExifTool:           env("EXIFTOOL_PATH", "exiftool"),

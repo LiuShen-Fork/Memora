@@ -36,7 +36,7 @@ func (a *App) preprocessPhoto(ctx context.Context, key string, raw []byte) (proc
 
 	ext := strings.ToLower(filepath.Ext(key))
 	if ext == ".heic" || ext == ".heif" || ext == ".hif" || ext == ".bmp" {
-		converted, err := ffmpegJPEG(a.cfg.FFmpeg, raw)
+		converted, err := ffmpegJPEGContext(ctx, a.cfg.FFmpeg, raw)
 		if err != nil {
 			return processedPhoto{}, fmt.Errorf("convert %s: %w", ext, err)
 		}
@@ -52,7 +52,7 @@ func (a *App) preprocessPhoto(ctx context.Context, key string, raw []byte) (proc
 	}
 	result.width, result.height = imageSize(result.image)
 	if result.width == 0 || result.height == 0 {
-		result.width, result.height = probeSize(a.cfg.FFprobe, result.image)
+		result.width, result.height = probeSizeContext(ctx, a.cfg.FFprobe, result.image)
 	}
 	if result.width == 0 || result.height == 0 {
 		return processedPhoto{}, errors.New("unable to read image dimensions")
@@ -61,7 +61,11 @@ func (a *App) preprocessPhoto(ctx context.Context, key string, raw []byte) (proc
 }
 
 func ffmpegJPEG(ffmpeg string, data []byte) ([]byte, error) {
-	cmd := exec.Command(ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-f", "image2", "-c:v", "mjpeg", "-q:v", "2", "pipe:1")
+	return ffmpegJPEGContext(context.Background(), ffmpeg, data)
+}
+
+func ffmpegJPEGContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-f", "image2", "-c:v", "mjpeg", "-q:v", "2", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
 	return cmd.Output()
 }

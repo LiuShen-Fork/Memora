@@ -142,6 +142,50 @@ func TestMediaStreamingAndReactionContracts(t *testing.T) {
 	}
 }
 
+func TestPhotoMetadataUpdateQueuesStorageWork(t *testing.T) {
+	app := newTestApp(t)
+	key := "photos/metadata.jpg"
+	if _, err := app.storage.Create(context.Background(), key, []byte("original-bytes"), "image/jpeg"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title,storage_key,exif) VALUES('metadata-photo','Before',?,'{"Title":"Before"}')`, key); err != nil {
+		t.Fatal(err)
+	}
+	request := adminRequest(t, app, http.MethodPut, "/api/photos/metadata-photo", []byte(`{"title":"After"}`))
+	response := httptest.NewRecorder()
+	started := time.Now()
+	app.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || time.Since(started) > time.Second {
+		t.Fatalf("metadata update was not responsive: status=%d elapsed=%s body=%s", response.Code, time.Since(started), response.Body.String())
+	}
+	var title, exif string
+	if err := app.db.QueryRow(`SELECT title,exif FROM photos WHERE id='metadata-photo'`).Scan(&title, &exif); err != nil {
+		t.Fatal(err)
+	}
+	if title != "After" || !strings.Contains(exif, "After") {
+		t.Fatalf("database update missing: title=%q exif=%q", title, exif)
+	}
+	var payload string
+	if err := app.db.QueryRow(`SELECT payload FROM pipeline_queue WHERE status='pending' ORDER BY id DESC LIMIT 1`).Scan(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(payload, `"photo-metadata-update"`) {
+		t.Fatalf("metadata task was not queued: %s", payload)
+	}
+}
+
+func TestMediaReadsHonorConfiguredLimit(t *testing.T) {
+	app := newTestApp(t)
+	app.cfg.MediaMaxBytes = 4
+	key := "photos/large.bin"
+	if _, err := app.storage.Create(context.Background(), key, []byte("12345"), "application/octet-stream"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.readStorageBytes(context.Background(), key); err == nil {
+		t.Fatal("expected media size limit error")
+	}
+}
+
 func TestQueueResponseContracts(t *testing.T) {
 	app := newTestApp(t)
 	if _, err := app.db.Exec(`INSERT INTO pipeline_queue(payload,status,created_at) VALUES('{"type":"photo"}','failed',unixepoch())`); err != nil {

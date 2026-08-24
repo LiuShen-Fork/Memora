@@ -96,7 +96,7 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 		return err
 	}
 	req.Header.Set("User-Agent", "ChronoFrame/1.0")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := externalHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -146,9 +146,24 @@ func (a *App) erasePhotoLocation(ctx context.Context, id, key string, data []byt
 	if _, err := a.storage.Create(ctx, key, updated, "application/octet-stream"); err != nil {
 		return err
 	}
-	exif, _ := extractExif(a.cfg.ExifTool, updated, filepath.Ext(key))
+	exif, _ := extractExifContext(ctx, a.cfg.ExifTool, updated, filepath.Ext(key))
 	_, err = a.db.Exec(`UPDATE photos SET latitude=NULL,longitude=NULL,country=NULL,city=NULL,location_name=NULL,exif=?,last_modified=? WHERE id=?`, jsonValue(stripGPS(exif)), metadataTimestamp(), id)
 	return err
+}
+
+func mergeExif(source, updates map[string]any) map[string]any {
+	merged := make(map[string]any, len(source)+len(updates))
+	for key, value := range source {
+		merged[key] = value
+	}
+	for key, value := range updates {
+		if value == nil {
+			delete(merged, key)
+			continue
+		}
+		merged[key] = value
+	}
+	return merged
 }
 
 func metadataTimestamp() string { return time.Now().UTC().Format(time.RFC3339) }
