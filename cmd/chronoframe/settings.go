@@ -153,7 +153,7 @@ func (a *App) namespaceSettings(namespace string) map[string]any {
 	return result
 }
 func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
-	rows, err := a.db.Query(`SELECT namespace,key,type,value,default_value,is_public FROM settings WHERE is_public=1 OR (namespace='system' AND key='firstLaunch')`)
+	rows, err := a.db.Query(`SELECT namespace,key,type,value,is_public FROM settings WHERE is_public=1 OR (namespace='system' AND key='firstLaunch')`)
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
 		return
@@ -162,27 +162,20 @@ func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
 	data := map[string]map[string]any{}
 	for rows.Next() {
 		var ns, key, typ string
-		var value, def sql.NullString
+		var value sql.NullString
 		var pub int
-		if err := rows.Scan(&ns, &key, &typ, &value, &def, &pub); err != nil {
+		if err := rows.Scan(&ns, &key, &typ, &value, &pub); err != nil {
 			errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
 			return
 		}
 		if data[ns] == nil {
 			data[ns] = map[string]any{}
 		}
-		data[ns][key] = parseSetting(typ, func() string {
-			if value.Valid {
-				return value.String
-			}
-			return def.String
-		}())
-	}
-	if data["app"] == nil {
-		data["app"] = map[string]any{}
-	}
-	if _, ok := data["app"]["title"]; !ok {
-		data["app"]["title"] = env("NUXT_PUBLIC_APP_TITLE", "ChronoFrame")
+		if !value.Valid {
+			data[ns][key] = nil
+		} else {
+			data[ns][key] = parseSetting(typ, value.String)
+		}
 	}
 	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UnixMilli(), "data": data})
 }
