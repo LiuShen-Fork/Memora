@@ -510,7 +510,7 @@ const onAlbumClick = (albumId: number) => {
       <!-- 照片描述 -->
       <div
         v-if="currentPhoto.description"
-        class="text-sm text-white text-justify"
+        class="rounded-lg border border-white/15 bg-white/8 px-3 py-3 text-sm leading-6 text-white/95 text-justify whitespace-pre-wrap break-words"
       >
         {{ currentPhoto.description }}
       </div>
