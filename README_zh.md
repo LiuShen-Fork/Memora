@@ -48,7 +48,7 @@
 - **Nuxt 4 静态前端** - 预生成 SPA，不在生产环境运行 Nitro/Node 服务端
 - **TypeScript** - 完整的类型安全保障
 - **TailwindCSS** - 现代化的 CSS 框架
-- **Drizzle ORM** - 类型安全的数据库 ORM
+- **SQLite** - 通过 Go 标准数据库接口访问，保持原有数据结构
 
 ### ☁️ 灵活的存储方案
 
@@ -196,23 +196,16 @@ yarn install
 cp .env.example .env
 ```
 
-### 数据库初始化
+### 构建并启动开发服务
 
 ```bash
-# 2. 生成数据库迁移文件(可选)
-pnpm db:generate
-
-# 3. 执行数据库迁移
-pnpm db:migrate
+pnpm install
+pnpm build:deps
+pnpm generate
+go run ./cmd/chronoframe
 ```
 
-### 启动开发服务器
-
-```bash
-pnpm dev
-```
-
-应用将在 `http://localhost:3000` 启动。
+Go 服务会在 `http://localhost:3000` 提供静态前端和 API。
 
 ### 项目结构
 
@@ -225,18 +218,16 @@ chronoframe/
 │   └── stores/             # Pinia 状态管理
 ├── packages/
 │   └── webgl-image/        # WebGL 图片查看器
-├── server/
-│   ├── api/                # API 路由
-│   ├── database/           # 数据库 schema 和迁移
-│   └── services/           # 业务逻辑服务
+├── cmd/
+│   └── chronoframe/        # Go 后端和 HTTP 路由
 └── shared/                 # 共享类型和工具
 ```
 
 ### 构建命令
 
 ```bash
-# 开发模式 (包含依赖包构建)
-pnpm dev
+# 构建前端依赖
+pnpm build:deps
 
 # 仅构建依赖包
 pnpm build:deps
@@ -244,12 +235,11 @@ pnpm build:deps
 # 构建生产版本
 pnpm build
 
-# 数据库操作
-pnpm db:generate    # 生成迁移文件
-pnpm db:migrate     # 执行迁移
+# 生成静态前端
+pnpm generate
 
-# 预览生产版本
-pnpm preview
+# 启动 Go 后端
+go run ./cmd/chronoframe
 ```
 
 ## 🤝 贡献
@@ -330,7 +320,7 @@ pnpm preview
 
 - [Nuxt](https://nuxt.com/)
 - [TailwindCSS](https://tailwindcss.com/)
-- [Drizzle ORM](https://orm.drizzle.team/)
+- [Go](https://go.dev/)
 
 ## ⭐️ Star History
 

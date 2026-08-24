@@ -1,227 +1,50 @@
-# ChronoFrame AI Coding Guidelines
+# ChronoFrame Coding Guidelines
 
-ChronoFrame is a high-performance photo management and gallery application built with Nuxt 4, featuring WebGL-accelerated image viewing, comprehensive EXIF processing, and multi-storage backend support.
+ChronoFrame is a static Nuxt 4 frontend served by a Go HTTP backend. SQLite schema and the `./data:/app/data` Docker mount are compatibility contracts.
 
-## Architecture Overview
+## Architecture
 
-### Core Components
+- `app/`: Vue/Nuxt static client, Pinia stores, composables, maps, and WebGL viewer.
+- `cmd/chronoframe/`: Go server, SQLite access, authentication, storage adapters, HTTP routes, and durable media queue.
+- `packages/webgl-image/`: local WebGL viewer package.
+- `shared/`: client/server TypeScript contracts.
 
-- **Frontend**: Nuxt 4 app with Vue 3, TypeScript, and TailwindCSS
-- **Backend**: Nitro server with SQLite (Drizzle ORM) and multi-provider storage
-- **WebGL Package**: Custom `@chronoframe/webgl-image` for hardware-accelerated viewing
-- **Processing Pipeline**: Async photo processing with EXIF, thumbnails, and geolocation
+The production process is one Go binary. It serves `.output/public` (or `CFRAME_WEB_DIR`) and owns all `/api`, `/storage`, `/image`, and `/thumb` routes. Do not add Nitro API routes or a second Node server.
 
-### Key Directories
-
-- `app/`: Nuxt 4 application (components, pages, composables)
-- `server/`: API routes and backend services
-- `packages/webgl-image/`: Standalone WebGL image viewer package
-- `shared/`: Type definitions shared between client/server
-
-## Development Workflow
-
-### Essential Commands
+## Development
 
 ```bash
-# Development with dependency building
-pnpm dev:deps
-
-# Build WebGL package only
+pnpm install
 pnpm build:deps
-
-# Database operations
-pnpm db:generate  # Generate migrations
-pnpm db:migrate   # Apply migrations
-
-# Production build
-pnpm build
+pnpm generate
+go run ./cmd/chronoframe
 ```
 
-### Monorepo Structure
+On PowerShell, use an absolute database path when the working directory may vary:
 
-This is a pnpm workspace with the WebGL package as a local dependency. Always use `pnpm dev:deps` for development to ensure the WebGL package builds alongside the main app.
-
-## Storage Architecture
-
-### Multi-Provider System
-
-Storage providers are abstracted through `server/services/storage/interfaces.ts`:
-
-- **S3**: AWS S3-compatible storage (primary)
-- **HubR2**: Cloudflare R2 via NuxtHub
-- **GitHub**: Git-based storage (experimental)
-
-### Key Pattern
-
-All storage operations go through `useStorageProvider(event)` in API routes. The provider is configured via `NUXT_STORAGE_PROVIDER` environment variable.
-
-## Photo Processing Pipeline
-
-### Async Processing Pattern
-
-Photos are processed via `execPhotoPipelineAsync()` in `server/services/photo/pipeline-async.ts`:
-
-1. **Preprocessing**: HEIC conversion to JPEG, buffer management
-2. **Metadata**: Sharp processing for dimensions/format
-3. **Thumbnails**: WebP generation with ThumbHash
-4. **EXIF**: Comprehensive metadata extraction via exiftool-vendored
-5. **Geolocation**: Reverse geocoding for GPS coordinates
-6. **LivePhoto**: Video companion file detection and processing
-
-### Critical Implementation Details
-
-- Use `setImmediate()` for non-blocking async operations
-- Always handle HEIC → JPEG conversion for Apple photos
-- EXIF processing requires temporary file writes (see `server/services/image/exif.ts`)
-- Thumbnails are stored as separate WebP files with hash compression
-
-## Component Patterns
-
-### Vue Components
-
-- All components are auto imported via Nuxt (eg. `/app/components/photo/PhotoItem.client.vue` can be used directly as `<PhotoPhotoItem />`)
-
-### Vue Composables
-
-- `usePhotos()`: Central photo data management with injection/provide pattern
-- `usePhotoFilters()`: Client-side filtering with reactive state
-- `useLivePhotoProcessor()`: WebGL-based MOV to MP4 conversion
-- `useWebGLWorkState()`: Performance monitoring for WebGL operations
-
-### Masonry Grid System
-
-The `app/components/masonry/Root.vue` implements a CSS-based masonry layout:
-
-- Auto-responsive column counts based on viewport
-- Intersection Observer for performance and date range tracking
-- Background LivePhoto processing for visible items only
-
-### WebGL Integration
-
-Register WebGL components via plugin (`app/plugins/chrono-webgl-image.ts`). The package provides hardware-accelerated zooming and panning for large images.
-
-## Database Operations
-
-### Core Database Pattern
-
-**ALWAYS use `useDB()` from `server/utils/db.ts` for all database operations:**
-
-```typescript
-import { useDB, tables, eq } from '~~/server/utils/db'
-
-// Get all photos
-const photos = await useDB().select().from(tables.photos)
-
-// Get specific photo
-const photo = await useDB()
-  .select()
-  .from(tables.photos)
-  .where(eq(tables.photos.id, photoId))
-  .get()
-
-// Insert new photo
-await useDB().insert(tables.photos).values(photoData)
-
-// Update photo
-await useDB()
-  .update(tables.photos)
-  .set({ title: 'New Title' })
-  .where(eq(tables.photos.id, photoId))
+```powershell
+$env:DATABASE_URL = (Resolve-Path "data/app.sqlite3").Path
+$env:CFRAME_WEB_DIR = (Resolve-Path ".output/public").Path
+go run ./cmd/chronoframe
 ```
 
-### Database Configuration
+Useful checks: `go test ./...`, `go test -race ./...`, `go vet ./...`, `pnpm lint`, and `pnpm generate`.
 
-- Uses **better-sqlite3** with Drizzle ORM
-- Database file: `data/app.sqlite3`
-- Schema exports types: `User`, `Photo` from `useDB`
-- Import patterns: `eq`, `and`, `or`, `sql` from the same file
+## Runtime contracts
 
-### Photo Model Schema
+- Preserve the existing SQLite tables, JSON columns, timestamps, WAL mode, and data paths.
+- Keep storage providers compatible with local, S3-compatible, and OpenList configurations.
+- Uploads use `POST /api/photos`, a direct `PUT` to the returned URL, and a durable queue task. Do not collapse these steps.
+- Long media, EXIF, thumbnail, reverse-geocoding, and metadata rewrites belong in the queue, not in request handlers.
+- Use existing Go helpers and shared types. Keep handlers split by domain.
+- Map providers support MapLibre, Mapbox, and AMap. Preserve WGS84/GCJ-02 conversion behavior.
 
-Key fields in `server/database/schema.ts`:
+## Configuration
 
-- `storageKey`: Original file path in storage
-- `originalUrl`: Public URL (may point to JPEG version for HEIC)
-- `thumbnailUrl`/`thumbnailHash`: WebP thumbnail with ThumbHash
-- `exif`: Full EXIF JSON (typed as `NeededExif`)
-- `latitude`/`longitude`/`city`/`country`: Extracted geolocation
-- `isLivePhoto`: Boolean with optional video companion file
+FFmpeg, FFprobe, and ExifTool are runtime dependencies. Configure local binaries with `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and `EXIFTOOL_PATH`; the Docker image installs them at `/usr/bin/ffmpeg`, `/usr/bin/ffprobe`, and `/usr/bin/exiftool`.
 
-### Migration Pattern
+Do not commit `data/`, database journals, generated JSON, executables, or build output. The Docker data mount must remain `./data:/app/data`.
 
-Use Drizzle migrations for schema changes. Initial user setup is handled in migration files.
+## Frontend conventions
 
-## API Conventions
-
-### Authentication
-
-All photo management APIs require `await requireUserSession(event)` using nuxt-auth-utils with GitHub OAuth.
-
-### Upload Flow
-
-1. POST `/api/photos` → Get presigned URL
-2. Direct upload to storage provider
-3. POST `/api/photos/process` → Trigger async processing
-4. Background pipeline processes and saves to database
-
-### Background Processing
-
-Use this pattern for long-running operations:
-
-```typescript
-// Return immediately, process in background
-processPhotoInBackground(fileKey, storageObject)
-return { message: 'Processing started' }
-```
-
-## Environment Configuration
-
-### Required Variables
-
-- `NUXT_STORAGE_PROVIDER`: `s3` | `hub-r2` | `github`
-- `NUXT_SESSION_PASSWORD`: 32-character random string
-- `NUXT_OAUTH_GITHUB_CLIENT_ID/SECRET`: GitHub OAuth app
-- `MAPBOX_TOKEN`: For map functionality
-
-### Storage Provider Config
-
-Each provider has specific env vars (see README). S3 is most commonly used with CDN support via `NUXT_PROVIDER_S3_CDN_URL`.
-
-## Performance Considerations
-
-### Image Processing
-
-- Large images are processed asynchronously to avoid blocking
-- HEIC files automatically get JPEG versions uploaded
-- Thumbnails use WebP format for optimal size/quality
-- Use Sharp for all image manipulation
-
-### WebGL Viewer
-
-- Monitors work state via `useWebGLWorkState()`
-- Automatically falls back for unsupported devices
-- Lazy loads textures for large images
-
-## Code Style
-
-### Database Operations
-
-- **CRITICAL**: Always use `useDB()` from `server/utils/db.ts` - never import Drizzle directly
-- Import query helpers: `import { useDB, tables, eq, and, or } from '~~/server/utils/db'`
-- Use `tables.photos`, `tables.users` for schema references
-- Database file is `data/app.sqlite3` (better-sqlite3 + Drizzle ORM)
-
-### TypeScript
-
-- Strict typing with shared types in `shared/types/`
-- Use Drizzle schema types for database operations
-- Avoid `any` except for complex EXIF data structures
-
-### Vue/Nuxt
-
-- Composition API throughout
-- Use `definePageMeta()` for layouts
-- Server-side components for data fetching
-- Client-side `.vue` files for interactive components (see `PhotoItem.client.vue`)
-
-When working on this codebase, prioritize understanding the async processing pipeline and storage abstraction layer, as these are the most complex architectural decisions that impact all photo operations.
+Use the existing Nuxt UI components, Tailwind tokens, and shared composables. Keep tables horizontally scrollable inside their own container, use truncation for dense descriptions, retain full text in detail views, and avoid making large gallery requests block route shells.

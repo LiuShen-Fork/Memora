@@ -44,10 +44,10 @@ A smooth photo display and management application, supporting multiple image for
 
 ### 🔧 Modern Tech Stack
 
-- **Nuxt 4** - Built on the latest Nuxt framework with SSR/SSG support
+- **Nuxt 4 static frontend** - A pre-generated SPA served by the Go backend
 - **TypeScript** - Full type safety
 - **TailwindCSS** - Modern CSS framework
-- **Drizzle ORM** - Type-safe database ORM
+- **Go backend** - A compact HTTP server with SQLite and a durable media queue
 
 ### ☁️ Flexible Storage Solutions
 
@@ -193,23 +193,16 @@ yarn install
 cp .env.example .env
 ```
 
-### Initialize database
+### Build and start locally
 
 ```bash
-# 2. Generate migration files (optional)
-pnpm db:generate
-
-# 3. Run database migrations
-pnpm db:migrate
+pnpm install
+pnpm build:deps
+pnpm generate
+go run ./cmd/chronoframe
 ```
 
-### Start development server
-
-```bash
-pnpm dev
-```
-
-App will start at http://localhost:3000.
+The Go server serves `.output/public` at http://localhost:3000. Set `CFRAME_WEB_DIR` and `DATABASE_URL` to absolute paths when starting outside the repository root.
 
 ### Project Structure
 
@@ -222,18 +215,16 @@ chronoframe/
 │   └── stores/             # Pinia stores
 ├── packages/
 │   └── webgl-image/        # WebGL image viewer
-├── server/
-│   ├── api/                # API routes
-│   ├── database/           # DB schema & migrations
-│   └── services/           # Business logic services
+├── cmd/
+│   └── chronoframe/        # Go backend and HTTP routes
 └── shared/                 # Shared types & utils
 ```
 
 ### Build commands
 
 ```bash
-# Development (with dependencies build)
-pnpm dev
+# Build frontend dependencies
+pnpm build:deps
 
 # Build only dependencies
 pnpm build:deps
@@ -241,12 +232,11 @@ pnpm build:deps
 # Production build
 pnpm build
 
-# Database operations
-pnpm db:generate    # Generate migration files
-pnpm db:migrate     # Run migrations
+# Generate static frontend
+pnpm generate
 
-# Preview production build
-pnpm preview
+# Run backend
+go run ./cmd/chronoframe
 ```
 
 ## 🤝 Contributing
@@ -325,7 +315,7 @@ Thanks to the following open-source projects and libraries:
 
 - [Nuxt](https://nuxt.com/)
 - [TailwindCSS](https://tailwindcss.com/)
-- [Drizzle ORM](https://orm.drizzle.team/)
+- [Go](https://go.dev/)
 
 ## ⭐️ Star History
 
