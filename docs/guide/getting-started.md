@@ -57,12 +57,15 @@ NUXT_PUBLIC_APP_SLOGAN=
 NUXT_PUBLIC_APP_AUTHOR=
 NUXT_PUBLIC_APP_AVATAR_URL=
 
-# Map provider (maplibre/mapbox)
+# Map provider (maplibre/mapbox/amap)
 NUXT_PUBLIC_MAP_PROVIDER=maplibre
 # MapTiler access token for MapLibre
 NUXT_PUBLIC_MAP_MAPLIBRE_TOKEN=
 # Mapbox access token for Mapbox
 NUXT_PUBLIC_MAPBOX_ACCESS_TOKEN=
+# AMap Web JS key and security code (when using amap)
+NUXT_PUBLIC_MAP_AMAP_KEY=
+NUXT_PUBLIC_MAP_AMAP_SECURITY_CODE=
 
 # Storage provider (local or s3 or openlist)
 NUXT_STORAGE_PROVIDER=local

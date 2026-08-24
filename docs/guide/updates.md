@@ -93,25 +93,9 @@ docker run -d \
   ghcr.io/hoshinosuzumi/chronoframe:latest
 ```
 
-## Database Migration
+## Database Compatibility
 
-### Automatic Migration
-
-ChronoFrame automatically executes database migrations on startup:
-
-```bash
-# View migration logs
-docker logs chronoframe | grep -i migration
-```
-
-### Manual Migration (Advanced)
-
-In special cases, you may need to manually execute migrations:
-
-```bash
-# Enter container
-docker exec -it chronoframe sh
-
-# Execute migration
-npx drizzle-kit migrate
-```
+The Go service verifies and creates missing compatibility tables and indexes on
+startup. It does not require a Node, Nitro, Drizzle, or manual migration
+command. Back up `data/` before upgrades and keep the Docker mount unchanged:
+`./data:/app/data`.

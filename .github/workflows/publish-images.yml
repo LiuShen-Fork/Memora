@@ -1,9 +1,12 @@
 name: Publish Images
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without the leading v (for example 1.0.0)'
+        required: true
+        type: string
 
 env:
   GHCR_REGISTRY: ghcr.io
@@ -28,10 +31,20 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Extract version from tag
+      - name: Extract version from input
         id: version
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION="$VERSION_INPUT"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid version: $VERSION" >&2
+            exit 1
+          fi
+          if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists" >&2
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           if [[ "$VERSION" == *"-"* ]]; then
             echo "prerelease=true" >> $GITHUB_OUTPUT
@@ -39,6 +52,15 @@ jobs:
             echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
           echo "Version: $VERSION"
+
+      - name: Create release tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
 
       - name: 📝 Generate changelog
         id: changelog
@@ -88,6 +110,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: v${{ needs.prepare.outputs.version }}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -264,10 +288,9 @@ jobs:
     steps:
       - name: 📝 Create Release
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
         with:
           tag_name: v${{ env.VERSION }}
           name: Release v${{ env.VERSION }}
           body: ${{ needs.prepare.outputs.changelog }}
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
-          draft: true
+          draft: false
