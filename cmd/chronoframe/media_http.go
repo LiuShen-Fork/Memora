@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,7 +82,19 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	target := strings.TrimPrefix(r.URL.Path, "/thumb/")
 	target, _ = urlPathUnescape(target)
-	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "/storage/") {
+	if strings.HasPrefix(target, "/storage/") || strings.HasPrefix(target, "/image/") {
+		key := strings.TrimPrefix(strings.TrimPrefix(target, "/storage/"), "/image/")
+		data, err := a.storage.Get(r.Context(), key)
+		if err != nil {
+			errorJSON(w, 404, "Photo not found")
+			return
+		}
+		w.Header().Set("Content-Type", mime.TypeByExtension(strings.ToLower(filepath.Ext(key))))
+		w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
+		w.Write(data)
+		return
+	}
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
 		resp, err := http.Get(target)
 		if err != nil {
 			errorJSON(w, 404, "Photo not found")
@@ -102,7 +115,7 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
 	w.Write(data)
 }
-func urlPathUnescape(v string) (string, error) { return strings.ReplaceAll(v, "%2F", "/"), nil }
+func urlPathUnescape(v string) (string, error) { return url.PathUnescape(v) }
 func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if path == "" || path == "/" || filepath.Ext(path) == "" {

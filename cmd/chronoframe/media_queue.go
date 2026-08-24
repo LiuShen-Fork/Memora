@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
+	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -23,6 +23,8 @@ import (
 )
 
 func (a *App) startWorkers() {
+	// Tasks left in an in-progress state after a process crash must be retried.
+	_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL WHERE status='in-stages'`)
 	for i := 0; i < a.cfg.WorkerCount; i++ {
 		a.wg.Add(1)
 		go a.worker(i + 1)
@@ -146,14 +148,16 @@ func (a *App) processTask(t *Task) error {
 func safePhotoID(key string) string {
 	name := filepath.Base(key)
 	name = strings.TrimSuffix(name, filepath.Ext(name))
-	name = regexp.MustCompile(`[^A-Za-z0-9_.-]+`).ReplaceAllString(name, "_")
+	original := name
+	name = regexp.MustCompile(`[^\w\-_.]+`).ReplaceAllString(name, "_")
+	name = regexp.MustCompile(`_{2,}`).ReplaceAllString(name, "_")
 	name = strings.Trim(name, "_")
 	if len(name) < 3 {
-		h := sha256.Sum256([]byte(key))
+		h := md5.Sum([]byte(original))
 		return "photo_" + hex.EncodeToString(h[:])[:8]
 	}
 	if len(name) > 32 {
-		h := sha256.Sum256([]byte(key))
+		h := md5.Sum([]byte(original))
 		return name[:23] + "_" + hex.EncodeToString(h[:])[:8]
 	}
 	return name
@@ -203,7 +207,13 @@ func (a *App) processPhoto(t *Task) error {
 	exif, dateTaken := extractExif(a.cfg.ExifTool, data, filepath.Ext(key))
 	last := time.Now().UTC().Format(time.RFC3339)
 	original := a.storage.PublicURL(key)
+	if original == "" {
+		original = "/image/" + strings.TrimLeft(key, "/")
+	}
 	thumbURL := a.storage.PublicURL(thumbKey)
+	if thumbURL == "" {
+		thumbURL = "/image/" + strings.TrimLeft(thumbKey, "/")
+	}
 	erase, _ := t.Payload["eraseLocation"].(bool)
 	if erase {
 		updated, rewriteErr := a.rewritePhotoMetadata(context.Background(), key, data, locationExifUpdates(nil))
@@ -245,7 +255,18 @@ func (a *App) processLivePhoto(t *Task) error {
 		return errors.New("missing storageKey")
 	}
 	base := strings.TrimSuffix(key, filepath.Ext(key))
-	imageKey := base + ".jpg"
+	imageKey := ""
+	for _, ext := range []string{".jpg", ".JPG", ".jpeg", ".JPEG", ".heic", ".HEIC", ".heif", ".HEIF"} {
+		candidate := base + ext
+		var found string
+		if a.db.QueryRow(`SELECT storage_key FROM photos WHERE storage_key=? OR id=? LIMIT 1`, candidate, safePhotoID(candidate)).Scan(&found) == nil {
+			imageKey = found
+			break
+		}
+	}
+	if imageKey == "" {
+		return errors.New("paired photo not found")
+	}
 	var id string
 	if err := a.db.QueryRow(`SELECT id FROM photos WHERE storage_key=? OR id=? LIMIT 1`, imageKey, safePhotoID(imageKey)).Scan(&id); err != nil {
 		return err

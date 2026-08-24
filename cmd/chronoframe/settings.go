@@ -43,10 +43,10 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 		writeJSON(w, http.StatusOK, map[string]any{"namespace": namespace, "fields": fields})
 		return
 	}
-	if !a.requireAdmin(w, r) {
-		return
-	}
 	if r.Method == http.MethodPut && rest == "/batch" {
+		if !a.requireAdmin(w, r) {
+			return
+		}
 		var body struct {
 			Updates []struct {
 				Namespace string `json:"namespace"`
@@ -58,17 +58,27 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 			errorJSON(w, http.StatusBadRequest, "Invalid settings update")
 			return
 		}
+		updated := 0
+		errors := []map[string]string{}
 		for _, update := range body.Updates {
 			if err := a.updateSetting(update.Namespace, update.Key, update.Value, nil, false); err != nil {
-				errorJSON(w, http.StatusBadRequest, err.Error())
-				return
+				errors = append(errors, map[string]string{"namespace": update.Namespace, "key": update.Key, "error": err.Error()})
+				continue
 			}
+			updated++
 		}
-		writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+		if len(errors) > 0 {
+			writeJSON(w, http.StatusOK, map[string]any{"success": false, "updated": updated, "errors": errors})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "updated": updated})
 		return
 	}
 	parts := strings.Split(strings.Trim(rest, "/"), "/")
 	if len(parts) == 1 && r.Method == http.MethodGet {
+		if !a.requireAdmin(w, r) {
+			return
+		}
 		settings := a.namespaceSettings(parts[0])
 		if settings == nil {
 			errorJSON(w, http.StatusNotFound, "Namespace not found")
@@ -87,6 +97,9 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 		return
 	}
 	if len(parts) >= 2 && r.Method == http.MethodPut {
+		if !a.requireAdmin(w, r) {
+			return
+		}
 		var body struct {
 			Value any `json:"value"`
 		}

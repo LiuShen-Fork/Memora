@@ -24,7 +24,11 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	if strings.HasPrefix(rest, "stats/") && r.Method == "GET" {
-		id, _ := strconv.ParseInt(strings.TrimPrefix(rest, "stats/"), 10, 64)
+		id, err := strconv.ParseInt(strings.TrimPrefix(rest, "stats/"), 10, 64)
+		if err != nil || id <= 0 {
+			errorJSON(w, http.StatusBadRequest, "Invalid task ID")
+			return
+		}
 		a.queueStats(w, r, id)
 		return
 	}
@@ -56,23 +60,84 @@ func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
 		return
 	}
 	var body struct {
-		Payload     map[string]any   `json:"payload"`
-		Tasks       []map[string]any `json:"tasks"`
-		Priority    int              `json:"priority"`
-		MaxAttempts int              `json:"maxAttempts"`
+		Payload map[string]any `json:"payload"`
+		Tasks   []struct {
+			Payload     map[string]any `json:"payload"`
+			Priority    *int           `json:"priority"`
+			MaxAttempts *int           `json:"maxAttempts"`
+		} `json:"tasks"`
+		Priority           int `json:"priority"`
+		MaxAttempts        int `json:"maxAttempts"`
+		DefaultPriority    int `json:"defaultPriority"`
+		DefaultMaxAttempts int `json:"defaultMaxAttempts"`
 	}
 	if decodeJSON(r, &body) != nil {
 		errorJSON(w, 400, "Invalid request")
 		return
 	}
+	if batch {
+		if len(body.Tasks) < 1 || len(body.Tasks) > 1000 {
+			errorJSON(w, http.StatusBadRequest, "tasks must contain between 1 and 1000 items")
+			return
+		}
+		// Batch requests use per-item payload/options in the Nuxt contract.
+		if body.DefaultPriority < 0 || body.DefaultPriority > 9 || body.DefaultMaxAttempts < 0 || body.DefaultMaxAttempts > 5 {
+			errorJSON(w, http.StatusBadRequest, "invalid default queue options")
+			return
+		}
+		for _, task := range body.Tasks {
+			if err := validateQueuePayload(task.Payload); err != nil {
+				errorJSON(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if task.Priority != nil && (*task.Priority < 0 || *task.Priority > 9) {
+				errorJSON(w, 400, "priority must be between 0 and 9")
+				return
+			}
+			if task.MaxAttempts != nil && (*task.MaxAttempts < 1 || *task.MaxAttempts > 5) {
+				errorJSON(w, 400, "maxAttempts must be between 1 and 5")
+				return
+			}
+		}
+		body.Priority = body.DefaultPriority
+		body.MaxAttempts = body.DefaultMaxAttempts
+	} else {
+		if err := validateQueuePayload(body.Payload); err != nil {
+			errorJSON(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if body.Priority < 0 || body.Priority > 9 || body.MaxAttempts < 0 || body.MaxAttempts > 5 {
+			errorJSON(w, http.StatusBadRequest, "invalid queue options")
+			return
+		}
+	}
 	if body.MaxAttempts < 1 {
 		body.MaxAttempts = 3
 	}
 	items := []map[string]any{}
+	priorities := []int{}
+	maxAttempts := []int{}
 	if batch {
-		items = body.Tasks
+		for _, task := range body.Tasks {
+			items = append(items, task.Payload)
+			priority := body.DefaultPriority
+			if task.Priority != nil {
+				priority = *task.Priority
+			}
+			attempts := body.DefaultMaxAttempts
+			if task.MaxAttempts != nil {
+				attempts = *task.MaxAttempts
+			}
+			if attempts < 1 {
+				attempts = 3
+			}
+			priorities = append(priorities, priority)
+			maxAttempts = append(maxAttempts, attempts)
+		}
 	} else {
 		items = []map[string]any{body.Payload}
+		priorities = []int{body.Priority}
+		maxAttempts = []int{body.MaxAttempts}
 	}
 	ids := []int64{}
 	for _, payload := range items {
@@ -80,7 +145,7 @@ func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
 			continue
 		}
 		data, _ := json.Marshal(payload)
-		res, err := a.db.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(data), body.Priority, body.MaxAttempts)
+		res, err := a.db.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(data), priorities[len(ids)], maxAttempts[len(ids)])
 		if err != nil {
 			errorJSON(w, 500, err.Error())
 			return
@@ -90,14 +155,52 @@ func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
 	}
 	a.wakeQueue()
 	if batch {
-		writeJSON(w, 201, map[string]any{"success": true, "taskIds": ids})
+		results := make([]map[string]any, 0, len(ids))
+		for i, id := range ids {
+			results = append(results, map[string]any{"index": i, "taskId": id, "payload": items[i], "success": true})
+		}
+		writeJSON(w, 201, map[string]any{"success": true, "totalTasks": len(items), "successCount": len(ids), "errorCount": 0, "results": results, "message": fmt.Sprintf("Processed %d tasks: %d successful, 0 failed", len(items), len(ids))})
 	} else {
 		var id int64
 		if len(ids) > 0 {
 			id = ids[0]
 		}
-		writeJSON(w, 201, map[string]any{"success": true, "taskId": id, "message": "Task added to queue successfully"})
+		writeJSON(w, 201, map[string]any{"success": true, "taskId": id, "message": "Task added to queue successfully", "payload": body.Payload})
 	}
+}
+
+func validateQueuePayload(payload map[string]any) error {
+	typeName, _ := payload["type"].(string)
+	if typeName == "" {
+		return fmt.Errorf("payload.type is required")
+	}
+	switch typeName {
+	case "photo", "live-photo-video":
+		if key, _ := payload["storageKey"].(string); key == "" {
+			return fmt.Errorf("payload.storageKey is required")
+		}
+	case "photo-reverse-geocoding":
+		if id, _ := payload["photoId"].(string); id == "" {
+			return fmt.Errorf("payload.photoId is required")
+		}
+		if v, ok := payload["latitude"]; ok {
+			if n, ok := v.(float64); !ok || n < -90 || n > 90 {
+				return fmt.Errorf("payload.latitude is invalid")
+			}
+		}
+		if v, ok := payload["longitude"]; ok {
+			if n, ok := v.(float64); !ok || n < -180 || n > 180 {
+				return fmt.Errorf("payload.longitude is invalid")
+			}
+		}
+	case "photo-erase-location":
+		if id, _ := payload["photoId"].(string); id == "" {
+			return fmt.Errorf("payload.photoId is required")
+		}
+	default:
+		return fmt.Errorf("unsupported payload.type: %s", typeName)
+	}
+	return nil
 }
 func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 	if _, ok := a.require(r); !ok {
@@ -113,7 +216,16 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 		}
 		var p any
 		_ = json.Unmarshal([]byte(payload), &p)
-		writeJSON(w, 200, map[string]any{"id": id, "payload": p, "status": status, "statusStage": stage, "errorMessage": errMsg, "attempts": attempts, "maxAttempts": max})
+		var created, completed sql.NullInt64
+		_ = a.db.QueryRow(`SELECT created_at,completed_at FROM pipeline_queue WHERE id=?`, id).Scan(&created, &completed)
+		result := map[string]any{"id": id, "payload": p, "status": status, "statusStage": stage, "errorMessage": errMsg, "attempts": attempts, "maxAttempts": max}
+		if created.Valid {
+			result["createdAt"] = time.Unix(created.Int64, 0)
+		}
+		if completed.Valid {
+			result["completedAt"] = time.Unix(completed.Int64, 0)
+		}
+		writeJSON(w, 200, result)
 		return
 	}
 	rows, _ := a.db.Query(`SELECT status,count(*) FROM pipeline_queue GROUP BY status`)
@@ -127,7 +239,8 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 	if rows != nil {
 		rows.Close()
 	}
-	writeJSON(w, 200, out)
+	pool := map[string]any{"isActive": true, "workerCount": a.cfg.WorkerCount, "totalWorkers": a.cfg.WorkerCount, "activeWorkers": a.cfg.WorkerCount}
+	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UTC().Format(time.RFC3339Nano), "pool": pool, "queue": out})
 }
 func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {

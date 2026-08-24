@@ -181,7 +181,7 @@ func (s *S3Storage) PublicURL(k string) string {
 	if s.cdn != "" {
 		return s.cdn + "/" + key
 	}
-	return ""
+	return "/image/" + strings.TrimLeft(key, "/")
 }
 func (s *S3Storage) SignedURL(ctx context.Context, k, ct string) (string, error) {
 	u, err := s.client.PresignedPutObject(ctx, s.bucket, s.key(k), time.Hour)

@@ -60,9 +60,9 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.health(w, r)
 	case path == "/api/login" && r.Method == "POST":
 		a.login(w, r)
-	case path == "/api/logout":
+	case path == "/api/logout" && r.Method == http.MethodGet:
 		a.logout(w, r)
-	case path == "/api/profile":
+	case path == "/api/profile" && r.Method == http.MethodGet:
 		a.profile(w, r)
 	case path == "/api/photos" && r.Method == "GET":
 		a.photos(w, r, false)
@@ -100,7 +100,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.systemLogs(w, r)
 	case strings.HasPrefix(path, "/api/wizard/"):
 		a.wizardRoute(w, r, strings.TrimPrefix(path, "/api/wizard/"))
-	case path == "/api/auth/github":
+	case path == "/api/auth/github" && r.Method == http.MethodGet:
 		a.githubAuth(w, r)
 	default:
 		errorJSON(w, http.StatusNotFound, "Not Found")
