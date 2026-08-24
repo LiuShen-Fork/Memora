@@ -456,7 +456,7 @@ func ffmpegThumbnail(ffmpeg string, data []byte) ([]byte, error) {
 func ffmpegThumbnailContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", "scale='min(600,iw)':-2", "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
-	return cmd.Output()
+	return runCommandOutput(ctx, cmd, maxToolOutputBytes)
 }
 
 func extractExif(tool string, data []byte, ext string) (map[string]any, string) {
@@ -474,7 +474,7 @@ func extractExifContext(ctx context.Context, tool string, data []byte, ext strin
 	if os.WriteFile(file, data, 0600) != nil {
 		return result, ""
 	}
-	out, err := exec.CommandContext(ctx, tool, "-j", "-n", "-s", file).Output()
+	out, err := runCommandOutput(ctx, exec.CommandContext(ctx, tool, "-j", "-n", "-s", file), maxExifOutputBytes)
 	if err == nil {
 		var rows []map[string]any
 		if json.Unmarshal(out, &rows) == nil && len(rows) > 0 {

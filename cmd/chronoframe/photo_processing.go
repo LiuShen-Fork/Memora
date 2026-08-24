@@ -67,7 +67,7 @@ func ffmpegJPEG(ffmpeg string, data []byte) ([]byte, error) {
 func ffmpegJPEGContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-f", "image2", "-c:v", "mjpeg", "-q:v", "2", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
-	return cmd.Output()
+	return runCommandOutput(ctx, cmd, maxToolOutputBytes)
 }
 
 func photoInfoFromExif(key string, exif map[string]any) (title, description any, tags []string) {

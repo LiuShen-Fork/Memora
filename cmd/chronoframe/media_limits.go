@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"os/exec"
 	"time"
 )
 
 const (
 	defaultMediaMaxBytes = 256 << 20
 	defaultMediaTimeout  = 2 * time.Minute
+	maxToolOutputBytes   = 256 << 20
+	maxExifOutputBytes   = 16 << 20
 )
 
 func (a *App) mediaLimit() int64 {
@@ -17,6 +21,43 @@ func (a *App) mediaLimit() int64 {
 		return a.cfg.MediaMaxBytes
 	}
 	return defaultMediaMaxBytes
+}
+
+type cappedBuffer struct {
+	bytes.Buffer
+	limit    int
+	exceeded bool
+}
+
+func (b *cappedBuffer) Write(data []byte) (int, error) {
+	remaining := b.limit - b.Len()
+	if remaining <= 0 {
+		b.exceeded = true
+		return 0, fmt.Errorf("command output exceeds limit")
+	}
+	if len(data) > remaining {
+		_, _ = b.Buffer.Write(data[:remaining])
+		b.exceeded = true
+		return remaining, fmt.Errorf("command output exceeds limit")
+	}
+	return b.Buffer.Write(data)
+}
+
+func runCommandOutput(ctx context.Context, cmd *exec.Cmd, maxBytes int) ([]byte, error) {
+	stdout := &cappedBuffer{limit: maxBytes}
+	var stderr bytes.Buffer
+	cmd.Stdout = stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		if stderr.Len() > 0 {
+			return nil, fmt.Errorf("%w: %s", err, stderr.String())
+		}
+		return nil, err
+	}
+	if stdout.exceeded {
+		return nil, fmt.Errorf("command output exceeds limit of %d bytes", maxBytes)
+	}
+	return stdout.Bytes(), nil
 }
 
 func (a *App) mediaContext(parent context.Context) (context.Context, context.CancelFunc) {
