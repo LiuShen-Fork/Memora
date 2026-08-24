@@ -60,7 +60,7 @@ func scanPhoto(rows *sql.Rows) (Photo, error) {
 	return p, err
 }
 
-const photoSelect = `SELECT id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key FROM photos`
+const photoSelect = `SELECT photos.id,photos.title,photos.description,photos.width,photos.height,photos.aspect_ratio,photos.date_taken,photos.storage_key,photos.thumbnail_key,photos.file_size,photos.last_modified,photos.original_url,photos.thumbnail_url,photos.thumbnail_hash,photos.tags,photos.exif,photos.latitude,photos.longitude,photos.country,photos.city,photos.location_name,photos.is_live_photo,photos.live_photo_video_url,photos.live_photo_video_key FROM photos`
 
 func (a *App) photoByID(id string) (Photo, error) {
 	rows, err := a.db.Query(photoSelect+` WHERE id=?`, id)
@@ -321,19 +321,49 @@ func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 		ids = strings.Split(ids[0], ",")
 	}
 	out := map[string]map[string]int{}
-	for _, id := range ids {
-		rows, _ := a.db.Query(`SELECT reaction_type,count(*) FROM photo_reactions WHERE photo_id=? GROUP BY reaction_type`, id)
-		m := newReactionCounts()
-		for rows != nil && rows.Next() {
-			var typ string
-			var n int
-			_ = rows.Scan(&typ, &n)
-			m[typ] = n
+	uniqueIDs := uniqueStrings(ids)
+	for _, id := range uniqueIDs {
+		out[id] = newReactionCounts()
+	}
+	// Keep the request bounded by SQLite's host-parameter limit while reducing
+	// the common many-photo request to one grouped query.
+	for start := 0; start < len(uniqueIDs); start += 500 {
+		end := start + 500
+		if end > len(uniqueIDs) {
+			end = len(uniqueIDs)
 		}
-		if rows != nil {
-			rows.Close()
+		batch := uniqueIDs[start:end]
+		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(batch)), ",")
+		args := make([]any, len(batch))
+		for i, id := range batch {
+			args[i] = id
 		}
-		out[id] = m
+		rows, err := a.db.QueryContext(r.Context(), `SELECT photo_id,reaction_type,count(*) FROM photo_reactions WHERE photo_id IN (`+placeholders+") GROUP BY photo_id,reaction_type", args...)
+		if err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to load reactions")
+			return
+		}
+		for rows.Next() {
+			var id, typ string
+			var count int
+			if err := rows.Scan(&id, &typ, &count); err != nil {
+				_ = rows.Close()
+				errorJSON(w, http.StatusInternalServerError, "Unable to read reactions")
+				return
+			}
+			if counts, ok := out[id]; ok {
+				counts[typ] = count
+			}
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Unable to read reactions")
+			return
+		}
+		if err := rows.Close(); err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to read reactions")
+			return
+		}
 	}
 	writeJSON(w, 200, out)
 }

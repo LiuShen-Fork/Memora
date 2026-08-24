@@ -10,7 +10,11 @@ import (
 )
 
 func (a *App) albums(w http.ResponseWriter, r *http.Request) {
-	rows, err := a.db.QueryContext(r.Context(), `SELECT id,title,description,cover_photo_id,is_hidden,created_at,updated_at FROM albums ORDER BY created_at DESC`)
+	rows, err := a.db.QueryContext(r.Context(), `
+		SELECT al.id,al.title,al.description,al.cover_photo_id,al.is_hidden,al.created_at,al.updated_at,ap.photo_id
+		FROM albums al
+		LEFT JOIN album_photos ap ON ap.album_id=al.id
+		ORDER BY al.created_at DESC,al.id DESC,ap.position ASC,ap.id ASC`)
 	if err != nil {
 		errorJSON(w, 500, err.Error())
 		return
@@ -21,14 +25,24 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		description, cover sql.NullString
 		hidden             int
 		created, updated   int64
+		photoIDs           []string
 	}
 	albumRows := []albumRow{}
 	for rows.Next() {
 		var album albumRow
-		if rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated) != nil {
-			continue
+		var photoID sql.NullString
+		if err := rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated, &photoID); err != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Unable to read albums")
+			return
 		}
-		albumRows = append(albumRows, album)
+		if len(albumRows) == 0 || albumRows[len(albumRows)-1].id != album.id {
+			album.photoIDs = make([]string, 0, 8)
+			albumRows = append(albumRows, album)
+		}
+		if photoID.Valid {
+			albumRows[len(albumRows)-1].photoIDs = append(albumRows[len(albumRows)-1].photoIDs, photoID.String)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()
@@ -38,17 +52,7 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 	_ = rows.Close()
 	out := []map[string]any{}
 	for _, album := range albumRows {
-		ids := []string{}
-		pRows, _ := a.db.QueryContext(r.Context(), `SELECT photo_id FROM album_photos WHERE album_id=? ORDER BY position`, album.id)
-		for pRows != nil && pRows.Next() {
-			var photoID string
-			_ = pRows.Scan(&photoID)
-			ids = append(ids, photoID)
-		}
-		if pRows != nil {
-			pRows.Close()
-		}
-		out = append(out, map[string]any{"id": album.id, "title": album.title, "description": nullString(album.description), "coverPhotoId": nullString(album.cover), "isHidden": album.hidden == 1, "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "photoIds": ids})
+		out = append(out, map[string]any{"id": album.id, "title": album.title, "description": nullString(album.description), "coverPhotoId": nullString(album.cover), "isHidden": album.hidden == 1, "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "photoIds": album.photoIDs})
 	}
 	writeJSON(w, 200, out)
 }
@@ -92,10 +96,10 @@ func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := res.LastInsertId()
-	for i, pid := range uniqueStrings(photoIDs) {
-		if pid != "" {
-			_, _ = tx.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, pid, float64(1000010+i*10))
-		}
+	if _, err := insertAlbumPhotos(tx, id, photoIDs, 1000010); err != nil {
+		_ = tx.Rollback()
+		errorJSON(w, http.StatusBadRequest, "Unable to add photos to album")
+		return
 	}
 	if err := tx.Commit(); err != nil {
 		errorJSON(w, 500, err.Error())
@@ -133,7 +137,7 @@ func decodeAlbumPayload(r *http.Request) (map[string]any, error) {
 	}
 	if value, ok := body["photoIds"]; ok {
 		items, valid := value.([]any)
-		if !valid {
+		if !valid || len(items) > 1000 {
 			return nil, fmt.Errorf("Invalid photoIds")
 		}
 		for _, item := range items {
@@ -183,6 +187,24 @@ func uniqueStrings(items []string) []string {
 	}
 	return out
 }
+
+func insertAlbumPhotos(tx *sql.Tx, albumID int64, photoIDs []string, startPosition float64) (int64, error) {
+	ids := uniqueStrings(photoIDs)
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	values := make([]string, len(ids))
+	args := make([]any, 0, len(ids)*3)
+	for i, photoID := range ids {
+		values[i] = "(?,?,?)"
+		args = append(args, albumID, photoID, startPosition+float64(i*10))
+	}
+	result, err := tx.Exec(`INSERT OR IGNORE INTO album_photos(album_id,photo_id,position) VALUES `+strings.Join(values, ","), args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
 func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	parts := strings.Split(strings.Trim(rest, "/"), "/")
 	if len(parts) == 0 {
@@ -195,6 +217,10 @@ func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	id, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
 		errorJSON(w, http.StatusBadRequest, "Invalid album ID")
+		return
+	}
+	if len(parts) == 2 && parts[1] == "photos" && r.Method == http.MethodPut {
+		a.updateAlbumPhotos(w, r, id)
 		return
 	}
 	if len(parts) == 1 && r.Method == "GET" {
@@ -236,6 +262,88 @@ func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	}
 	errorJSON(w, 404, "Not Found")
 }
+
+// updateAlbumPhotos applies a batch membership change in one transaction.
+// Keeping this server-side avoids one read/write round trip per selected photo.
+func (a *App) updateAlbumPhotos(w http.ResponseWriter, r *http.Request, albumID int64) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	var body struct {
+		Action   string   `json:"action"`
+		PhotoIDs []string `json:"photoIds"`
+	}
+	if decodeJSON(r, &body) != nil {
+		errorJSON(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+	body.Action = strings.ToLower(strings.TrimSpace(body.Action))
+	if body.Action != "add" && body.Action != "remove" {
+		errorJSON(w, http.StatusBadRequest, "action must be add or remove")
+		return
+	}
+	photoIDs := uniqueStrings(body.PhotoIDs)
+	if len(photoIDs) == 0 || len(photoIDs) > 1000 {
+		errorJSON(w, http.StatusBadRequest, "photoIds must contain between 1 and 1000 items")
+		return
+	}
+
+	tx, err := a.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update album photos")
+		return
+	}
+	defer tx.Rollback()
+	var exists int
+	if err := tx.QueryRow(`SELECT 1 FROM albums WHERE id=?`, albumID).Scan(&exists); err != nil {
+		errorJSON(w, http.StatusNotFound, "Album not found")
+		return
+	}
+
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(photoIDs)), ",")
+	args := make([]any, 0, len(photoIDs)+1)
+	args = append(args, albumID)
+	for _, photoID := range photoIDs {
+		args = append(args, photoID)
+	}
+	changed := int64(0)
+	if body.Action == "add" {
+		var position float64
+		_ = tx.QueryRow(`SELECT COALESCE(MAX(position),1000000) FROM album_photos WHERE album_id=?`, albumID).Scan(&position)
+		var insertErr error
+		changed, insertErr = insertAlbumPhotos(tx, albumID, photoIDs, position+10)
+		if insertErr != nil {
+			errorJSON(w, http.StatusBadRequest, "Unable to add photo to album")
+			return
+		}
+	} else {
+		result, deleteErr := tx.Exec(`DELETE FROM album_photos WHERE album_id=? AND photo_id IN (`+placeholders+`)`, args...)
+		if deleteErr != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to remove photos from album")
+			return
+		}
+		changed, _ = result.RowsAffected()
+		args = []any{albumID}
+		for _, photoID := range photoIDs {
+			args = append(args, photoID)
+		}
+		if _, err := tx.Exec(`UPDATE albums SET cover_photo_id=NULL WHERE id=? AND cover_photo_id IN (`+placeholders+")", args...); err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to update album cover")
+			return
+		}
+	}
+	if _, err := tx.Exec(`UPDATE albums SET updated_at=unixepoch() WHERE id=?`, albumID); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to update album")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update album photos")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "action": body.Action, "changed": changed})
+}
+
 func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 	var title string
 	var description, cover sql.NullString
@@ -251,16 +359,29 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 			return
 		}
 	}
-	rows, _ := a.db.QueryContext(r.Context(), photoSelect+` WHERE id IN (SELECT photo_id FROM album_photos WHERE album_id=?) ORDER BY (SELECT position FROM album_photos WHERE album_id=? AND photo_id=photos.id) ASC`, id, id)
-	photos := []Photo{}
-	for rows != nil && rows.Next() {
-		p, e := scanPhoto(rows)
-		if e == nil {
-			photos = append(photos, p)
-		}
+	rows, err := a.db.QueryContext(r.Context(), photoSelect+` INNER JOIN album_photos ap ON ap.photo_id=photos.id WHERE ap.album_id=? ORDER BY ap.position ASC,ap.id ASC`, id)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read album photos")
+		return
 	}
-	if rows != nil {
-		rows.Close()
+	photos := []Photo{}
+	for rows.Next() {
+		p, e := scanPhoto(rows)
+		if e != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Unable to read album photos")
+			return
+		}
+		photos = append(photos, p)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to read album photos")
+		return
+	}
+	if err := rows.Close(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read album photos")
+		return
 	}
 	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0), "photos": photos})
 }
@@ -307,8 +428,9 @@ func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
 		if cover, ok := b["coverPhotoId"].(string); ok && cover != "" {
 			photoIDs = append(photoIDs, cover)
 		}
-		for i, photoID := range uniqueStrings(photoIDs) {
-			_, _ = tx.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, photoID, float64(1000010+i*10))
+		if _, err := insertAlbumPhotos(tx, id, photoIDs, 1000010); err != nil {
+			errorJSON(w, http.StatusBadRequest, "Unable to add photos to album")
+			return
 		}
 	}
 	sets = append(sets, "updated_at=unixepoch()")

@@ -345,6 +345,42 @@ func TestPhotoRelationshipAndReactionContracts(t *testing.T) {
 	}
 }
 
+func TestAlbumBatchMembershipAndJoinedReads(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title) VALUES('album-photo-1','One'),('album-photo-2','Two')`); err != nil {
+		t.Fatal(err)
+	}
+	created := httptest.NewRecorder()
+	app.ServeHTTP(created, adminRequest(t, app, http.MethodPost, "/api/albums", []byte(`{"title":"Batch album"}`)))
+	if created.Code != http.StatusOK {
+		t.Fatalf("album create failed: %d %s", created.Code, created.Body.String())
+	}
+	var createdAlbum struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &createdAlbum); err != nil || createdAlbum.ID == 0 {
+		t.Fatalf("invalid album response: %v %s", err, created.Body.String())
+	}
+
+	path := "/api/albums/" + strconv.FormatInt(createdAlbum.ID, 10) + "/photos"
+	added := httptest.NewRecorder()
+	app.ServeHTTP(added, adminRequest(t, app, http.MethodPut, path, []byte(`{"action":"add","photoIds":["album-photo-1","album-photo-2"]}`)))
+	if added.Code != http.StatusOK || !strings.Contains(added.Body.String(), `"changed":2`) {
+		t.Fatalf("album batch add failed: %d %s", added.Code, added.Body.String())
+	}
+
+	list := httptest.NewRecorder()
+	app.ServeHTTP(list, httptest.NewRequest(http.MethodGet, "/api/albums", nil))
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), "album-photo-1") || !strings.Contains(list.Body.String(), "album-photo-2") {
+		t.Fatalf("album joined list failed: %d %s", list.Code, list.Body.String())
+	}
+	detail := httptest.NewRecorder()
+	app.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/api/albums/"+strconv.FormatInt(createdAlbum.ID, 10), nil))
+	if detail.Code != http.StatusOK || strings.Count(detail.Body.String(), `"id":"album-photo-`) != 2 {
+		t.Fatalf("album joined detail failed: %d %s", detail.Code, detail.Body.String())
+	}
+}
+
 func TestStorageConfigurationCRUD(t *testing.T) {
 	app := newTestApp(t)
 	createBody, err := json.Marshal(map[string]any{
