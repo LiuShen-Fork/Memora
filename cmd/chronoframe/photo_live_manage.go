@@ -83,7 +83,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 			}
 			results = append(results, result)
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"success": true, "results": results})
+		writeJSON(w, http.StatusOK, map[string]any{"message": "Batch LivePhoto detection completed", "success": true, "results": results})
 		return
 	}
 	errorJSON(w, http.StatusBadRequest, "Supported actions are scan, detect, process, and update-photo")
