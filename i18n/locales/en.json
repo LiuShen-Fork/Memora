@@ -165,6 +165,9 @@
     "createdTooltip": "Created: {date}"
   },
   "map": {
+    "amap": {
+      "missingKey": "Configure an AMap key to display this map"
+    },
     "cluster": {
       "details": "Click to view details",
       "nearbyPhotos": "{0} photos nearby",
@@ -1191,9 +1194,23 @@
           "description": "MapLibre map style URL"
         }
       },
+      "amap": {
+        "key": {
+          "label": "AMap Web JS Key",
+          "description": "AMap JavaScript API key used by the browser map"
+        },
+        "securityCode": {
+          "label": "AMap Security Code",
+          "description": "Optional AMap security code for JavaScript API loading"
+        }
+      },
       "sectionDescription": "Configure map display and geocoding services. The map provider affects map styles and access credentials."
     },
     "location": {
+      "provider": {
+        "label": "Geocoding Provider",
+        "description": "Select the service used for reverse geocoding photo coordinates"
+      },
       "language": {
         "label": "Location Language",
         "description": "Language for geocoding location names",
@@ -1211,6 +1228,12 @@
           "label": "Nominatim Base URL",
           "description": "Base URL for Nominatim reverse geocoding API",
           "help": "Leave empty to use the public Nominatim service by default"
+        }
+      },
+      "amap": {
+        "key": {
+          "label": "AMap Web Service Key",
+          "description": "AMap REST API key used for server-side reverse geocoding"
         }
       }
     },

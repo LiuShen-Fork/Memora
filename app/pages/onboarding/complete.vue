@@ -46,6 +46,8 @@ async function onComplete() {
       provider: mapProvider,
       token: mapState[mapTokenKey],
       style: mapState[mapStyleKey],
+      amapKey: mapState['amap.key'],
+      amapSecurityCode: mapState['amap.securityCode'],
     }
 
     // 5. Submit All

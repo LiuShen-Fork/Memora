@@ -84,6 +84,19 @@ func hemisphere(value float64, positive, negative string) string {
 }
 
 func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, longitude float64) error {
+	var provider any
+	if a.readSetting("location", "provider", &provider) && provider == "amap" {
+		var key any
+		if !a.readSetting("location", "amap.key", &key) || strings.TrimSpace(fmt.Sprint(key)) == "" {
+			// A public AMap key is a useful fallback for installations that only
+			// configured the browser map provider.
+			_ = a.readSetting("map", "amap.key", &key)
+		}
+		if token := strings.TrimSpace(fmt.Sprint(key)); token != "" {
+			return a.reverseGeocodeAMap(ctx, photoID, token, latitude, longitude)
+		}
+		return fmt.Errorf("amap reverse geocoding key is not configured")
+	}
 	base := strings.TrimRight(a.cfg.NominatimURL, "/")
 	if base == "" {
 		return nil
@@ -128,6 +141,65 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 		city = result.Address.Municipality
 	}
 	_, err = a.db.Exec(`UPDATE photos SET country=?,city=?,location_name=? WHERE id=?`, nullIfEmpty(result.Address.Country), nullIfEmpty(city), nullIfEmpty(result.DisplayName), photoID)
+	return err
+}
+
+func (a *App) reverseGeocodeAMap(ctx context.Context, photoID, key string, latitude, longitude float64) error {
+	query := url.Values{
+		"key":        {key},
+		"location":   {strconv.FormatFloat(longitude, 'f', 8, 64) + "," + strconv.FormatFloat(latitude, 'f', 8, 64)},
+		"extensions": {"base"},
+		"output":     {"json"},
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(lookupCtx, http.MethodGet, "https://restapi.amap.com/v3/geocode/regeo?"+query.Encode(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := externalHTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("amap reverse geocoding: %s", resp.Status)
+	}
+	var result struct {
+		Status string `json:"status"`
+		Info   string `json:"info"`
+		Regeo  struct {
+			FormattedAddress string `json:"formatted_address"`
+			Component        struct {
+				Country  string `json:"country"`
+				Province string `json:"province"`
+				City     any    `json:"city"`
+				District string `json:"district"`
+			} `json:"addressComponent"`
+		} `json:"regeocode"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&result); err != nil {
+		return err
+	}
+	if result.Status != "1" {
+		return fmt.Errorf("amap reverse geocoding: %s", result.Info)
+	}
+	city := ""
+	switch value := result.Regeo.Component.City.(type) {
+	case string:
+		city = value
+	case []any:
+		if len(value) > 0 {
+			city, _ = value[0].(string)
+		}
+	}
+	if city == "" {
+		city = result.Regeo.Component.Province
+	}
+	if city == "" {
+		city = result.Regeo.Component.District
+	}
+	_, err = a.db.Exec(`UPDATE photos SET country=?,city=?,location_name=? WHERE id=?`, nullIfEmpty(result.Regeo.Component.Country), nullIfEmpty(city), nullIfEmpty(result.Regeo.FormattedAddress), photoID)
 	return err
 }
 

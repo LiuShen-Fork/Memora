@@ -101,7 +101,7 @@ func wizardFields(namespace string) []map[string]any {
 			field("openlist.pathField", "string", "settings.storage.openlist.pathField.label", "path", visible("openlist", false, false)),
 		}
 	case "map":
-		providerOptions := []map[string]any{{"label": "MapBox", "value": "mapbox"}, {"label": "MapLibre", "value": "maplibre"}}
+		providerOptions := []map[string]any{{"label": "MapBox", "value": "mapbox"}, {"label": "MapLibre", "value": "maplibre"}, {"label": "AMap", "value": "amap"}}
 		visible := func(provider, typ string, required bool) map[string]any {
 			return map[string]any{"type": typ, "required": required, "visibleIf": map[string]any{"fieldKey": "provider", "value": provider}}
 		}
@@ -111,6 +111,8 @@ func wizardFields(namespace string) []map[string]any {
 			field("mapbox.style", "string", "settings.map.mapbox.style.label", env("NUXT_PUBLIC_MAP_MAPBOX_STYLE", ""), visible("mapbox", "input", false)),
 			field("maplibre.token", "string", "settings.map.maplibre.token.label", "", visible("maplibre", "password", true)),
 			field("maplibre.style", "string", "settings.map.maplibre.style.label", env("NUXT_PUBLIC_MAP_MAPLIBRE_STYLE", ""), visible("maplibre", "input", false)),
+			field("amap.key", "string", "settings.map.amap.key.label", env("NUXT_PUBLIC_MAP_AMAP_KEY", ""), visible("amap", "input", true)),
+			field("amap.securityCode", "string", "settings.map.amap.securityCode.label", env("NUXT_PUBLIC_MAP_AMAP_SECURITY_CODE", ""), visible("amap", "password", false)),
 		}
 	default:
 		return nil
@@ -172,9 +174,11 @@ type wizardStorageInput struct {
 }
 
 type wizardMapInput struct {
-	Provider string `json:"provider"`
-	Token    string `json:"token"`
-	Style    string `json:"style"`
+	Provider         string `json:"provider"`
+	Token            string `json:"token"`
+	Style            string `json:"style"`
+	AmapKey          string `json:"amapKey"`
+	AmapSecurityCode string `json:"amapSecurityCode"`
 }
 
 func (a *App) wizardSubmit(w http.ResponseWriter, r *http.Request) {
@@ -249,9 +253,14 @@ func (a *App) writeSiteSettings(site map[string]any) {
 
 func (a *App) writeMapSettings(input wizardMapInput) {
 	a.setSetting("map", "provider", input.Provider)
-	a.setSetting("map", input.Provider+".token", input.Token)
-	if input.Style != "" {
-		a.setSetting("map", input.Provider+".style", input.Style)
+	if input.Provider == "amap" {
+		a.setSetting("map", "amap.key", input.AmapKey)
+		a.setSetting("map", "amap.securityCode", input.AmapSecurityCode)
+	} else {
+		a.setSetting("map", input.Provider+".token", input.Token)
+		if input.Style != "" {
+			a.setSetting("map", input.Provider+".style", input.Style)
+		}
 	}
 }
 
@@ -261,6 +270,9 @@ func validAdmin(email, password, username string) bool {
 }
 
 func validMap(input wizardMapInput) bool {
+	if input.Provider == "amap" {
+		return strings.TrimSpace(input.AmapKey) != ""
+	}
 	return (input.Provider == "mapbox" || input.Provider == "maplibre") && strings.TrimSpace(input.Token) != ""
 }
 

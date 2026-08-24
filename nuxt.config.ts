@@ -6,9 +6,6 @@ import i18n, { dayjsLocales } from './i18n/i18n.options'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
-  // The legacy Nitro implementation remains in server/ only as a migration
-  // reference. Static builds must never register or execute it.
-  serverDir: 'server-go-disabled',
   devtools: { enabled: true },
 
   modules: [
@@ -42,13 +39,17 @@ export default defineNuxtConfig({
         avatarUrl: '',
       },
       map: {
-        provider: 'maplibre' as 'mapbox' | 'maplibre',
+        provider: 'maplibre' as 'mapbox' | 'maplibre' | 'amap',
         mapbox: {
           style: '',
         },
         maplibre: {
           token: '',
           style: '',
+        },
+        amap: {
+          key: '',
+          securityCode: '',
         },
       },
       analytics: {

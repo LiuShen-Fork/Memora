@@ -81,7 +81,7 @@ const mapStyle = computed(() => {
         <slot />
       </MglMap>
       <MapboxMap
-        v-else
+        v-else-if="provider === 'mapbox'"
         class="w-full h-full"
         :map-id="mapId || 'cframe-mapbox-map'"
         :options="{
@@ -104,6 +104,20 @@ const mapStyle = computed(() => {
       >
         <slot />
       </MapboxMap>
+      <MapAMapProvider
+        v-else-if="provider === 'amap'"
+        class="h-full w-full"
+        :map-id="mapId"
+        :center
+        :zoom
+        :interactive
+        @load="emit('load', $event)"
+        @zoom="emit('zoom')"
+      >
+        <template #default="{ map }">
+          <slot :map="map" />
+        </template>
+      </MapAMapProvider>
     </ClientOnly>
   </div>
 </template>

@@ -1,7 +1,9 @@
-import type { WorkerPool } from '../../server/services/pipeline-queue'
-
 declare global {
-  var __workerPool: WorkerPool | undefined
+  var __workerPool: unknown
+  interface Window {
+    AMap?: any
+    _AMapSecurityConfig?: { securityJsCode?: string }
+  }
 }
 
 export {}

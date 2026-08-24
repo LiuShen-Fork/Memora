@@ -3,8 +3,9 @@ import type { Map as _MapboxMap } from 'mapbox-gl'
 
 export type MaplibreMap = _MaplibreMap
 export type MapboxMap = _MapboxMap
+export type AMapMap = any
 
-export type MapInstance = MaplibreMap | MapboxMap
+export type MapInstance = MaplibreMap | MapboxMap | AMapMap
 
 export const isMaplibreMap = (
   map: MapInstance,
@@ -19,6 +20,11 @@ export const isMapboxMap = (
 ): map is MapboxMap => {
   return provider === 'mapbox'
 }
+
+export const isAMapMap = (
+  map: MapInstance,
+  provider: string,
+): map is AMapMap => provider === 'amap'
 
 export interface PhotoMarker {
   id: string

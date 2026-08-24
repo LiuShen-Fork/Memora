@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { MapInstance } from '~~/shared/types/map'
+import { gcj02ToWgs84, transformCoordinate } from '~/utils/coordinate-transform'
 
 const props = withDefaults(
   defineProps<{
@@ -33,8 +34,13 @@ const syncFromProps = (
     markerCoordinates.value = [value.longitude, value.latitude]
     if (mapInstance.value) {
       const map: any = mapInstance.value
+      const center = transformCoordinate(
+        value.longitude,
+        value.latitude,
+        provider.value,
+      )
       map.flyTo?.({
-        center: markerCoordinates.value,
+        center,
         zoom: Math.max(props.zoom ?? 4, 4),
         essential: true,
       })
@@ -57,6 +63,11 @@ const updateValue = (
   longitude: number,
   shouldEmitPick = true,
 ) => {
+  if (provider.value === 'amap') {
+    const [wgsLongitude, wgsLatitude] = gcj02ToWgs84(longitude, latitude)
+    latitude = wgsLatitude
+    longitude = wgsLongitude
+  }
   markerCoordinates.value = [longitude, latitude]
   emit('update:modelValue', { latitude, longitude })
   if (shouldEmitPick) {
@@ -87,8 +98,17 @@ const onMapLoad = (map: MapInstance) => {
 
   if (markerCoordinates.value) {
     const anyMap: any = map
-    anyMap.setCenter?.(markerCoordinates.value)
-    anyMap.setZoom?.(Math.max(props.zoom ?? 4, 4))
+    const center = transformCoordinate(
+      markerCoordinates.value[0],
+      markerCoordinates.value[1],
+      provider.value,
+    )
+    if (typeof anyMap.setZoomAndCenter === 'function') {
+      anyMap.setZoomAndCenter(Math.max(props.zoom ?? 4, 4), center, true, 0)
+    } else {
+      anyMap.setCenter?.(center)
+      anyMap.setZoom?.(Math.max(props.zoom ?? 4, 4))
+    }
   }
 
   const anyMap: any = map
