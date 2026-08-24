@@ -41,6 +41,10 @@ func (a *App) serveStorage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Last-Modified", st.ModTime().UTC().Format(http.TimeFormat))
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	w.Header().Set("Accept-Ranges", "bytes")
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
 	http.ServeContent(w, r, st.Name(), st.ModTime(), f)
 }
 func safePath(base, p string) bool {
@@ -63,6 +67,15 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 		}
 		if seeker, ok := reader.(io.ReadSeeker); ok {
 			http.ServeContent(w, r, filepath.Base(key), object.ModTime, seeker)
+			return
+		}
+		if r.Header.Get("Range") != "" {
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				errorJSON(w, http.StatusBadGateway, "Unable to read photo")
+				return
+			}
+			http.ServeContent(w, r, filepath.Base(key), object.ModTime, bytes.NewReader(data))
 			return
 		}
 		if object.Size >= 0 {
@@ -89,21 +102,31 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, 404, "Photo not found")
 			return
 		}
-		w.Header().Set("Content-Type", mime.TypeByExtension(strings.ToLower(filepath.Ext(key))))
-		w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
-		w.Write(data)
+		a.writeThumbnail(w, r, data, mime.TypeByExtension(strings.ToLower(filepath.Ext(key))))
 		return
 	}
 	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
-		resp, err := http.Get(target)
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, target, nil)
+		if err != nil {
+			errorJSON(w, 404, "Photo not found")
+			return
+		}
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			errorJSON(w, 404, "Photo not found")
 			return
 		}
 		defer resp.Body.Close()
-		w.Header().Set("Content-Type", "image/jpeg")
-		w.WriteHeader(resp.StatusCode)
-		_, _ = io.Copy(w, resp.Body)
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			errorJSON(w, http.StatusNotFound, "Photo not found")
+			return
+		}
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			errorJSON(w, http.StatusBadGateway, "Unable to read photo")
+			return
+		}
+		a.writeThumbnail(w, r, data, resp.Header.Get("Content-Type"))
 		return
 	}
 	data, err := a.storage.Get(r.Context(), target)
@@ -111,9 +134,24 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, 404, "Photo not found")
 		return
 	}
-	w.Header().Set("Content-Type", "image/webp")
-	w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
-	w.Write(data)
+	a.writeThumbnail(w, r, data, mime.TypeByExtension(strings.ToLower(filepath.Ext(target))))
+}
+
+// writeThumbnail mirrors the Nuxt Sharp route: every source is normalized to
+// an auto-oriented JPEG, while retaining a readable source as a fallback when
+// FFmpeg cannot decode a legacy format.
+func (a *App) writeThumbnail(w http.ResponseWriter, _ *http.Request, data []byte, sourceType string) {
+	thumbnail, err := ffmpegJPEG(a.cfg.FFmpeg, data)
+	if err == nil && len(thumbnail) > 0 {
+		data = thumbnail
+		sourceType = "image/jpeg"
+	}
+	if sourceType == "" {
+		sourceType = http.DetectContentType(data)
+	}
+	w.Header().Set("Content-Type", sourceType)
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	_, _ = w.Write(data)
 }
 func urlPathUnescape(v string) (string, error) { return url.PathUnescape(v) }
 func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {

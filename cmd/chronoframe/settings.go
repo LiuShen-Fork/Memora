@@ -230,9 +230,15 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 	serialized := serializeSetting(typ, value)
 	if updatedBy == nil {
 		_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch() WHERE namespace=? AND key=?`, serialized, ns, key)
+		if err == nil && ns == "storage" && key == "provider" && a.storage != nil {
+			a.storage = a.loadStorage()
+		}
 		return err
 	}
 	_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch(),updated_by=? WHERE namespace=? AND key=?`, serialized, updatedBy, ns, key)
+	if err == nil && ns == "storage" && key == "provider" && a.storage != nil {
+		a.storage = a.loadStorage()
+	}
 	return err
 }
 

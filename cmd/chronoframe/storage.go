@@ -125,6 +125,7 @@ func urlQueryEscape(v string) string { return url.QueryEscape(v) }
 type S3Storage struct {
 	client              *minio.Client
 	bucket, prefix, cdn string
+	endpoint, region    string
 }
 
 func NewS3Storage(c Config) (*S3Storage, error) {
@@ -138,7 +139,7 @@ func NewS3Storage(c Config) (*S3Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &S3Storage{client: client, bucket: c.S3Bucket, prefix: strings.Trim(c.S3Prefix, "/"), cdn: strings.TrimRight(c.S3CDN, "/")}, nil
+	return &S3Storage{client: client, bucket: c.S3Bucket, prefix: strings.Trim(c.S3Prefix, "/"), cdn: strings.TrimRight(c.S3CDN, "/"), endpoint: c.S3Endpoint, region: c.S3Region}, nil
 }
 func (s *S3Storage) Prefix() string      { return s.prefix }
 func (s *S3Storage) key(k string) string { return storageKey(s.prefix, k) }
@@ -181,7 +182,18 @@ func (s *S3Storage) PublicURL(k string) string {
 	if s.cdn != "" {
 		return s.cdn + "/" + key
 	}
-	return "/image/" + strings.TrimLeft(key, "/")
+	endpoint := strings.TrimRight(s.endpoint, "/")
+	if endpoint == "" || strings.Contains(endpoint, "amazonaws.com") {
+		return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucket, s.region, key)
+	}
+	if strings.Contains(endpoint, "aliyuncs.com") {
+		if !strings.Contains(endpoint, "://") {
+			return ""
+		}
+		parts := strings.SplitN(endpoint, "://", 2)
+		return parts[0] + "://" + s.bucket + "." + parts[1] + "/" + key
+	}
+	return endpoint + "/" + s.bucket + "/" + key
 }
 func (s *S3Storage) SignedURL(ctx context.Context, k, ct string) (string, error) {
 	u, err := s.client.PresignedPutObject(ctx, s.bucket, s.key(k), time.Hour)

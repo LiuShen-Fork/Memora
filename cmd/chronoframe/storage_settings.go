@@ -167,6 +167,11 @@ func (a *App) updateStorageConfig(w http.ResponseWriter, r *http.Request, id int
 		errorJSON(w, http.StatusInternalServerError, "Unable to update storage configuration")
 		return
 	}
+	var active string
+	_ = a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`).Scan(&active)
+	if strings.Trim(active, `"`) == strconv.FormatInt(id, 10) && a.storage != nil {
+		a.storage = a.loadStorage()
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
