@@ -256,6 +256,10 @@ func (a *App) writeMapSettings(input wizardMapInput) {
 	if input.Provider == "amap" {
 		a.setSetting("map", "amap.key", input.AmapKey)
 		a.setSetting("map", "amap.securityCode", input.AmapSecurityCode)
+		// Use the same AMap key for server-side reverse geocoding unless the
+		// administrator later overrides it in Location settings.
+		a.setSetting("location", "provider", "amap")
+		a.setSetting("location", "amap.key", input.AmapKey)
 	} else {
 		a.setSetting("map", input.Provider+".token", input.Token)
 		if input.Style != "" {

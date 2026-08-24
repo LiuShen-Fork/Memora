@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { Album, Photo } from '~~/server/utils/db'
+import type { Album, Photo } from '~~/shared/types/domain'
 import type { FormSubmitEvent, FormError } from '@nuxt/ui'
 
 definePageMeta({
@@ -436,6 +436,11 @@ const columns = computed<any[]>(() => [
           <UTable
             :data="albums"
             :columns="columns"
+            class="table-scroll w-full"
+            :ui="{
+              wrapper: 'relative overflow-auto',
+              base: 'min-w-[720px] table-fixed',
+            }"
           >
             <template #coverPhoto-cell="{ row }">
               <div
@@ -480,7 +485,8 @@ const columns = computed<any[]>(() => [
             <template #description-cell="{ row }">
               <div
                 v-if="(row.original as unknown as AlbumItem).description"
-                class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1"
+                class="max-w-[28rem] rounded-md border border-neutral-200/70 bg-neutral-50/70 px-2.5 py-1.5 text-sm text-gray-600 line-clamp-2 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-gray-400"
+                :title="(row.original as unknown as AlbumItem).description || ''"
               >
                 {{ (row.original as unknown as AlbumItem).description }}
               </div>

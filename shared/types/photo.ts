@@ -1,4 +1,4 @@
-import type { Tags } from 'exiftool-vendored'
+type ExifValue = string | number | boolean | null
 
 export interface NeededExif {
   Title?: string
@@ -7,11 +7,11 @@ export interface NeededExif {
   Keywords?: string[]
   XPKeywords?: string
 
-  Description?: Tags['Description']
-  ImageDescription?: Tags['ImageDescription']
-  CaptionAbstract?: Tags['Caption-Abstract']
-  XPComment?: Tags['XPComment']
-  UserComment?: Tags['UserComment']
+  Description?: ExifValue
+  ImageDescription?: ExifValue
+  CaptionAbstract?: ExifValue
+  XPComment?: ExifValue
+  UserComment?: ExifValue
 
   zone?: string
   tz?: string
@@ -63,36 +63,36 @@ export interface NeededExif {
   ImageWidth?: number
   ImageHeight?: number
 
-  MeteringMode: Tags['MeteringMode']
-  WhiteBalance: Tags['WhiteBalance']
-  WBShiftAB: Tags['WBShiftAB']
-  WBShiftGM: Tags['WBShiftGM']
-  WhiteBalanceBias: Tags['WhiteBalanceBias']
-  WhiteBalanceFineTune: Tags['WhiteBalanceFineTune']
-  FlashMeteringMode: Tags['FlashMeteringMode']
-  SensingMethod: Tags['SensingMethod']
-  FocalPlaneXResolution: Tags['FocalPlaneXResolution']
-  FocalPlaneYResolution: Tags['FocalPlaneYResolution']
-  GPSAltitude: Tags['GPSAltitude']
-  GPSLatitude: Tags['GPSLatitude']
-  GPSLongitude: Tags['GPSLongitude']
-  GPSAltitudeRef: Tags['GPSAltitudeRef']
-  GPSLatitudeRef: Tags['GPSLatitudeRef']
-  GPSLongitudeRef: Tags['GPSLongitudeRef']
+  MeteringMode?: ExifValue
+  WhiteBalance?: ExifValue
+  WBShiftAB?: ExifValue
+  WBShiftGM?: ExifValue
+  WhiteBalanceBias?: ExifValue
+  WhiteBalanceFineTune?: ExifValue
+  FlashMeteringMode?: ExifValue
+  SensingMethod?: ExifValue
+  FocalPlaneXResolution?: ExifValue
+  FocalPlaneYResolution?: ExifValue
+  GPSAltitude?: ExifValue
+  GPSLatitude?: ExifValue
+  GPSLongitude?: ExifValue
+  GPSAltitudeRef?: ExifValue
+  GPSLatitudeRef?: ExifValue
+  GPSLongitudeRef?: ExifValue
 
   // HDR Type
-  MPImageType?: Tags['MPImageType']
+  MPImageType?: ExifValue
 
   Rating?: number
 
   // Motion Photo (XMP) related fields
-  MotionPhoto?: Tags['MotionPhoto']
-  MotionPhotoVersion?: Tags['MotionPhotoVersion']
-  MotionPhotoPresentationTimestampUs?: Tags['MotionPhotoPresentationTimestampUs']
-  MicroVideo?: Tags['MicroVideo']
-  MicroVideoVersion?: Tags['MicroVideoVersion']
-  MicroVideoOffset?: Tags['MicroVideoOffset']
-  MicroVideoPresentationTimestampUs?: Tags['MicroVideoPresentationTimestampUs']
+  MotionPhoto?: ExifValue
+  MotionPhotoVersion?: ExifValue
+  MotionPhotoPresentationTimestampUs?: ExifValue
+  MicroVideo?: ExifValue
+  MicroVideoVersion?: ExifValue
+  MicroVideoOffset?: ExifValue
+  MicroVideoPresentationTimestampUs?: ExifValue
 }
 
 export interface PhotoInfo {

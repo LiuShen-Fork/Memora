@@ -9,14 +9,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "db": "drizzle-kit",
-    "db:push": "drizzle-kit push",
-    "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio --port 3010",
-    "db:check": "drizzle-kit check",
-    "db:up": "drizzle-kit up",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
     "build": "NODE_OPTIONS=\"--max-old-space-size=8192\" nuxt generate",
     "build:deps": "pnpm --filter @chronoframe/webgl-image build",
     "dev": "run-p dev:dep dev:wait-only",
@@ -38,8 +30,6 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1065.0",
-    "@aws-sdk/s3-request-presigner": "^3.1065.0",
     "@chronoframe/webgl-image": "workspace:*",
     "@iconify/vue": "5.0.1",
     "@indoorequal/vue-maplibre-gl": "^8.4.2",
@@ -54,31 +44,23 @@
     "@vingle/bmp-js": "^0.2.5",
     "@vueuse/nuxt": "14.3.0",
     "@yeger/vue-masonry-wall": "^6.1.1",
-    "better-sqlite3": "^12.10.0",
     "dayjs-nuxt": "2.1.11",
-    "drizzle-orm": "^0.45.2",
     "es-toolkit": "^1.47.0",
-    "exiftool-vendored": "^35.21.0",
     "file-type": "^22.0.1",
-    "heic-convert": "^2.1.0",
     "maplibre-gl": "^5.24.0",
     "motion-v": "^2.3.0",
     "nuxt": "^4.4.8",
-    "nuxt-auth-utils": "0.5.29",
     "nuxt-gtag": "4.1.0",
     "nuxt-mapbox": "1.6.4",
     "nuxt-maplibre": "^1.2.2",
     "nuxt-og-image": "6.7.2",
     "pinia": "^3.0.4",
     "reka-ui": "^2.9.9",
-    "sharp": "^0.34.5",
     "swiper": "^12.2.0",
-    "systeminformation": "^5.31.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
     "thumbhash": "^0.1.1",
     "tippy.js": "^6.3.7",
-    "unstorage": "^1.17.5",
     "vue": "^3.5.35",
     "vue-router": "^4.6.4",
     "wait-on": "^9.0.10",
@@ -96,13 +78,10 @@
     "@iconify-json/svg-spinners": "^1.2.4",
     "@iconify-json/tabler": "^1.2.35",
     "@nuxt/test-utils": "4.0.3",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/heic-convert": "^2.1.1",
     "@vueuse/core": "^14.3.0",
     "baseline-browser-mapping": "^2.10.35",
     "consola": "^3.4.2",
     "dayjs": "^1.11.21",
-    "drizzle-kit": "^0.31.10",
     "mapbox-gl": "^3.24.0",
     "npm-run-all2": "^8.0.4",
     "oxfmt": "^0.54.0",
@@ -117,19 +96,12 @@
         "@nuxt/kit"
       ]
     },
-    "overrides": {
-      "sharp": "0.34.5"
-    },
     "ignoredBuiltDependencies": [
       "@parcel/watcher",
       "@tailwindcss/oxide",
       "esbuild",
       "unrs-resolver",
       "vue-demi"
-    ],
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "sharp"
     ]
   }
 }

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
-import type { Photo, PipelineQueueItem } from '~~/server/utils/db'
+import type { Album, Photo, PipelineQueueItem } from '~~/shared/types/domain'
 import { h, resolveComponent } from 'vue'
 import { Icon, UBadge } from '#components'
 import ThumbImage from '~/components/ui/ThumbImage.vue'
@@ -266,6 +266,7 @@ const uploadImage = async (
   file: File,
   existingFileId?: string,
   eraseLocationOnUpload?: boolean,
+  albumId?: number,
 ) => {
   const fileName = file.name
   const fileId = existingFileId || `${Date.now()}-${fileName}`
@@ -310,6 +311,10 @@ const uploadImage = async (
 
     // 检查是否为跳过模式（重复文件）
     if (signedUrlResponse.skipped) {
+      const existingPhotoId = signedUrlResponse.existingPhoto?.id
+      if (albumId && existingPhotoId) {
+        await updateAlbumMembership(albumId, 'add', [existingPhotoId])
+      }
       uploadingFile.status = 'skipped'
       uploadingFile.progress = 100
       uploadingFile.canAbort = false
@@ -385,6 +390,7 @@ const uploadImage = async (
               payload: {
                 type: isMovFile ? 'live-photo-video' : 'photo',
                 storageKey: signedUrlResponse.fileKey,
+                ...(albumId && !isMovFile ? { albumId } : {}),
                 ...(isMovFile
                   ? {}
                   : {
@@ -489,6 +495,47 @@ const toast = useToast()
 const selectedFiles = ref<File[]>([])
 const isUploadSlideoverOpen = ref(false)
 const uploadEraseLocationEnabled = ref(systemUploadEraseLocationDefault.value)
+const photoAlbums = ref<Album[]>([])
+const selectedUploadAlbumId = ref(0)
+const isLoadingPhotoAlbums = ref(false)
+
+const albumOptions = computed(() => [
+  {
+    label: $t('dashboard.photos.albumSelection.noAlbum'),
+    value: 0,
+    icon: 'tabler:photo-off',
+  },
+  ...photoAlbums.value.map((album) => ({
+    label: album.title,
+    value: album.id,
+    icon: 'tabler:album',
+  })),
+])
+
+const loadPhotoAlbums = async () => {
+  if (isLoadingPhotoAlbums.value) return
+  isLoadingPhotoAlbums.value = true
+  try {
+    const response = await $fetch('/api/albums')
+    photoAlbums.value = (response as Album[]).filter((album) => !album.isHidden)
+  } catch (error) {
+    console.error('Failed to load photo albums:', error)
+  } finally {
+    isLoadingPhotoAlbums.value = false
+  }
+}
+
+const updateAlbumMembership = async (
+  albumId: number,
+  action: 'add' | 'remove',
+  photoIds: string[],
+) => {
+  if (!albumId || photoIds.length === 0) return
+  await $fetch(`/api/albums/${albumId}/photos`, {
+    method: 'PUT',
+    body: { action, photoIds },
+  })
+}
 
 const hasSelectedFiles = computed(() => selectedFiles.value.length > 0)
 
@@ -521,11 +568,13 @@ watch(isUploadSlideoverOpen, (open) => {
   if (!open) {
     clearSelectedFiles()
     uploadEraseLocationEnabled.value = systemUploadEraseLocationDefault.value
+    selectedUploadAlbumId.value = 0
   }
 })
 
 const openUploadSlideover = () => {
   uploadEraseLocationEnabled.value = systemUploadEraseLocationDefault.value
+  void loadPhotoAlbums()
   isUploadSlideoverOpen.value = true
 }
 
@@ -572,6 +621,72 @@ const columnVisibility = ref({
 const selectedRowsCount = computed((): number => {
   return table.value?.tableApi?.getFilteredSelectedRowModel().rows.length || 0
 })
+
+const isBatchAlbumModalOpen = ref(false)
+const batchAlbumId = ref(0)
+const batchAlbumAction = ref<'add' | 'remove'>('add')
+const batchAlbumActionOptions = computed(() => [
+  {
+    label: $t('dashboard.photos.albumSelection.actions.add'),
+    value: 'add' as const,
+    icon: 'tabler:playlist-add',
+  },
+  {
+    label: $t('dashboard.photos.albumSelection.actions.remove'),
+    value: 'remove' as const,
+    icon: 'tabler:playlist-x',
+  },
+])
+
+const openBatchAlbumModal = () => {
+  if (selectedRowsCount.value === 0) {
+    toast.add({
+      title: $t('dashboard.photos.messages.batchSelectRequired'),
+      color: 'warning',
+    })
+    return
+  }
+  batchAlbumId.value = 0
+  batchAlbumAction.value = 'add'
+  void loadPhotoAlbums()
+  isBatchAlbumModalOpen.value = true
+}
+
+const handleBatchAlbumUpdate = async () => {
+  if (!batchAlbumId.value) return
+  const selectedRowModel = table.value?.tableApi?.getFilteredSelectedRowModel()
+  const selectedPhotos =
+    selectedRowModel?.rows.map((row: any) => row.original as Photo) || []
+  const photoIds = selectedPhotos
+    .map((photo: Photo) => photo.id)
+    .filter((id): id is string => Boolean(id))
+  if (photoIds.length === 0) return
+
+  try {
+    await updateAlbumMembership(
+      batchAlbumId.value,
+      batchAlbumAction.value,
+      photoIds,
+    )
+    toast.add({
+      title: $t(
+        batchAlbumAction.value === 'add'
+          ? 'dashboard.photos.albumSelection.messages.added'
+          : 'dashboard.photos.albumSelection.messages.removed',
+        { count: photoIds.length },
+      ),
+      color: 'success',
+    })
+    rowSelection.value = {}
+    isBatchAlbumModalOpen.value = false
+  } catch (error: any) {
+    toast.add({
+      title: $t('dashboard.photos.albumSelection.messages.failed'),
+      description: error?.data?.message || error?.message || '',
+      color: 'error',
+    })
+  }
+}
 
 const totalRowsCount = computed((): number => {
   return table.value?.tableApi?.getFilteredRowModel().rows.length || 0
@@ -1203,12 +1318,18 @@ const handleUpload = async () => {
   // 创建文件队列
   const fileQueue = [...validFiles]
   const activeUploads = new Set<Promise<void>>()
+  const targetAlbumId = selectedUploadAlbumId.value || undefined
 
   // 启动上传任务的函数
   const startUpload = async (file: File): Promise<void> => {
     const fileId = fileIdMapping.get(file)!
     try {
-      await uploadImage(file, fileId, uploadEraseLocationEnabled.value)
+      await uploadImage(
+        file,
+        fileId,
+        uploadEraseLocationEnabled.value,
+        targetAlbumId,
+      )
     } catch (error: any) {
       errors.push(`${file.name}: ${error.message || '上传失败'}`)
       console.error('上传错误:', error)
@@ -2045,6 +2166,10 @@ watch(isImagePreviewOpen, (open) => {
   }
 })
 
+onMounted(() => {
+  void loadPhotoAlbums()
+})
+
 // 清理定时器
 onUnmounted(() => {
   // 清理所有状态检查定时器
@@ -2145,6 +2270,22 @@ onUnmounted(() => {
                   fileTrailingButton: 'text-neutral-400 hover:text-error-500',
                 }"
               />
+
+              <UFormField
+                :label="$t('dashboard.photos.albumSelection.label')"
+                :description="$t('dashboard.photos.albumSelection.description')"
+              >
+                <USelectMenu
+                  v-model="selectedUploadAlbumId"
+                  :items="albumOptions"
+                  value-key="value"
+                  label-key="label"
+                  :loading="isLoadingPhotoAlbums"
+                  :search-input="photoAlbums.length > 6"
+                  class="w-full"
+                  :placeholder="$t('dashboard.photos.albumSelection.placeholder')"
+                />
+              </UFormField>
 
               <UCard
                 variant="soft"
@@ -2404,7 +2545,7 @@ onUnmounted(() => {
             sticky
             class="h-full flex-1"
             :ui="{
-              wrapper: 'relative scroll-smooth h-full overflow-auto',
+              wrapper: 'table-scroll relative scroll-smooth h-full overflow-auto',
               base: 'min-w-full table-fixed',
               divide:
                 'divide-y divide-neutral-200/80 dark:divide-neutral-800/80',
@@ -2501,6 +2642,19 @@ onUnmounted(() => {
                 >
                   <span class="hidden sm:inline">{{
                     $t('dashboard.photos.selection.batchEraseLocation')
+                  }}</span>
+                </UButton>
+
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  class="rounded-full text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800"
+                  icon="tabler:albums"
+                  @click="openBatchAlbumModal"
+                >
+                  <span class="hidden sm:inline">{{
+                    $t('dashboard.photos.selection.batchAlbums')
                   }}</span>
                 </UButton>
 
@@ -2710,6 +2864,72 @@ onUnmounted(() => {
             </div>
           </template>
         </USlideover>
+
+        <UModal v-model:open="isBatchAlbumModalOpen">
+          <template #content>
+            <div class="space-y-5 p-5 sm:p-6">
+              <div>
+                <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">
+                  {{ $t('dashboard.photos.albumSelection.batchTitle') }}
+                </h3>
+                <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                  {{
+                    $t('dashboard.photos.albumSelection.batchDescription', {
+                      count: selectedRowsCount,
+                    })
+                  }}
+                </p>
+              </div>
+
+              <div class="space-y-4">
+                <UFormField
+                  :label="$t('dashboard.photos.albumSelection.actionLabel')"
+                >
+                  <USelectMenu
+                    v-model="batchAlbumAction"
+                    :items="batchAlbumActionOptions"
+                    value-key="value"
+                    label-key="label"
+                    :search-input="false"
+                    class="w-full"
+                  />
+                </UFormField>
+                <UFormField
+                  :label="$t('dashboard.photos.albumSelection.targetLabel')"
+                >
+                  <USelectMenu
+                    v-model="batchAlbumId"
+                    :items="albumOptions.filter((item) => item.value !== 0)"
+                    value-key="value"
+                    label-key="label"
+                    :loading="isLoadingPhotoAlbums"
+                    :search-input="photoAlbums.length > 6"
+                    class="w-full"
+                    :placeholder="$t('dashboard.photos.albumSelection.targetPlaceholder')"
+                  />
+                </UFormField>
+              </div>
+
+              <div class="flex justify-end gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  @click="isBatchAlbumModalOpen = false"
+                >
+                  {{ $t('dashboard.photos.albumSelection.cancel') }}
+                </UButton>
+                <UButton
+                  color="primary"
+                  icon="tabler:check"
+                  :disabled="!batchAlbumId"
+                  @click="handleBatchAlbumUpdate"
+                >
+                  {{ $t('dashboard.photos.albumSelection.confirm') }}
+                </UButton>
+              </div>
+            </div>
+          </template>
+        </UModal>
 
         <UModal v-model:open="isDeleteConfirmOpen">
           <template #body>

@@ -564,6 +564,28 @@
         "label": "拖放或点击选择照片",
         "description": "支持 JPEG、PNG、HEIC 格式照片，以及 MOV 格式 Live Photo 视频，单个文件最大 {maxSize}MB"
       },
+      "albumSelection": {
+        "label": "将上传的照片加入相册",
+        "description": "可选。不选择相册也可以，之后再整理照片。",
+        "placeholder": "选择相册，或留空",
+        "noAlbum": "不加入相册",
+        "batchTitle": "修改照片所属相册",
+        "batchDescription": "对选中的 {count} 张照片批量修改相册归属。",
+        "actionLabel": "操作",
+        "targetLabel": "目标相册",
+        "targetPlaceholder": "选择相册",
+        "actions": {
+          "add": "追加到相册",
+          "remove": "从相册移除"
+        },
+        "cancel": "取消",
+        "confirm": "应用",
+        "messages": {
+          "added": "已将 {count} 张照片加入相册",
+          "removed": "已将 {count} 张照片从相册移除",
+          "failed": "修改照片相册失败"
+        }
+      },
       "toolbar": {
         "title": "照片管理",
         "filter": "筛选",
@@ -622,6 +644,7 @@
         "previewPhoto": "预览照片"
       },
       "selection": {
+        "batchAlbums": "相册",
         "selected": "{count} / {total} 行已选择",
         "batchReprocess": "重新处理",
         "batchEraseLocation": "抹除位置信息",

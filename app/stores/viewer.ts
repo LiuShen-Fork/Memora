@@ -1,4 +1,4 @@
-import type { Photo } from '~~/server/utils/db'
+import type { Photo } from '~~/shared/types/domain'
 
 export const useViewerState = defineStore('photo-viewer-state', () => {
   const currentPhotoIndex = ref(0)

@@ -567,6 +567,28 @@
         "label": "Drag and drop or click to select photos",
         "description": "Supports JPEG, PNG, HEIC format photos, and MOV format Live Photo videos. Maximum file size: {maxSize}MB per file"
       },
+      "albumSelection": {
+        "label": "Add uploaded photos to an album",
+        "description": "Optional. You can leave this empty and organize photos later.",
+        "placeholder": "Choose an album or leave empty",
+        "noAlbum": "No album",
+        "batchTitle": "Update photo albums",
+        "batchDescription": "Apply an album membership change to {count} selected photos.",
+        "actionLabel": "Action",
+        "targetLabel": "Target album",
+        "targetPlaceholder": "Choose an album",
+        "actions": {
+          "add": "Add to album",
+          "remove": "Remove from album"
+        },
+        "cancel": "Cancel",
+        "confirm": "Apply",
+        "messages": {
+          "added": "Added {count} photos to the album",
+          "removed": "Removed {count} photos from the album",
+          "failed": "Failed to update photo albums"
+        }
+      },
       "toolbar": {
         "title": "Photo Management",
         "filter": "Filter",
@@ -628,6 +650,7 @@
         "selected": "{count} / {total} rows selected",
         "batchReprocess": "Reprocess",
         "batchEraseLocation": "Erase location info",
+        "batchAlbums": "Albums",
         "batchDownload": "Download",
         "batchDelete": "Batch Delete"
       },

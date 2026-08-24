@@ -291,6 +291,13 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 	if err != nil {
 		return err
 	}
+	if albumID, ok := numberValue(t.Payload["albumId"]); ok && albumID > 0 {
+		// The album may have been deleted while the upload was processing. Do
+		// not fail the photo task for that unrelated lifecycle change.
+		if _, associationErr := a.db.Exec(`INSERT OR IGNORE INTO album_photos(album_id,photo_id,position) VALUES(?,?,COALESCE((SELECT MAX(position)+10 FROM album_photos WHERE album_id=?),1000010))`, int64(albumID), id, int64(albumID)); associationErr != nil {
+			a.logs.Add("queue", fmt.Sprintf("failed to add %s to album %d: %v", id, int64(albumID), associationErr))
+		}
+	}
 	if hasGPS {
 		a.setStage(t.ID, "reverse-geocoding")
 		if err := a.enqueueReverseGeocoding(id, latitude, longitude); err != nil {

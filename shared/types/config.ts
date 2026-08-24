@@ -1,4 +1,4 @@
-import type { StorageConfig } from '../../server/services/storage'
+import type { StorageConfig } from './storage'
 
 export interface ChronoConfig {
   storage: StorageConfig

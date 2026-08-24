@@ -1,6 +1,4 @@
-import type * as schema from '../../server/database/schema'
-
-export type SettingType = typeof schema.settings.$inferSelect.type
+export type SettingType = 'string' | 'number' | 'boolean' | 'json'
 export type SettingValue =
   | string
   | number
@@ -8,19 +6,33 @@ export type SettingValue =
   | Record<string, any>
   | null
 
-export type SettingConfig = Omit<
-  typeof schema.settings.$inferInsert,
-  'value' | 'defaultValue' | 'id' | 'updatedAt' | 'updatedBy' | 'enum'
-> & {
+export interface SettingConfig {
+  namespace: string
+  key: string
+  type: SettingType
+  label?: string | null
+  description?: string | null
+  isPublic?: boolean
+  isReadonly?: boolean
+  isSecret?: boolean
   value?: SettingValue
   defaultValue: SettingValue
-  enum?: ReadonlyArray<string>
+  enum?: ReadonlyArray<string> | null
 }
 
-export type SettingStorageProvider =
-  typeof schema.settings_storage_providers.$inferSelect
-export type NewSettingStorageProvider =
-  typeof schema.settings_storage_providers.$inferInsert
+export interface SettingStorageProvider {
+  id: number
+  name: string
+  provider: 's3' | 'local' | 'openlist'
+  config: Record<string, any>
+  createdAt?: string | number | Date
+  updatedAt?: string | number | Date
+}
+
+export type NewSettingStorageProvider = Omit<
+  SettingStorageProvider,
+  'id' | 'createdAt' | 'updatedAt'
+>
 
 /**
  * UI 字段类型枚举
