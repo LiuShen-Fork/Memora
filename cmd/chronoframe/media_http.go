@@ -109,6 +109,10 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 		path = "/index.html"
 	}
 	file := filepath.Join(a.cfg.WebDir, filepath.FromSlash(strings.TrimPrefix(path, "/")))
+	if !safePath(a.cfg.WebDir, file) {
+		errorJSON(w, http.StatusNotFound, "Not Found")
+		return
+	}
 	if data, err := os.ReadFile(file); err == nil {
 		http.ServeContent(w, r, filepath.Base(file), time.Time{}, bytes.NewReader(data))
 		return
