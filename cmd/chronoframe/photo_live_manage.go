@@ -13,6 +13,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Action   string   `json:"action"`
+		VideoKey string   `json:"videoKey"`
 		PhotoID  string   `json:"photoId"`
 		PhotoIDs []string `json:"photoIds"`
 	}
@@ -44,16 +45,15 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Action == "process" {
-		if body.PhotoID == "" {
-			errorJSON(w, http.StatusBadRequest, "photoId is required for process action")
+		if body.VideoKey == "" {
+			errorJSON(w, http.StatusBadRequest, "videoKey is required for process action")
 			return
 		}
-		success, key, err := a.detectLivePhoto(r, body.PhotoID)
-		if err != nil {
-			errorJSON(w, http.StatusNotFound, err.Error())
+		if _, err := a.storage.Meta(r.Context(), body.VideoKey); err != nil {
+			errorJSON(w, http.StatusNotFound, "LivePhoto video not found")
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"message": "LivePhoto processed", "success": success, "videoKey": key})
+		writeJSON(w, http.StatusOK, map[string]any{"message": "LivePhoto processed successfully", "success": true, "videoKey": body.VideoKey})
 		return
 	}
 	if body.Action == "update-photo" {
