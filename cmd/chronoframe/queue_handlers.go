@@ -269,7 +269,6 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
 		return
 	}
-	defer rows.Close()
 	out := []map[string]any{}
 	for rows != nil && rows.Next() {
 		var id, priority, attempts, max int
@@ -284,6 +283,15 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 			completedAt = time.Unix(completed.Int64, 0)
 		}
 		out = append(out, map[string]any{"id": id, "payload": payload, "priority": priority, "attempts": attempts, "maxAttempts": max, "status": status, "statusStage": stage, "errorMessage": errMsg, "createdAt": time.Unix(created, 0), "completedAt": completedAt})
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
+		return
+	}
+	if err := rows.Close(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
+		return
 	}
 	writeJSON(w, 200, map[string]any{"success": true, "data": out})
 }

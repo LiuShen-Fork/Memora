@@ -10,7 +10,7 @@ import (
 )
 
 func (a *App) albums(w http.ResponseWriter, r *http.Request) {
-	rows, err := a.db.Query(`SELECT id,title,description,cover_photo_id,is_hidden,created_at,updated_at FROM albums ORDER BY created_at DESC`)
+	rows, err := a.db.QueryContext(r.Context(), `SELECT id,title,description,cover_photo_id,is_hidden,created_at,updated_at FROM albums ORDER BY created_at DESC`)
 	if err != nil {
 		errorJSON(w, 500, err.Error())
 		return
@@ -30,11 +30,16 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		}
 		albumRows = append(albumRows, album)
 	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to read albums")
+		return
+	}
 	_ = rows.Close()
 	out := []map[string]any{}
 	for _, album := range albumRows {
 		ids := []string{}
-		pRows, _ := a.db.Query(`SELECT photo_id FROM album_photos WHERE album_id=? ORDER BY position`, album.id)
+		pRows, _ := a.db.QueryContext(r.Context(), `SELECT photo_id FROM album_photos WHERE album_id=? ORDER BY position`, album.id)
 		for pRows != nil && pRows.Next() {
 			var photoID string
 			_ = pRows.Scan(&photoID)
@@ -246,7 +251,7 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 			return
 		}
 	}
-	rows, _ := a.db.Query(photoSelect+` WHERE id IN (SELECT photo_id FROM album_photos WHERE album_id=?) ORDER BY (SELECT position FROM album_photos WHERE album_id=? AND photo_id=photos.id) ASC`, id, id)
+	rows, _ := a.db.QueryContext(r.Context(), photoSelect+` WHERE id IN (SELECT photo_id FROM album_photos WHERE album_id=?) ORDER BY (SELECT position FROM album_photos WHERE album_id=? AND photo_id=photos.id) ASC`, id, id)
 	photos := []Photo{}
 	for rows != nil && rows.Next() {
 		p, e := scanPhoto(rows)

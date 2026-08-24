@@ -12,13 +12,18 @@ func (a *App) photoLive(w http.ResponseWriter, r *http.Request, id string) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to load photo")
 		return
 	}
-	defer rows.Close()
 	if !rows.Next() {
+		_ = rows.Close()
 		errorJSON(w, http.StatusNotFound, "Photo not found")
 		return
 	}
 	photo, err := scanPhoto(rows)
 	if err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to load photo")
+		return
+	}
+	if err := rows.Close(); err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Unable to load photo")
 		return
 	}

@@ -64,16 +64,24 @@ func (a *App) listStorageConfigs(w http.ResponseWriter) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to list storage configurations")
 		return
 	}
-	defer rows.Close()
-
 	configs := []storageConfigRecord{}
 	for rows.Next() {
 		record, err := scanStorageConfig(rows)
 		if err != nil {
+			_ = rows.Close()
 			errorJSON(w, http.StatusInternalServerError, "Unable to read storage configuration")
 			return
 		}
 		configs = append(configs, record)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to read storage configuration")
+		return
+	}
+	if err := rows.Close(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read storage configuration")
+		return
 	}
 	writeJSON(w, http.StatusOK, configs)
 }

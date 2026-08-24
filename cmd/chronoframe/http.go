@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -25,6 +26,12 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/") {
+		if acceptsGzip(r) {
+			compressed := newGzipResponseWriter(w)
+			defer compressed.Close()
+			a.api(compressed, r)
+			return
+		}
 		a.api(w, r)
 		return
 	}
@@ -41,6 +48,68 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.serveWeb(w, r)
+}
+
+func acceptsGzip(r *http.Request) bool {
+	return strings.Contains(strings.ToLower(r.Header.Get("Accept-Encoding")), "gzip") && r.Method != http.MethodHead
+}
+
+// gzipResponseWriter compresses JSON responses while preserving streaming
+// responses such as the system log SSE endpoint.
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gzipWriter  *gzip.Writer
+	wroteHeader bool
+}
+
+func newGzipResponseWriter(w http.ResponseWriter) *gzipResponseWriter {
+	return &gzipResponseWriter{ResponseWriter: w}
+}
+
+func (w *gzipResponseWriter) prepare(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+	contentType := strings.ToLower(w.Header().Get("Content-Type"))
+	if status != http.StatusNoContent && status != http.StatusNotModified &&
+		strings.HasPrefix(contentType, "application/json") {
+		w.Header().Del("Content-Length")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Add("Vary", "Accept-Encoding")
+		w.gzipWriter = gzip.NewWriter(w.ResponseWriter)
+	}
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *gzipResponseWriter) WriteHeader(status int) {
+	w.prepare(status)
+}
+
+func (w *gzipResponseWriter) Write(data []byte) (int, error) {
+	if !w.wroteHeader {
+		w.prepare(http.StatusOK)
+	}
+	if w.gzipWriter != nil {
+		return w.gzipWriter.Write(data)
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+func (w *gzipResponseWriter) Flush() {
+	if w.gzipWriter != nil {
+		_ = w.gzipWriter.Flush()
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (w *gzipResponseWriter) Close() error {
+	if w.gzipWriter == nil {
+		return nil
+	}
+	return w.gzipWriter.Close()
 }
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

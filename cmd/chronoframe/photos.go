@@ -82,18 +82,29 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
 	}
 	query += ` ORDER BY date_taken DESC`
-	rows, err := a.db.Query(query)
+	rows, err := a.db.QueryContext(r.Context(), query)
 	if err != nil {
 		errorJSON(w, 500, err.Error())
 		return
 	}
-	defer rows.Close()
 	out := []Photo{}
 	for rows.Next() {
 		p, err := scanPhoto(rows)
-		if err == nil {
-			out = append(out, p)
+		if err != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Unable to read photos")
+			return
 		}
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photos")
+		return
+	}
+	if err := rows.Close(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photos")
+		return
 	}
 	writeJSON(w, 200, out)
 }
@@ -198,13 +209,26 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	max := a.maxUploadBytes()
-	r.Body = http.MaxBytesReader(w, r.Body, max)
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		errorJSON(w, 413, "Upload too large")
+	if r.ContentLength > max {
+		errorJSON(w, http.StatusRequestEntityTooLarge, "Upload too large")
 		return
 	}
-	if _, err = a.storage.Create(r.Context(), key, data, contentType); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, max)
+	var err error
+	if writer, ok := a.storage.(ReaderWriterStorage); ok {
+		_, err = writer.CreateReader(r.Context(), key, r.Body, r.ContentLength, contentType)
+	} else {
+		var data []byte
+		data, err = io.ReadAll(r.Body)
+		if err == nil {
+			_, err = a.storage.Create(r.Context(), key, data, contentType)
+		}
+	}
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "request body too large") {
+			errorJSON(w, http.StatusRequestEntityTooLarge, "Upload too large")
+			return
+		}
 		errorJSON(w, 500, "Upload failed")
 		return
 	}
@@ -257,20 +281,29 @@ func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	rows, err := a.db.Query(photoSelect + ` ORDER BY last_modified LIMIT 10`)
+	rows, err := a.db.QueryContext(r.Context(), photoSelect+` ORDER BY last_modified LIMIT 10`)
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Unable to read photo status")
 		return
 	}
-	defer rows.Close()
 	recentPhotos := []Photo{}
 	for rows.Next() {
 		photo, scanErr := scanPhoto(rows)
 		if scanErr != nil {
+			_ = rows.Close()
 			errorJSON(w, http.StatusInternalServerError, "Unable to read photo status")
 			return
 		}
 		recentPhotos = append(recentPhotos, photo)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photo status")
+		return
+	}
+	if err := rows.Close(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photo status")
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"recentPhotos": recentPhotos,
@@ -473,16 +506,10 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	if body.Location != nil && location != nil {
-		payload, _ := json.Marshal(map[string]any{
-			"type":      "photo-reverse-geocoding",
-			"photoId":   id,
-			"latitude":  location["latitude"],
-			"longitude": location["longitude"],
-		})
-		if _, queueErr := a.db.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(payload), 1, 3); queueErr != nil {
+		latitude, _ := location["latitude"].(float64)
+		longitude, _ := location["longitude"].(float64)
+		if queueErr := a.enqueueReverseGeocoding(id, latitude, longitude); queueErr != nil {
 			a.logs.Add("queue", "failed to enqueue reverse geocoding for "+id+": "+queueErr.Error())
-		} else {
-			a.wakeQueue()
 		}
 	}
 	updated, err := a.photoByID(id)
@@ -545,7 +572,6 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 			errorJSON(w, http.StatusInternalServerError, "Unable to load reactions")
 			return
 		}
-		defer rows.Close()
 		counts := newReactionCounts()
 		for rows.Next() {
 			var typ string
@@ -554,8 +580,7 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 				counts[typ] = count
 			}
 		}
-		// The application intentionally uses one SQLite connection. Close the
-		// aggregate result before issuing the per-client reaction query.
+		// Release the read connection before issuing the per-client reaction query.
 		_ = rows.Close()
 		var current sql.NullString
 		_ = a.db.QueryRow(`SELECT reaction_type FROM photo_reactions WHERE photo_id=? AND fingerprint=? ORDER BY id DESC LIMIT 1`, id, fingerprint).Scan(&current)

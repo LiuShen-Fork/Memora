@@ -89,7 +89,9 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 		return nil
 	}
 	query := url.Values{"lat": {strconv.FormatFloat(latitude, 'f', 8, 64)}, "lon": {strconv.FormatFloat(longitude, 'f', 8, 64)}, "format": {"jsonv2"}, "addressdetails": {"1"}}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/reverse?"+query.Encode(), nil)
+	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(lookupCtx, http.MethodGet, base+"/reverse?"+query.Encode(), nil)
 	if err != nil {
 		return err
 	}

@@ -12,14 +12,13 @@ func (a *App) photoAlbums(w http.ResponseWriter, photoID string) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to load photo albums")
 		return
 	}
-	defer rows.Close()
-
 	albums := []map[string]any{}
 	for rows.Next() {
 		var id, createdAt, updatedAt int64
 		var title string
 		var description, coverPhotoID sql.NullString
 		if err := rows.Scan(&id, &title, &description, &coverPhotoID, &createdAt, &updatedAt); err != nil {
+			_ = rows.Close()
 			errorJSON(w, http.StatusInternalServerError, "Unable to read photo album")
 			return
 		}
@@ -31,6 +30,15 @@ func (a *App) photoAlbums(w http.ResponseWriter, photoID string) {
 			"createdAt":    time.Unix(createdAt, 0),
 			"updatedAt":    time.Unix(updatedAt, 0),
 		})
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photo albums")
+		return
+	}
+	if err := rows.Close(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photo albums")
+		return
 	}
 	writeJSON(w, http.StatusOK, albums)
 }

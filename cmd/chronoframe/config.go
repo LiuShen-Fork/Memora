@@ -20,6 +20,7 @@ type Config struct {
 	DataDir            string
 	WebDir             string
 	Addr               string
+	DBMaxOpenConns     int
 	SessionKey         []byte
 	WorkerCount        int
 	FFmpeg             string
@@ -83,6 +84,7 @@ func loadConfig() Config {
 		DataDir:            dataDir,
 		WebDir:             env("CFRAME_WEB_DIR", defaultWebDir),
 		Addr:               env("CFRAME_ADDR", ":3000"),
+		DBMaxOpenConns:     envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
 		SessionKey:         []byte(secret),
 		WorkerCount:        envInt("CFRAME_WORKERS", 2),
 		FFmpeg:             env("CFRAME_FFMPEG_PATH", "ffmpeg"),

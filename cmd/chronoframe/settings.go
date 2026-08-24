@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -152,21 +153,35 @@ func (a *App) namespaceSettings(namespace string) map[string]any {
 	}
 	return result
 }
-func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
-	rows, err := a.db.Query(`SELECT namespace,key,type,value,is_public FROM settings WHERE is_public=1 OR (namespace='system' AND key='firstLaunch')`)
+func (a *App) allSettings(w http.ResponseWriter, r *http.Request) {
+	data, err := a.publicSettingsSnapshot(r.Context())
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
 		return
 	}
-	defer rows.Close()
+	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UnixMilli(), "data": data})
+}
+
+func (a *App) publicSettingsSnapshot(ctx context.Context) (map[string]map[string]any, error) {
+	a.settingsMu.RLock()
+	if a.publicSettings != nil {
+		data := cloneSettings(a.publicSettings)
+		a.settingsMu.RUnlock()
+		return data, nil
+	}
+	a.settingsMu.RUnlock()
+
+	rows, err := a.db.QueryContext(ctx, `SELECT namespace,key,type,value FROM settings WHERE is_public=1 OR (namespace='system' AND key='firstLaunch')`)
+	if err != nil {
+		return nil, err
+	}
 	data := map[string]map[string]any{}
 	for rows.Next() {
 		var ns, key, typ string
 		var value sql.NullString
-		var pub int
-		if err := rows.Scan(&ns, &key, &typ, &value, &pub); err != nil {
-			errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
-			return
+		if err := rows.Scan(&ns, &key, &typ, &value); err != nil {
+			_ = rows.Close()
+			return nil, err
 		}
 		if data[ns] == nil {
 			data[ns] = map[string]any{}
@@ -177,7 +192,38 @@ func (a *App) allSettings(w http.ResponseWriter, _ *http.Request) {
 			data[ns][key] = parseSetting(typ, value.String)
 		}
 	}
-	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UnixMilli(), "data": data})
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	a.settingsMu.Lock()
+	if a.publicSettings == nil {
+		a.publicSettings = data
+	}
+	data = cloneSettings(a.publicSettings)
+	a.settingsMu.Unlock()
+	return data, nil
+}
+
+func cloneSettings(source map[string]map[string]any) map[string]map[string]any {
+	copy := make(map[string]map[string]any, len(source))
+	for namespace, values := range source {
+		copy[namespace] = make(map[string]any, len(values))
+		for key, value := range values {
+			copy[namespace][key] = value
+		}
+	}
+	return copy
+}
+
+func (a *App) invalidateSettingsCache() {
+	a.settingsMu.Lock()
+	a.publicSettings = nil
+	a.settingsMu.Unlock()
 }
 func parseSetting(typ, value string) any {
 	switch typ {
@@ -233,11 +279,17 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 		if err == nil && ns == "storage" && key == "provider" && a.storage != nil {
 			a.storage = a.loadStorage()
 		}
+		if err == nil {
+			a.invalidateSettingsCache()
+		}
 		return err
 	}
 	_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch(),updated_by=? WHERE namespace=? AND key=?`, serialized, updatedBy, ns, key)
 	if err == nil && ns == "storage" && key == "provider" && a.storage != nil {
 		a.storage = a.loadStorage()
+	}
+	if err == nil {
+		a.invalidateSettingsCache()
 	}
 	return err
 }
@@ -271,7 +323,6 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 	trendByDate := map[string]int{}
 	rows, err := a.db.Query(`SELECT date(date_taken), count(*) FROM photos WHERE date_taken >= datetime('now','-6 days','start of day') GROUP BY date(date_taken)`)
 	if err == nil {
-		defer rows.Close()
 		for rows.Next() {
 			var date string
 			var count int
@@ -279,6 +330,7 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 				trendByDate[date] = count
 			}
 		}
+		_ = rows.Close()
 	}
 	trends := make([]trend, 0, 7)
 	for i := 0; i < 7; i++ {

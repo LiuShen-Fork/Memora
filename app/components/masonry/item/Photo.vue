@@ -402,20 +402,9 @@ onMounted(() => {
     }
   })
 
-  // Preload thumbnail image
-  if (props.photo.thumbnailUrl) {
-    const img = new Image()
-    img.onload = () => {
-      // Update loading state after preload completes
-      isLoading.value = false
-    }
-    img.onerror = () => {
-      // Even if preload fails, we should stop loading state
-      isLoading.value = false
-    }
-    img.src = props.photo.thumbnailUrl
-  } else {
-    // If no thumbnail URL, stop loading immediately
+  // ThumbImage owns viewport-aware loading. Avoid creating a second Image for
+  // every mounted card, which otherwise defeats lazy loading for large albums.
+  if (!props.photo.thumbnailUrl) {
     isLoading.value = false
   }
 

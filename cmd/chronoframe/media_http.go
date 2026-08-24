@@ -164,10 +164,16 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusNotFound, "Not Found")
 		return
 	}
-	if data, err := os.ReadFile(file); err == nil {
-		http.ServeContent(w, r, filepath.Base(file), time.Time{}, bytes.NewReader(data))
+	if info, err := os.Stat(file); err == nil && !info.IsDir() {
+		if strings.HasPrefix(path, "/_nuxt/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		http.ServeFile(w, r, file)
 		return
 	}
 	index := filepath.Join(a.cfg.WebDir, "index.html")
+	w.Header().Set("Cache-Control", "no-cache")
 	http.ServeFile(w, r, index)
 }

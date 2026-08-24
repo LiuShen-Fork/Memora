@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,18 +20,21 @@ func newTestApp(t *testing.T) *App {
 	t.Helper()
 	dataDir := t.TempDir()
 	cfg := Config{
-		DBPath:       filepath.Join(dataDir, "app.sqlite3"),
-		DataDir:      dataDir,
-		LocalPath:    filepath.Join(dataDir, "storage"),
-		LocalBaseURL: "/storage",
-		LocalPrefix:  "photos/",
-		SessionKey:   []byte("test-session-key"),
-		WorkerCount:  1,
+		DBPath:         filepath.Join(dataDir, "app.sqlite3"),
+		DataDir:        dataDir,
+		LocalPath:      filepath.Join(dataDir, "storage"),
+		LocalBaseURL:   "/storage",
+		LocalPrefix:    "photos/",
+		SessionKey:     []byte("test-session-key"),
+		DBMaxOpenConns: 1,
+		WorkerCount:    1,
 	}
 	db, err := openDatabase(cfg.DBPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+	db.SetMaxOpenConns(cfg.DBMaxOpenConns)
+	db.SetMaxIdleConns(cfg.DBMaxOpenConns)
 	t.Cleanup(func() { _ = db.Close() })
 	app := &App{
 		cfg:       cfg,
@@ -206,6 +211,18 @@ func TestUploadValidationAndDuplicateContract(t *testing.T) {
 	app.ServeHTTP(duplicate, adminRequest(t, app, http.MethodPost, "/api/photos/check-duplicate", body))
 	if duplicate.Code != http.StatusOK || !strings.Contains(duplicate.Body.String(), `"duplicatesFound":1`) {
 		t.Fatalf("duplicate response failed: %d %s", duplicate.Code, duplicate.Body.String())
+	}
+
+	streamed := httptest.NewRecorder()
+	streamedRequest := adminRequest(t, app, http.MethodPut, "/api/photos/upload?key=photos/streamed.jpg", []byte("streamed payload"))
+	streamedRequest.Header.Set("Content-Type", "image/jpeg")
+	app.ServeHTTP(streamed, streamedRequest)
+	if streamed.Code != http.StatusOK {
+		t.Fatalf("streaming upload failed: %d %s", streamed.Code, streamed.Body.String())
+	}
+	stored, err := os.ReadFile(filepath.Join(app.cfg.LocalPath, "photos", "streamed.jpg"))
+	if err != nil || string(stored) != "streamed payload" {
+		t.Fatalf("streamed upload was not stored correctly: %q (%v)", stored, err)
 	}
 }
 
@@ -418,6 +435,41 @@ func TestPublicSettingsExcludeSecrets(t *testing.T) {
 	body := response.Body.String()
 	if !strings.Contains(body, "Public Gallery") || strings.Contains(body, "secret-token") {
 		t.Fatalf("unexpected public settings response: %s", body)
+	}
+}
+
+func TestPublicSettingsCacheInvalidatesAfterUpdate(t *testing.T) {
+	app := newTestApp(t)
+	first := httptest.NewRecorder()
+	app.ServeHTTP(first, httptest.NewRequest(http.MethodGet, "/api/system/settings/all", nil))
+	if first.Code != http.StatusOK || !strings.Contains(first.Body.String(), "ChronoFrame") {
+		t.Fatalf("initial settings response failed: %d %s", first.Code, first.Body.String())
+	}
+	app.setSetting("app", "title", "Updated title")
+	second := httptest.NewRecorder()
+	app.ServeHTTP(second, httptest.NewRequest(http.MethodGet, "/api/system/settings/all", nil))
+	if second.Code != http.StatusOK || !strings.Contains(second.Body.String(), "Updated title") {
+		t.Fatalf("settings cache was not invalidated: %d %s", second.Code, second.Body.String())
+	}
+}
+
+func TestJSONResponsesSupportGzip(t *testing.T) {
+	app := newTestApp(t)
+	request := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+	response := httptest.NewRecorder()
+	app.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || response.Header().Get("Content-Encoding") != "gzip" {
+		t.Fatalf("gzip response headers are missing: %d %v", response.Code, response.Header())
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(response.Body.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decompressed, err := io.ReadAll(reader)
+	_ = reader.Close()
+	if err != nil || string(decompressed) != "{\"status\":\"ok\"}\n" {
+		t.Fatalf("invalid gzip response: %q (%v)", decompressed, err)
 	}
 }
 

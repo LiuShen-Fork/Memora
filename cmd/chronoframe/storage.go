@@ -22,6 +22,9 @@ type Object struct {
 	Size    int64
 	ModTime time.Time
 }
+
+var storageHTTPClient = &http.Client{Timeout: 2 * time.Minute}
+
 type Storage interface {
 	Create(context.Context, string, []byte, string) (Object, error)
 	Get(context.Context, string) ([]byte, error)
@@ -34,6 +37,10 @@ type Storage interface {
 
 type ReaderStorage interface {
 	Open(context.Context, string) (io.ReadCloser, Object, error)
+}
+
+type ReaderWriterStorage interface {
+	CreateReader(context.Context, string, io.Reader, int64, string) (Object, error)
 }
 
 type LocalStorage struct{ base, baseURL, prefix string }
@@ -64,7 +71,10 @@ func (s *LocalStorage) path(key string) (string, error) {
 	key = strings.TrimLeft(storageKey(s.prefix, filepath.ToSlash(cleanedKey)), "/")
 	return filepath.Join(s.base, filepath.FromSlash(key)), nil
 }
-func (s *LocalStorage) Create(_ context.Context, key string, data []byte, _ string) (Object, error) {
+func (s *LocalStorage) Create(ctx context.Context, key string, data []byte, contentType string) (Object, error) {
+	return s.CreateReader(ctx, key, bytes.NewReader(data), int64(len(data)), contentType)
+}
+func (s *LocalStorage) CreateReader(_ context.Context, key string, reader io.Reader, size int64, _ string) (Object, error) {
 	p, err := s.path(key)
 	if err != nil {
 		return Object{}, err
@@ -73,7 +83,26 @@ func (s *LocalStorage) Create(_ context.Context, key string, data []byte, _ stri
 		return Object{}, err
 	}
 	tmp := p + fmt.Sprintf(".tmp-%d", time.Now().UnixNano())
-	if err := os.WriteFile(tmp, data, 0644); err != nil {
+	file, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return Object{}, err
+	}
+	written, copyErr := io.Copy(file, reader)
+	closeErr := file.Close()
+	if copyErr != nil {
+		_ = os.Remove(tmp)
+		return Object{}, copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(tmp)
+		return Object{}, closeErr
+	}
+	if size >= 0 && written != size {
+		_ = os.Remove(tmp)
+		return Object{}, fmt.Errorf("short storage write: wrote %d of %d bytes", written, size)
+	}
+	if err := os.Chmod(tmp, 0644); err != nil {
+		_ = os.Remove(tmp)
 		return Object{}, err
 	}
 	if err := os.Rename(tmp, p); err != nil {
@@ -144,9 +173,12 @@ func NewS3Storage(c Config) (*S3Storage, error) {
 func (s *S3Storage) Prefix() string      { return s.prefix }
 func (s *S3Storage) key(k string) string { return storageKey(s.prefix, k) }
 func (s *S3Storage) Create(ctx context.Context, k string, d []byte, ct string) (Object, error) {
+	return s.CreateReader(ctx, k, bytes.NewReader(d), int64(len(d)), ct)
+}
+func (s *S3Storage) CreateReader(ctx context.Context, k string, reader io.Reader, size int64, ct string) (Object, error) {
 	k = s.key(k)
-	_, err := s.client.PutObject(ctx, s.bucket, k, bytes.NewReader(d), int64(len(d)), minio.PutObjectOptions{ContentType: ct})
-	return Object{Key: k, Size: int64(len(d)), ModTime: time.Now()}, err
+	_, err := s.client.PutObject(ctx, s.bucket, k, reader, size, minio.PutObjectOptions{ContentType: ct})
+	return Object{Key: k, Size: size, ModTime: time.Now()}, err
 }
 func (s *S3Storage) Open(ctx context.Context, k string) (io.ReadCloser, Object, error) {
 	key := s.key(k)
@@ -215,21 +247,27 @@ func (s *OpenListStorage) request(ctx context.Context, method, path string, body
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	return http.DefaultClient.Do(req)
+	return storageHTTPClient.Do(req)
 }
 func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct string) (Object, error) {
+	return s.CreateReader(ctx, k, bytes.NewReader(d), int64(len(d)), ct)
+}
+func (s *OpenListStorage) CreateReader(ctx context.Context, k string, reader io.Reader, size int64, ct string) (Object, error) {
 	endpoint := s.upload
 	if endpoint == "" {
 		endpoint = "/api/fs/put"
 	}
-	req, err := http.NewRequestWithContext(ctx, "PUT", strings.TrimRight(s.baseURL, "/")+endpoint, bytes.NewReader(d))
+	req, err := http.NewRequestWithContext(ctx, "PUT", strings.TrimRight(s.baseURL, "/")+endpoint, reader)
 	if err != nil {
 		return Object{}, err
 	}
 	req.Header.Set("Authorization", s.token)
 	req.Header.Set("File-Path", url.PathEscape(s.full(k)))
 	req.Header.Set("Content-Type", ct)
-	resp, err := http.DefaultClient.Do(req)
+	if size >= 0 {
+		req.ContentLength = size
+	}
+	resp, err := storageHTTPClient.Do(req)
 	if err != nil {
 		return Object{}, err
 	}
@@ -237,7 +275,7 @@ func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct str
 	if resp.StatusCode >= 300 {
 		return Object{}, fmt.Errorf("openlist upload: %s", resp.Status)
 	}
-	return Object{Key: storageKey(s.root, k), Size: int64(len(d)), ModTime: time.Now()}, nil
+	return Object{Key: storageKey(s.root, k), Size: size, ModTime: time.Now()}, nil
 }
 func (s *OpenListStorage) Open(ctx context.Context, k string) (io.ReadCloser, Object, error) {
 	endpoint := s.download

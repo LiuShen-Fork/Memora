@@ -20,13 +20,16 @@ import (
 )
 
 type App struct {
-	cfg       Config
-	db        *sql.DB
-	storage   Storage
-	queueWake chan struct{}
-	stop      chan struct{}
-	wg        sync.WaitGroup
-	logs      *LogBuffer
+	cfg            Config
+	db             *sql.DB
+	storage        Storage
+	queueWake      chan struct{}
+	stop           chan struct{}
+	wg             sync.WaitGroup
+	logs           *LogBuffer
+	queueClaimMu   sync.Mutex
+	settingsMu     sync.RWMutex
+	publicSettings map[string]map[string]any
 }
 
 func main() {
@@ -42,7 +45,10 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	db.SetMaxOpenConns(1)
+	// SQLite WAL permits concurrent readers. Keep the pool bounded so a slow
+	// media/database operation cannot serialize every HTTP request.
+	db.SetMaxOpenConns(cfg.DBMaxOpenConns)
+	db.SetMaxIdleConns(cfg.DBMaxOpenConns)
 	app := &App{cfg: cfg, db: db, queueWake: make(chan struct{}, 1), stop: make(chan struct{}), logs: NewLogBuffer(filepath.Join(cfg.DataDir, "logs", "app.log"))}
 	if err := app.ensureSchema(); err != nil {
 		log.Fatal(err)
@@ -58,7 +64,13 @@ func main() {
 	app.startWorkers()
 	defer app.stopWorkers()
 
-	server := &http.Server{Addr: cfg.Addr, Handler: app}
+	server := &http.Server{
+		Addr:              cfg.Addr,
+		Handler:           app,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
 	app.logs.Add("server", "ChronoFrame Go backend listening on "+cfg.Addr)
 	log.Printf("ChronoFrame Go backend listening on %s", cfg.Addr)
 	if err := app.serve(server); err != nil {
@@ -89,11 +101,10 @@ func (a *App) serve(server *http.Server) error {
 }
 
 func openDatabase(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)")
+	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_pragma=temp_store(MEMORY)&_pragma=cache_size(-20000)")
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
 	return db, nil
 }
 
@@ -111,6 +122,10 @@ func (a *App) ensureSchema() error {
 		`CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY AUTOINCREMENT, namespace TEXT NOT NULL DEFAULT 'common', key TEXT NOT NULL, type TEXT NOT NULL, value TEXT, default_value TEXT, label TEXT, description TEXT, is_public INTEGER NOT NULL DEFAULT 0, is_readonly INTEGER NOT NULL DEFAULT 0, is_secret INTEGER NOT NULL DEFAULT 0, enum TEXT, updated_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_namespace_key ON settings(namespace, key)`,
 		`CREATE TABLE IF NOT EXISTS settings_storage_providers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, provider TEXT NOT NULL, config TEXT NOT NULL, created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()))`,
+		`CREATE INDEX IF NOT EXISTS photos_date_taken_idx ON photos(date_taken DESC)`,
+		`CREATE INDEX IF NOT EXISTS photos_last_modified_idx ON photos(last_modified DESC)`,
+		`CREATE INDEX IF NOT EXISTS album_photos_photo_idx ON album_photos(photo_id,album_id)`,
+		`CREATE INDEX IF NOT EXISTS pipeline_queue_pending_idx ON pipeline_queue(status,priority DESC,created_at ASC,id ASC)`,
 	}
 	for _, statement := range statements {
 		if _, err := a.db.Exec(statement); err != nil {

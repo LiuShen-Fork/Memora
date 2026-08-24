@@ -71,6 +71,11 @@ type Task struct {
 }
 
 func (a *App) claimTask() (*Task, error) {
+	// Only one in-process worker should try to claim at a time. This keeps
+	// SQLite's single-writer path short while workers still process media in
+	// parallel after the claim commits.
+	a.queueClaimMu.Lock()
+	defer a.queueClaimMu.Unlock()
 	tx, err := a.db.Begin()
 	if err != nil {
 		return nil, err
@@ -277,8 +282,8 @@ func (a *App) processPhoto(t *Task) error {
 	}
 	if hasGPS {
 		a.setStage(t.ID, "reverse-geocoding")
-		if err := a.reverseGeocode(ctx, id, latitude, longitude); err != nil {
-			a.logs.Add("queue", fmt.Sprintf("reverse geocoding %s: %v", id, err))
+		if err := a.enqueueReverseGeocoding(id, latitude, longitude); err != nil {
+			a.logs.Add("queue", fmt.Sprintf("failed to enqueue reverse geocoding %s: %v", id, err))
 		}
 	}
 	a.logs.Add("queue", "processed photo "+id)
@@ -349,6 +354,23 @@ func (a *App) eraseLocation(t *Task) error {
 func nilIf(err error) error { return err }
 func (a *App) setStage(id int64, stage string) {
 	_, _ = a.db.Exec(`UPDATE pipeline_queue SET status_stage=? WHERE id=?`, stage, id)
+}
+
+func (a *App) enqueueReverseGeocoding(photoID string, latitude, longitude float64) error {
+	payload, err := json.Marshal(map[string]any{
+		"type":      "photo-reverse-geocoding",
+		"photoId":   photoID,
+		"latitude":  latitude,
+		"longitude": longitude,
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := a.db.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(payload), 1, 3); err != nil {
+		return err
+	}
+	a.wakeQueue()
+	return nil
 }
 
 func imageSize(data []byte) (int, int) {
