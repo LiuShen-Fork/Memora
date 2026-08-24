@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -193,7 +195,7 @@ func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
 		FileNames   []string `json:"fileNames"`
 		StorageKeys []string `json:"storageKeys"`
 	}
-	if decodeJSON(r, &body) != nil || (len(body.FileNames) == 0 && len(body.StorageKeys) == 0) {
+	if decodeJSON(r, &body) != nil || (body.FileNames == nil && body.StorageKeys == nil) {
 		errorJSON(w, http.StatusBadRequest, "fileNames or storageKeys is required")
 		return
 	}
@@ -503,8 +505,13 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	if r.Method == http.MethodDelete {
-		_, _ = a.db.Exec(`DELETE FROM photo_reactions WHERE photo_id=? AND fingerprint=?`, id, fingerprint)
-		w.WriteHeader(http.StatusNoContent)
+		var reactionID int64
+		if err := a.db.QueryRow(`SELECT id FROM photo_reactions WHERE photo_id=? AND fingerprint=? ORDER BY id DESC LIMIT 1`, id, fingerprint).Scan(&reactionID); err != nil {
+			errorJSON(w, http.StatusNotFound, "Reaction not found")
+			return
+		}
+		_, _ = a.db.Exec(`DELETE FROM photo_reactions WHERE id=?`, reactionID)
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "action": "deleted"})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -540,15 +547,29 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to save reaction")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"photoId": id, "reactionType": body.ReactionType, "success": true})
+	action := "created"
+	if existingID != 0 {
+		action = "updated"
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"photoId": id, "reactionType": body.ReactionType, "success": true, "action": action})
 }
 
 func reactionFingerprint(r *http.Request) string {
-	return remoteIP(r) + "|" + r.UserAgent() + "|" + r.Header.Get("Accept-Language") + "|" + r.Header.Get("Accept-Encoding")
+	value := remoteIP(r) + "|" + valueOrUnknown(r.UserAgent()) + "|" + valueOrUnknown(r.Header.Get("Accept-Language")) + "|" + valueOrUnknown(r.Header.Get("Accept-Encoding"))
+	return base64.StdEncoding.EncodeToString([]byte(value))
+}
+func valueOrUnknown(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "unknown"
+	}
+	return value
 }
 func remoteIP(r *http.Request) string {
 	if forwarded := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]); forwarded != "" {
 		return forwarded
+	}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
 	}
 	return r.RemoteAddr
 }
