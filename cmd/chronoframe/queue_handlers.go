@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -146,12 +147,18 @@ func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
 		return
 	}
 	defer tx.Rollback()
+	insertTask, err := tx.PrepareContext(r.Context(), `INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to prepare queue insert")
+		return
+	}
+	defer insertTask.Close()
 	for _, payload := range items {
 		if payload == nil {
 			continue
 		}
 		data, _ := json.Marshal(payload)
-		res, err := tx.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(data), priorities[len(ids)], maxAttempts[len(ids)])
+		res, err := insertTask.ExecContext(r.Context(), string(data), priorities[len(ids)], maxAttempts[len(ids)])
 		if err != nil {
 			errorJSON(w, http.StatusInternalServerError, err.Error())
 			return
@@ -188,6 +195,12 @@ func validateQueuePayload(payload map[string]any) error {
 	case "photo", "live-photo-video":
 		if key, _ := payload["storageKey"].(string); key == "" {
 			return fmt.Errorf("payload.storageKey is required")
+		}
+		if rawAlbumID, exists := payload["albumId"]; exists {
+			albumID, ok := numberValue(rawAlbumID)
+			if !ok || albumID < 1 || math.Trunc(albumID) != albumID {
+				return fmt.Errorf("payload.albumId is invalid")
+			}
 		}
 	case "photo-metadata-update":
 		if id, _ := payload["photoId"].(string); id == "" {
