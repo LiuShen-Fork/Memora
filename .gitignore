@@ -20,6 +20,16 @@ node_modules
 logs
 *.log
 
+# Local Go/runtime artifacts
+*.exe
+*.shm
+*.wal
+*.journal
+.tmp/
+data/**/*.json
+*.generated.json
+*.runtime.json
+
 # Misc
 .DS_Store
 .fleet
