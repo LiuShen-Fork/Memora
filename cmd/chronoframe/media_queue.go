@@ -178,73 +178,100 @@ func (a *App) processPhoto(t *Task) error {
 		return errors.New("missing storageKey")
 	}
 	id := safePhotoID(key)
+	ctx := context.Background()
 	a.setStage(t.ID, "preprocessing")
-	data, err := a.storage.Get(context.Background(), key)
+	raw, err := a.storage.Get(ctx, key)
 	if err != nil {
 		return err
 	}
-	if len(data) == 0 {
+	if len(raw) == 0 {
 		return errors.New("empty photo")
 	}
+	erase := false
+	if value, explicit := t.Payload["eraseLocation"].(bool); explicit {
+		erase = value
+	} else {
+		var setting any
+		if a.readSetting("privacy", "upload.autoEraseLocation", &setting) {
+			erase, _ = setting.(bool)
+		}
+	}
+	if erase {
+		updated, rewriteErr := a.rewritePhotoMetadata(ctx, key, raw, locationExifUpdates(nil))
+		if rewriteErr != nil {
+			return rewriteErr
+		}
+		if _, rewriteErr = a.storage.Create(ctx, key, updated, mime.TypeByExtension(filepath.Ext(key))); rewriteErr != nil {
+			return rewriteErr
+		}
+		raw = updated
+	}
+	processed, err := a.preprocessPhoto(ctx, key, raw)
+	if err != nil {
+		return err
+	}
 	a.setStage(t.ID, "metadata")
-	width, height := imageSize(data)
-	if width == 0 || height == 0 {
-		width, height = probeSize(a.cfg.FFprobe, data)
-	}
-	if width == 0 || height == 0 {
-		return errors.New("unable to read image dimensions")
-	}
 	a.setStage(t.ID, "thumbnail")
-	thumbnail, err := ffmpegThumbnail(a.cfg.FFmpeg, data)
+	thumbnail, err := ffmpegThumbnail(a.cfg.FFmpeg, processed.image)
 	if err != nil {
 		return fmt.Errorf("thumbnail: %w", err)
 	}
 	thumbKey := storageKey(a.storage.Prefix(), "thumbnails/"+id+".webp")
-	if _, err := a.storage.Create(context.Background(), thumbKey, thumbnail, "image/webp"); err != nil {
+	if _, err := a.storage.Create(ctx, thumbKey, thumbnail, "image/webp"); err != nil {
 		return err
 	}
+	thumbnailHash := thumbnailPlaceholder(thumbnail)
 	a.setStage(t.ID, "exif")
-	exif, dateTaken := extractExif(a.cfg.ExifTool, data, filepath.Ext(key))
-	last := time.Now().UTC().Format(time.RFC3339)
-	original := a.storage.PublicURL(key)
-	if original == "" {
-		original = "/image/" + strings.TrimLeft(key, "/")
-	}
-	thumbURL := a.storage.PublicURL(thumbKey)
-	if thumbURL == "" {
-		thumbURL = "/image/" + strings.TrimLeft(thumbKey, "/")
-	}
-	erase, _ := t.Payload["eraseLocation"].(bool)
+	exif, dateTaken := extractExif(a.cfg.ExifTool, raw, filepath.Ext(key))
+	title, description, tags := photoInfoFromExif(key, exif)
 	if erase {
-		updated, rewriteErr := a.rewritePhotoMetadata(context.Background(), key, data, locationExifUpdates(nil))
-		if rewriteErr != nil {
-			return rewriteErr
-		}
-		if _, rewriteErr = a.storage.Create(context.Background(), key, updated, mime.TypeByExtension(filepath.Ext(key))); rewriteErr != nil {
-			return rewriteErr
-		}
-		data = updated
-		exif, dateTaken = extractExif(a.cfg.ExifTool, data, filepath.Ext(key))
+		exif = stripGPS(exif)
 	}
-	motionVideoKey, motionErr := a.extractMotionPhoto(context.Background(), id, key, data, exif)
+	latitude, longitude, hasGPS := gpsCoordinates(exif)
+	if erase {
+		hasGPS = false
+	}
+	a.setStage(t.ID, "motion-photo")
+	motionVideoKey, motionErr := a.extractMotionPhoto(ctx, id, key, raw, exif)
 	if motionErr != nil {
 		a.logs.Add("queue", motionError(key, motionErr).Error())
 	}
 	var liveVideoURL any
 	var isLivePhoto int
+	if motionVideoKey == "" {
+		motionVideoKey = a.pairedLiveVideo(ctx, key)
+	}
 	if motionVideoKey != "" {
 		isLivePhoto = 1
-		liveVideoURL = a.storage.PublicURL(motionVideoKey)
-		if liveVideoURL == "" {
-			liveVideoURL = "/image/" + motionVideoKey
-		}
+		liveVideoURL = publicMediaURL(a.storage, motionVideoKey)
 	}
-	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=excluded.date_taken,storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,exif=excluded.exif,is_live_photo=CASE WHEN excluded.is_live_photo=1 THEN 1 ELSE photos.is_live_photo END,live_photo_video_url=CASE WHEN excluded.live_photo_video_key IS NOT NULL THEN excluded.live_photo_video_url ELSE photos.live_photo_video_url END,live_photo_video_key=CASE WHEN excluded.live_photo_video_key IS NOT NULL THEN excluded.live_photo_video_key ELSE photos.live_photo_video_key END`, id, strings.TrimSuffix(filepath.Base(key), filepath.Ext(key)), nil, width, height, float64(width)/float64(height), dateTaken, key, thumbKey, len(data), last, original, thumbURL, nil, "[]", jsonValue(exif), nil, nil, nil, nil, nil, isLivePhoto, liveVideoURL, motionVideoKey)
+	originalKey := key
+	if processed.jpegKey != "" {
+		originalKey = processed.jpegKey
+	}
+	original := publicMediaURL(a.storage, originalKey)
+	thumbURL := publicMediaURL(a.storage, thumbKey)
+	last := processed.object.ModTime.UTC().Format(time.RFC3339)
+	if processed.object.ModTime.IsZero() {
+		last = time.Now().UTC().Format(time.RFC3339)
+	}
+	var latValue, lonValue any
+	if hasGPS {
+		latValue, lonValue = latitude, longitude
+	}
+	var fileSize any = processed.object.Size
+	if processed.object.Size <= 0 {
+		fileSize = len(raw)
+	}
+	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=excluded.date_taken,storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,thumbnail_hash=excluded.thumbnail_hash,tags=excluded.tags,exif=excluded.exif,latitude=excluded.latitude,longitude=excluded.longitude,is_live_photo=CASE WHEN excluded.is_live_photo=1 THEN 1 ELSE photos.is_live_photo END,live_photo_video_url=CASE WHEN excluded.live_photo_video_key IS NOT NULL THEN excluded.live_photo_video_url ELSE photos.live_photo_video_url END,live_photo_video_key=CASE WHEN excluded.live_photo_video_key IS NOT NULL THEN excluded.live_photo_video_key ELSE photos.live_photo_video_key END`, id, title, description, processed.width, processed.height, float64(processed.width)/float64(processed.height), nullableString(dateTaken), key, thumbKey, fileSize, last, original, thumbURL, thumbnailHash, jsonValue(tags), jsonValue(exif), latValue, lonValue, nil, nil, nil, isLivePhoto, liveVideoURL, nullableString(motionVideoKey))
 	if err != nil {
 		return err
 	}
-	if erase {
-		_, _ = a.db.Exec(`UPDATE photos SET latitude=NULL,longitude=NULL,country=NULL,city=NULL,location_name=NULL WHERE id=?`, id)
+	if hasGPS {
+		a.setStage(t.ID, "reverse-geocoding")
+		if err := a.reverseGeocode(ctx, id, latitude, longitude); err != nil {
+			a.logs.Add("queue", fmt.Sprintf("reverse geocoding %s: %v", id, err))
+		}
 	}
 	a.logs.Add("queue", "processed photo "+id)
 	return nil
@@ -359,7 +386,7 @@ func extractExif(tool string, data []byte, ext string) (map[string]any, string) 
 	if os.WriteFile(file, data, 0600) != nil {
 		return result, ""
 	}
-	out, err := exec.Command(tool, "-j", "-n", "-G", "-s", file).Output()
+	out, err := exec.Command(tool, "-j", "-n", "-s", file).Output()
 	if err == nil {
 		var rows []map[string]any
 		if json.Unmarshal(out, &rows) == nil && len(rows) > 0 {
