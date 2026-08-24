@@ -112,25 +112,25 @@ func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := storageKey(a.storage.Prefix(), b.FileName)
-	id := safePhotoID(key)
 	var existing Photo
 	var found bool
-	row := a.db.QueryRow(photoSelect+` WHERE id=?`, id)
-	var rows *sql.Rows
-	_ = rows
-	var rawTags, rawExif sql.NullString
-	err := row.Scan(&existing.ID, &existing.Title, &existing.Description, &existing.Width, &existing.Height, &existing.AspectRatio, &existing.DateTaken, &existing.StorageKey, &existing.ThumbnailKey, &existing.FileSize, &existing.LastModified, &existing.OriginalURL, &existing.ThumbnailURL, &existing.ThumbnailHash, &rawTags, &rawExif, &existing.Latitude, &existing.Longitude, &existing.Country, &existing.City, &existing.LocationName, &existing.IsLivePhoto, &existing.LivePhotoVideoURL, &existing.LivePhotoVideoKey)
-	if err == nil {
-		found = true
-	}
-	if found && isVideoUpload(b.FileName, b.ContentType) {
-		if storageKeyText, ok := existing.StorageKey.(string); ok && isImageStorageKey(storageKeyText) {
-			// A Live Photo video may share the sanitized ID of its image pair.
-			// Nuxt only treats an existing video as a duplicate in this case.
-			found = false
+	duplicateEnabled := duplicateCheckEnabled(a) && !b.SkipDuplicateCheck
+	if duplicateEnabled {
+		id := safePhotoID(key)
+		row := a.db.QueryRow(photoSelect+` WHERE id=?`, id)
+		var rawTags, rawExif sql.NullString
+		err := row.Scan(&existing.ID, &existing.Title, &existing.Description, &existing.Width, &existing.Height, &existing.AspectRatio, &existing.DateTaken, &existing.StorageKey, &existing.ThumbnailKey, &existing.FileSize, &existing.LastModified, &existing.OriginalURL, &existing.ThumbnailURL, &existing.ThumbnailHash, &rawTags, &rawExif, &existing.Latitude, &existing.Longitude, &existing.Country, &existing.City, &existing.LocationName, &existing.IsLivePhoto, &existing.LivePhotoVideoURL, &existing.LivePhotoVideoKey)
+		if err == nil {
+			found = true
+		}
+		if found && isVideoUpload(b.FileName, b.ContentType) {
+			if storageKeyText, ok := existing.StorageKey.(string); ok && isImageStorageKey(storageKeyText) {
+				// A Live Photo video may share the sanitized ID of its image pair.
+				found = false
+			}
 		}
 	}
-	if found && !b.SkipDuplicateCheck && duplicateCheckEnabled(a) {
+	if found && duplicateEnabled {
 		mode := duplicateMode(a)
 		response := map[string]any{"duplicate": true, "existingPhoto": existing, "fileKey": key, "title": "Duplicate file", "message": "File already exists"}
 		if mode == "block" {
@@ -156,12 +156,7 @@ func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		signed = "/api/photos/upload?key=" + urlQueryEscape(key)
 	}
-	writeJSON(w, 200, map[string]any{"signedUrl": signed, "fileKey": key, "expiresIn": 3600, "duplicate": found, "existingPhoto": func() any {
-		if found {
-			return existing
-		}
-		return nil
-	}()})
+	writeJSON(w, 200, map[string]any{"signedUrl": signed, "fileKey": key, "expiresIn": 3600})
 }
 
 func isVideoUpload(fileName, contentType string) bool {

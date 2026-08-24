@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -48,39 +49,108 @@ func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	var b struct {
-		Title        string
-		Description  string
-		CoverPhotoID string   `json:"coverPhotoId"`
-		PhotoIDs     []string `json:"photoIds"`
-		IsHidden     bool     `json:"isHidden"`
-	}
-	if decodeJSON(r, &b) != nil || strings.TrimSpace(b.Title) == "" {
-		errorJSON(w, 400, "title is required")
+	b, err := decodeAlbumPayload(r)
+	if err != nil {
+		errorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	title, ok := b["title"].(string)
+	if !ok || title == "" {
+		errorJSON(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	description := nullableAlbumString(b, "description")
+	coverPhotoID := nullableAlbumString(b, "coverPhotoId")
+	photoIDs := albumPhotoIDs(b)
+	if cover, ok := coverPhotoID.(string); ok {
+		photoIDs = append(photoIDs, cover)
+	}
+	isHidden, _ := b["isHidden"].(bool)
 	tx, err := a.db.Begin()
 	if err != nil {
 		errorJSON(w, 500, err.Error())
 		return
 	}
-	res, err := tx.Exec(`INSERT INTO albums(title,description,cover_photo_id,is_hidden) VALUES(?,?,?,?)`, b.Title, b.Description, b.CoverPhotoID, boolInt(b.IsHidden))
+	res, err := tx.Exec(`INSERT INTO albums(title,description,cover_photo_id,is_hidden) VALUES(?,?,?,?)`, title, description, coverPhotoID, boolInt(isHidden))
 	if err != nil {
 		tx.Rollback()
 		errorJSON(w, 500, err.Error())
 		return
 	}
 	id, _ := res.LastInsertId()
-	for i, pid := range uniqueStrings(append(b.PhotoIDs, b.CoverPhotoID)) {
+	for i, pid := range uniqueStrings(photoIDs) {
 		if pid != "" {
-			_, _ = tx.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, pid, float64(i+1)*10)
+			_, _ = tx.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, pid, float64(1000010+i*10))
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		errorJSON(w, 500, err.Error())
 		return
 	}
-	writeJSON(w, 201, map[string]any{"id": id, "title": b.Title, "description": b.Description, "coverPhotoId": b.CoverPhotoID, "isHidden": b.IsHidden, "photoIds": b.PhotoIDs})
+	var created, updated int64
+	if err := a.db.QueryRow(`SELECT created_at,updated_at FROM albums WHERE id=?`, id).Scan(&created, &updated); err != nil {
+		errorJSON(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"id": id, "title": title, "description": description, "coverPhotoId": coverPhotoID, "isHidden": isHidden, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
+}
+
+func decodeAlbumPayload(r *http.Request) (map[string]any, error) {
+	var body map[string]any
+	if err := decodeJSON(r, &body); err != nil || body == nil {
+		return nil, fmt.Errorf("Invalid request")
+	}
+	if value, ok := body["title"]; ok {
+		title, valid := value.(string)
+		if !valid || len(title) < 1 || len(title) > 255 {
+			return nil, fmt.Errorf("Invalid title")
+		}
+	}
+	if value, ok := body["description"]; ok {
+		description, valid := value.(string)
+		if !valid || len(description) > 1000 {
+			return nil, fmt.Errorf("Invalid description")
+		}
+	}
+	if value, ok := body["coverPhotoId"]; ok {
+		if _, valid := value.(string); !valid {
+			return nil, fmt.Errorf("Invalid coverPhotoId")
+		}
+	}
+	if value, ok := body["photoIds"]; ok {
+		items, valid := value.([]any)
+		if !valid {
+			return nil, fmt.Errorf("Invalid photoIds")
+		}
+		for _, item := range items {
+			if _, valid := item.(string); !valid {
+				return nil, fmt.Errorf("Invalid photoIds")
+			}
+		}
+	}
+	if value, ok := body["isHidden"]; ok {
+		if _, valid := value.(bool); !valid {
+			return nil, fmt.Errorf("Invalid isHidden")
+		}
+	}
+	return body, nil
+}
+
+func nullableAlbumString(body map[string]any, key string) any {
+	value, ok := body[key].(string)
+	if !ok || value == "" {
+		return nil
+	}
+	return value
+}
+
+func albumPhotoIDs(body map[string]any) []string {
+	items, _ := body["photoIds"].([]any)
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.(string))
+	}
+	return ids
 }
 func boolInt(v bool) int {
 	if v {
@@ -104,7 +174,15 @@ func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	if len(parts) == 0 {
 		return
 	}
-	id, _ := strconv.ParseInt(parts[0], 10, 64)
+	if parts[0] == "" || strings.Trim(parts[0], "0123456789") != "" {
+		errorJSON(w, http.StatusBadRequest, "Invalid album ID")
+		return
+	}
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		errorJSON(w, http.StatusBadRequest, "Invalid album ID")
+		return
+	}
 	if len(parts) == 1 && r.Method == "GET" {
 		a.albumDetail(w, r, id)
 		return
@@ -148,7 +226,8 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 	var title string
 	var description, cover sql.NullString
 	var hidden int
-	if a.db.QueryRow(`SELECT title,description,cover_photo_id,is_hidden FROM albums WHERE id=?`, id).Scan(&title, &description, &cover, &hidden) != nil {
+	var created, updated int64
+	if a.db.QueryRow(`SELECT title,description,cover_photo_id,is_hidden,created_at,updated_at FROM albums WHERE id=?`, id).Scan(&title, &description, &cover, &hidden, &created, &updated) != nil {
 		errorJSON(w, 404, "Album not found")
 		return
 	}
@@ -169,53 +248,64 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 	if rows != nil {
 		rows.Close()
 	}
-	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "photos": photos})
+	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0), "photos": photos})
 }
 func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
 	if _, ok := a.require(r); !ok {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	var b map[string]any
-	if decodeJSON(r, &b) != nil {
-		errorJSON(w, 400, "Invalid request")
+	b, err := decodeAlbumPayload(r)
+	if err != nil {
+		errorJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	var exists int
+	if a.db.QueryRow(`SELECT 1 FROM albums WHERE id=?`, id).Scan(&exists) != nil {
+		errorJSON(w, http.StatusNotFound, "Album not found")
+		return
+	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update album")
+		return
+	}
+	defer tx.Rollback()
 	sets := []string{}
 	args := []any{}
 	for _, key := range []string{"title", "description", "coverPhotoId"} {
 		if v, ok := b[key]; ok {
 			sets = append(sets, keyToColumn(key)+"=?")
-			args = append(args, v)
+			if key == "description" || key == "coverPhotoId" {
+				args = append(args, nullableAlbumString(b, key))
+			} else {
+				args = append(args, v)
+			}
 		}
 	}
 	if v, ok := b["isHidden"].(bool); ok {
 		sets = append(sets, "is_hidden=?")
 		args = append(args, boolInt(v))
 	}
-	if photoIDs, ok := b["photoIds"].([]any); ok {
-		_, _ = a.db.Exec(`DELETE FROM album_photos WHERE album_id=?`, id)
-		position := 1000000.0
-		for _, raw := range photoIDs {
-			photoID, ok := raw.(string)
-			if !ok || photoID == "" {
-				continue
-			}
-			_, _ = a.db.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, photoID, position)
-			position += 10
+	if _, ok := b["photoIds"]; ok {
+		_, _ = tx.Exec(`DELETE FROM album_photos WHERE album_id=?`, id)
+		photoIDs := albumPhotoIDs(b)
+		if cover, ok := b["coverPhotoId"].(string); ok && cover != "" {
+			photoIDs = append(photoIDs, cover)
+		}
+		for i, photoID := range uniqueStrings(photoIDs) {
+			_, _ = tx.Exec(`INSERT INTO album_photos(album_id,photo_id,position) VALUES(?,?,?)`, id, photoID, float64(1000010+i*10))
 		}
 	}
-	if len(sets) > 0 {
-		args = append(args, id)
-		result, err := a.db.Exec(`UPDATE albums SET `+strings.Join(sets, ",")+`,updated_at=unixepoch() WHERE id=?`, args...)
-		if err != nil {
-			errorJSON(w, http.StatusInternalServerError, "Failed to update album")
-			return
-		}
-		if changed, _ := result.RowsAffected(); changed == 0 {
-			errorJSON(w, http.StatusNotFound, "Album not found")
-			return
-		}
+	sets = append(sets, "updated_at=unixepoch()")
+	args = append(args, id)
+	if _, err := tx.Exec(`UPDATE albums SET `+strings.Join(sets, ",")+` WHERE id=?`, args...); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update album")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to update album")
+		return
 	}
 	var title string
 	var description, cover sql.NullString
@@ -225,17 +315,7 @@ func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
 		errorJSON(w, http.StatusNotFound, "Album not found")
 		return
 	}
-	photoIDs := []string{}
-	rows, _ := a.db.Query(`SELECT photo_id FROM album_photos WHERE album_id=? ORDER BY position`, id)
-	for rows != nil && rows.Next() {
-		var photoID string
-		_ = rows.Scan(&photoID)
-		photoIDs = append(photoIDs, photoID)
-	}
-	if rows != nil {
-		rows.Close()
-	}
-	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0), "photoIds": photoIDs})
+	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
 }
 func keyToColumn(key string) string {
 	if key == "coverPhotoId" {
