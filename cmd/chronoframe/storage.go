@@ -227,7 +227,7 @@ func (s *OpenListStorage) Create(ctx context.Context, k string, d []byte, ct str
 		return Object{}, err
 	}
 	req.Header.Set("Authorization", s.token)
-	req.Header.Set("File-Path", url.QueryEscape(s.full(k)))
+	req.Header.Set("File-Path", url.PathEscape(s.full(k)))
 	req.Header.Set("Content-Type", ct)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -244,7 +244,7 @@ func (s *OpenListStorage) Open(ctx context.Context, k string) (io.ReadCloser, Ob
 	if endpoint == "" {
 		endpoint = "/d" + s.full(k)
 	} else {
-		endpoint += "?" + s.pathField + "=" + url.QueryEscape(s.full(k))
+		endpoint += "?" + url.QueryEscape(s.pathField) + "=" + url.PathEscape(s.full(k))
 	}
 	resp, err := s.request(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
