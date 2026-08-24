@@ -29,6 +29,7 @@ type App struct {
 	logs           *LogBuffer
 	queueClaimMu   sync.Mutex
 	settingsMu     sync.RWMutex
+	settingsLoadMu sync.Mutex
 	publicSettings map[string]map[string]any
 	mediaSlots     chan struct{}
 }

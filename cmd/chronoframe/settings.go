@@ -159,14 +159,26 @@ func (a *App) allSettings(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
 		return
 	}
-	// The snapshot is invalidated whenever a setting changes, so a short
-	// browser cache avoids repeating the same startup request while retaining
-	// prompt updates after administration changes.
+	// A short browser cache avoids repeating this startup request while the
+	// in-memory snapshot is updated synchronously after administration changes.
 	w.Header().Set("Cache-Control", "private, max-age=30, stale-while-revalidate=300")
 	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UnixMilli(), "data": data})
 }
 
 func (a *App) publicSettingsSnapshot(ctx context.Context) (map[string]map[string]any, error) {
+	a.settingsMu.RLock()
+	if a.publicSettings != nil {
+		data := cloneSettings(a.publicSettings)
+		a.settingsMu.RUnlock()
+		return data, nil
+	}
+	a.settingsMu.RUnlock()
+
+	// Only the first request after process start can reach SQLite. Updates keep
+	// the in-memory snapshot current, so normal requests never contend with a
+	// media or settings write transaction.
+	a.settingsLoadMu.Lock()
+	defer a.settingsLoadMu.Unlock()
 	a.settingsMu.RLock()
 	if a.publicSettings != nil {
 		data := cloneSettings(a.publicSettings)
@@ -224,10 +236,23 @@ func cloneSettings(source map[string]map[string]any) map[string]map[string]any {
 	return copy
 }
 
-func (a *App) invalidateSettingsCache() {
+func (a *App) updatePublicSettingsCache(namespace, key, typ string, serialized any, isPublic bool) {
+	if !isPublic && !(namespace == "system" && key == "firstLaunch") {
+		return
+	}
 	a.settingsMu.Lock()
-	a.publicSettings = nil
-	a.settingsMu.Unlock()
+	defer a.settingsMu.Unlock()
+	if a.publicSettings == nil {
+		return
+	}
+	if a.publicSettings[namespace] == nil {
+		a.publicSettings[namespace] = map[string]any{}
+	}
+	if serialized == nil {
+		a.publicSettings[namespace][key] = nil
+		return
+	}
+	a.publicSettings[namespace][key] = parseSetting(typ, fmt.Sprint(serialized))
 }
 func parseSetting(typ, value string) any {
 	switch typ {
@@ -265,7 +290,8 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 	var typ string
 	var readonly int
 	var enumJSON sql.NullString
-	if err := a.db.QueryRow(`SELECT type,is_readonly,enum FROM settings WHERE namespace=? AND key=?`, ns, key).Scan(&typ, &readonly, &enumJSON); err != nil {
+	var isPublic int
+	if err := a.db.QueryRow(`SELECT type,is_readonly,enum,is_public FROM settings WHERE namespace=? AND key=?`, ns, key).Scan(&typ, &readonly, &enumJSON, &isPublic); err != nil {
 		return fmt.Errorf("setting %s:%s not found", ns, key)
 	}
 	if readonly == 1 && !sudo {
@@ -284,7 +310,7 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 			a.storage = a.loadStorage()
 		}
 		if err == nil {
-			a.invalidateSettingsCache()
+			a.updatePublicSettingsCache(ns, key, typ, serialized, isPublic == 1)
 		}
 		return err
 	}
@@ -293,7 +319,7 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 		a.storage = a.loadStorage()
 	}
 	if err == nil {
-		a.invalidateSettingsCache()
+		a.updatePublicSettingsCache(ns, key, typ, serialized, isPublic == 1)
 	}
 	return err
 }
