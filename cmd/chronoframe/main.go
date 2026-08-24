@@ -157,6 +157,12 @@ func (a *App) applyProviderConfig(provider string, config map[string]any) {
 		}
 		return fallback
 	}
+	boolean := func(key string, fallback bool) bool {
+		if value, ok := config[key].(bool); ok {
+			return value
+		}
+		return fallback
+	}
 	if provider == "local" {
 		a.cfg.LocalPath = str("basePath", a.cfg.LocalPath)
 		a.cfg.LocalBaseURL = str("baseUrl", a.cfg.LocalBaseURL)
@@ -170,6 +176,7 @@ func (a *App) applyProviderConfig(provider string, config map[string]any) {
 		a.cfg.S3SecretKey = str("secretAccessKey", a.cfg.S3SecretKey)
 		a.cfg.S3Prefix = str("prefix", a.cfg.S3Prefix)
 		a.cfg.S3CDN = str("cdnUrl", a.cfg.S3CDN)
+		a.cfg.S3PathStyle = boolean("forcePathStyle", a.cfg.S3PathStyle)
 	}
 	if provider == "openlist" {
 		a.cfg.OpenBaseURL = str("baseUrl", a.cfg.OpenBaseURL)
