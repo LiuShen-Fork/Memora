@@ -297,7 +297,7 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 		"runningOn":  runningOn,
 		"memory":     map[string]any{"used": memory.Alloc, "total": memory.Sys},
 		"photos":     map[string]any{"total": total, "today": today, "thisWeek": week, "thisMonth": month},
-		"workerPool": nil,
+		"workerPool": a.queuePoolStats(),
 		"storage":    map[string]any{"totalSize": nullFloat(totalSize), "averageSize": nullFloat(averageSize), "maxSize": nullFloat(maxSize)},
 		"trends":     trends,
 		"timestamp":  time.Now().UTC().Format(time.RFC3339Nano),

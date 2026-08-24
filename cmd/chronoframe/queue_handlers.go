@@ -218,7 +218,7 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 		_ = json.Unmarshal([]byte(payload), &p)
 		var created, completed sql.NullInt64
 		_ = a.db.QueryRow(`SELECT created_at,completed_at FROM pipeline_queue WHERE id=?`, id).Scan(&created, &completed)
-		result := map[string]any{"id": id, "payload": p, "status": status, "statusStage": stage, "errorMessage": errMsg, "attempts": attempts, "maxAttempts": max}
+		result := map[string]any{"id": id, "payload": p, "status": status, "statusStage": stage, "errorMessage": errMsg, "attempts": attempts, "maxAttempts": max, "createdAt": nil, "completedAt": nil}
 		if created.Valid {
 			result["createdAt"] = time.Unix(created.Int64, 0)
 		}
@@ -239,7 +239,7 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 	if rows != nil {
 		rows.Close()
 	}
-	pool := map[string]any{"isActive": true, "workerCount": a.cfg.WorkerCount, "totalWorkers": a.cfg.WorkerCount, "activeWorkers": a.cfg.WorkerCount}
+	pool := a.queuePoolStats()
 	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UTC().Format(time.RFC3339Nano), "pool": pool, "queue": out})
 }
 func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +263,7 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
-	query += " ORDER BY created_at DESC LIMIT 500"
+	query += " ORDER BY created_at DESC"
 	rows, err := a.db.Query(query, args...)
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
@@ -279,7 +279,11 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 		_ = rows.Scan(&id, &p, &priority, &attempts, &max, &status, &stage, &errMsg, &created, &completed)
 		var payload any
 		_ = json.Unmarshal([]byte(p), &payload)
-		out = append(out, map[string]any{"id": id, "payload": payload, "priority": priority, "attempts": attempts, "maxAttempts": max, "status": status, "statusStage": stage, "errorMessage": errMsg, "createdAt": time.Unix(created, 0), "completedAt": completed.Int64})
+		var completedAt any
+		if completed.Valid {
+			completedAt = time.Unix(completed.Int64, 0)
+		}
+		out = append(out, map[string]any{"id": id, "payload": payload, "priority": priority, "attempts": attempts, "maxAttempts": max, "status": status, "statusStage": stage, "errorMessage": errMsg, "createdAt": time.Unix(created, 0), "completedAt": completedAt})
 	}
 	writeJSON(w, 200, map[string]any{"success": true, "data": out})
 }

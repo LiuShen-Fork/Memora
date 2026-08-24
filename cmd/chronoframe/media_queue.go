@@ -86,7 +86,15 @@ func (a *App) claimTask() (*Task, error) {
 		return nil, err
 	}
 	if err = json.Unmarshal([]byte(payload), &t.Payload); err != nil {
-		return nil, err
+		message := "invalid task payload: " + err.Error()
+		if _, updateErr := tx.Exec(`UPDATE pipeline_queue SET status='failed', attempts=max_attempts, error_message=? WHERE id=?`, message, t.ID); updateErr != nil {
+			return nil, updateErr
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			return nil, commitErr
+		}
+		a.logs.Add("queue", fmt.Sprintf("task %d moved to failed: %s", t.ID, message))
+		return nil, nil
 	}
 	result, err := tx.Exec(`UPDATE pipeline_queue SET status='in-stages' WHERE id=? AND status='pending'`, t.ID)
 	if err != nil {
