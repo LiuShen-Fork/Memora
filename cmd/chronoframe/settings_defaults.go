@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -64,6 +65,28 @@ func (a *App) ensureDefaultSettings() error {
 		}
 	}
 	return nil
+}
+
+// Existing installations may have users but no firstLaunch setting (or may
+// have inherited the old default true). Treat those databases as initialized
+// so a schema migration does not send an existing library through onboarding.
+func (a *App) normalizeFirstLaunch() error {
+	var value sql.NullString
+	if err := a.db.QueryRow(`SELECT value FROM settings WHERE namespace='system' AND key='firstLaunch'`).Scan(&value); err != nil || !value.Valid {
+		return err
+	}
+	if value.String != "true" && value.String != "1" {
+		return nil
+	}
+	var users int
+	if err := a.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&users); err != nil {
+		return err
+	}
+	if users == 0 {
+		return nil
+	}
+	_, err := a.db.Exec(`UPDATE settings SET value='false',updated_at=unixepoch() WHERE namespace='system' AND key='firstLaunch'`)
+	return err
 }
 
 func serializeSetting(typ string, value any) any {

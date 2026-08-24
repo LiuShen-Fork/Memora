@@ -50,6 +50,9 @@ func main() {
 	if err := app.ensureDefaultSettings(); err != nil {
 		log.Fatal(err)
 	}
+	if err := app.normalizeFirstLaunch(); err != nil {
+		log.Fatal(err)
+	}
 	app.migrateEnvironmentSettings()
 	app.storage = app.loadStorage()
 	app.startWorkers()

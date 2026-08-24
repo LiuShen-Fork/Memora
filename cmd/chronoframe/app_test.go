@@ -47,6 +47,23 @@ func newTestApp(t *testing.T) *App {
 	return app
 }
 
+func TestNormalizeFirstLaunchForExistingDatabase(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO users(name,email,password,created_at,is_admin) VALUES('legacy','legacy@example.com','password',unixepoch(),1)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.normalizeFirstLaunch(); err != nil {
+		t.Fatal(err)
+	}
+	var value string
+	if err := app.db.QueryRow(`SELECT value FROM settings WHERE namespace='system' AND key='firstLaunch'`).Scan(&value); err != nil {
+		t.Fatal(err)
+	}
+	if value != "false" {
+		t.Fatalf("firstLaunch = %q, want false", value)
+	}
+}
+
 func adminRequest(t *testing.T, app *App, method, target string, body []byte) *http.Request {
 	t.Helper()
 	if _, err := app.db.Exec(`INSERT INTO users(name,email,password,created_at,is_admin) VALUES('admin','admin@example.com','password',unixepoch(),1) ON CONFLICT(email) DO NOTHING`); err != nil {
