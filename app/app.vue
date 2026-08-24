@@ -23,11 +23,18 @@ try {
 // 初始化设置系统 - 一次性加载所有设置
 const settingsStore = useSettingsStore()
 const session = useUserSession()
-await Promise.all([settingsStore.initSettings(), session.fetch()])
+
+// Settings are needed by navigation and controls, but should not hold the
+// gallery request hostage. Start both lightweight bootstrap requests before
+// fetching photos; the reactive settings/session state updates consumers when
+// each request completes.
+const settingsRequest = settingsStore.initSettings().catch((error) => {
+  console.error('[Settings] Failed to initialize settings:', error)
+})
+void session.fetch()
 const { loggedIn } = session
 
 const appTitle = useSettingRef('app:title')
-colorMode.preference = useSettingRef('app:appearance.theme').value as string
 
 useHead({
   titleTemplate: (title) =>
@@ -48,6 +55,20 @@ const apiEndpoint = computed(() => {
 const { data, refresh, status } = await useFetch(() => apiEndpoint.value, {
   watch: [apiEndpoint],
 })
+
+// Keep theme application deterministic even when settings arrive after the
+// first gallery response.
+const themeSetting = useSettingRef('app:appearance.theme')
+watch(
+  themeSetting,
+  (theme) => {
+    if (typeof theme === 'string' && theme.length > 0) {
+      colorMode.preference = theme
+    }
+  },
+  { immediate: true },
+)
+void settingsRequest
 
 const photos = computed(() => (data.value as Photo[]) || [])
 

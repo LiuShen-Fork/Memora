@@ -1,1 +1,0 @@
-ALTER TABLE `photos` ADD `thumbnail_key` text;

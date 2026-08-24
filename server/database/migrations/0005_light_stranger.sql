@@ -1,1 +1,0 @@
-ALTER TABLE `pipeline_queue` ADD `error_message` text;
