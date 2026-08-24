@@ -131,6 +131,11 @@ func TestExifReindexAndLivePhotoDetection(t *testing.T) {
 	if _, err := app.storage.Create(context.Background(), "photos/sample.mov", []byte("video"), "video/quicktime"); err != nil {
 		t.Fatal(err)
 	}
+	process := httptest.NewRecorder()
+	app.ServeHTTP(process, adminRequest(t, app, http.MethodPost, "/api/photos/livephoto/manage", []byte(`{"action":"process","videoKey":"photos/sample.mov"}`)))
+	if process.Code != http.StatusOK || !strings.Contains(process.Body.String(), `"success":true`) {
+		t.Fatalf("Live Photo processing failed: %d %s", process.Code, process.Body.String())
+	}
 	live := httptest.NewRecorder()
 	app.ServeHTTP(live, adminRequest(t, app, http.MethodPost, "/api/photos/livephoto/manage", []byte(`{"action":"update-photo","photoId":"photo-1"}`)))
 	if live.Code != http.StatusOK || !strings.Contains(live.Body.String(), `"success":true`) {

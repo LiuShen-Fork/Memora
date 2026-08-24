@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -49,11 +50,16 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusBadRequest, "videoKey is required for process action")
 			return
 		}
-		if _, err := a.storage.Meta(r.Context(), body.VideoKey); err != nil {
-			errorJSON(w, http.StatusNotFound, "LivePhoto video not found")
+		success, err := a.processSpecificLivePhotoVideo(r.Context(), body.VideoKey)
+		if err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Failed to process LivePhoto")
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"message": "LivePhoto processed successfully", "success": true, "videoKey": body.VideoKey})
+		message := "Failed to process LivePhoto"
+		if success {
+			message = "LivePhoto processed successfully"
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": message, "success": success, "videoKey": body.VideoKey})
 		return
 	}
 	if body.Action == "update-photo" {
@@ -87,6 +93,43 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	errorJSON(w, http.StatusBadRequest, "Supported actions are scan, detect, process, and update-photo")
+}
+
+// processSpecificLivePhotoVideo mirrors the Nuxt management action: only
+// small MOV files are treated as Live Photos and the matching image record is
+// updated with the video's public URL and storage key.
+func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string) (bool, error) {
+	object, err := a.storage.Meta(ctx, videoKey)
+	if err != nil {
+		return false, nil
+	}
+	size := object.Size
+	if size <= 0 {
+		data, getErr := a.storage.Get(ctx, videoKey)
+		if getErr != nil {
+			return false, nil
+		}
+		size = int64(len(data))
+	}
+	ext := strings.ToLower(filepath.Ext(videoKey))
+	if ext != ".mov" || size > 12*1024*1024 {
+		return false, nil
+	}
+	base := strings.TrimSuffix(videoKey, filepath.Ext(videoKey))
+	for _, imageExt := range []string{".HEIC", ".heic", ".JPG", ".jpg", ".JPEG", ".jpeg"} {
+		candidate := base + imageExt
+		var photoID string
+		if err := a.db.QueryRow(`SELECT id FROM photos WHERE storage_key=? OR id=? LIMIT 1`, candidate, safePhotoID(candidate)).Scan(&photoID); err != nil {
+			continue
+		}
+		url := a.storage.PublicURL(videoKey)
+		if url == "" {
+			url = "/image/" + strings.TrimLeft(videoKey, "/")
+		}
+		_, err = a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, videoKey, photoID)
+		return err == nil, err
+	}
+	return false, nil
 }
 
 func (a *App) detectLivePhoto(r *http.Request, photoID string) (bool, string, error) {
