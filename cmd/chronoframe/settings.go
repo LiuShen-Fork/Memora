@@ -239,7 +239,8 @@ func containsString(values []string, value string) bool {
 	return false
 }
 func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var total, today, week, month int
@@ -298,7 +299,8 @@ func nullFloat(value sql.NullFloat64) float64 {
 	return 0
 }
 func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")

@@ -58,13 +58,22 @@ func scanPhoto(rows *sql.Rows) (Photo, error) {
 
 const photoSelect = `SELECT id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key FROM photos`
 
-func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
-	if !visible {
-		if u, ok := a.user(r); !ok || u == nil {
-			errorJSON(w, 401, "Unauthorized")
-			return
-		}
+func (a *App) photoByID(id string) (Photo, error) {
+	rows, err := a.db.Query(photoSelect+` WHERE id=?`, id)
+	if err != nil {
+		return Photo{}, err
 	}
+	defer rows.Close()
+	if !rows.Next() {
+		return Photo{}, sql.ErrNoRows
+	}
+	return scanPhoto(rows)
+}
+
+func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
+	// The Nuxt gallery exposes the complete collection to both anonymous and
+	// authenticated readers. The visible endpoint only adds hidden-album
+	// filtering for anonymous browsing.
 	query := photoSelect
 	if visible {
 		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
@@ -87,7 +96,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 }
 
 func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
 		return
 	}
 	var b struct {
@@ -175,7 +184,7 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ok": true, "key": key})
 }
 func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
 		return
 	}
 	var body struct {
@@ -216,7 +225,7 @@ func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "results": results, "duplicatesFound": duplicates, "summary": map[string]any{"title": "Duplicate check completed", "message": "Duplicate check completed"}})
 }
 func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
 		return
 	}
 	var total, processed int
@@ -226,6 +235,10 @@ func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
 }
 func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 	ids := r.URL.Query()["ids"]
+	if len(ids) == 0 || (len(ids) == 1 && strings.TrimSpace(ids[0]) == "") {
+		errorJSON(w, http.StatusBadRequest, "ids is required")
+		return
+	}
 	if len(ids) == 1 {
 		ids = strings.Split(ids[0], ",")
 	}
@@ -393,7 +406,12 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		errorJSON(w, http.StatusInternalServerError, "Failed to update photo")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+	updated, err := a.photoByID(id)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to load updated photo")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "photo": updated})
 }
 
 func normalizeTags(tags []string) []string {
@@ -424,7 +442,7 @@ func (a *App) deletePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		_ = a.storage.Delete(r.Context(), thumb)
 	}
 	_, _ = a.db.Exec(`DELETE FROM photos WHERE id=?`, id)
-	w.WriteHeader(http.StatusNoContent)
+	writeJSON(w, http.StatusOK, map[string]any{"statusCode": 200, "statusMessage": "Photo deleted successfully"})
 }
 func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 	fingerprint := reactionFingerprint(r)

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -50,7 +51,8 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	errorJSON(w, 404, "Not Found")
 }
 func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var body struct {
@@ -98,7 +100,8 @@ func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
 	}
 }
 func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	if id > 0 {
@@ -127,7 +130,8 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 	writeJSON(w, 200, out)
 }
 func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	statusFilter := r.URL.Query().Get("status")
@@ -167,7 +171,8 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"success": true, "data": out})
 }
 func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	includeCompleted := r.URL.Query().Get("includeCompleted") != "false"
@@ -176,6 +181,18 @@ func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusBadRequest, "At least one task status must be included")
 		return
 	}
+	olderThanText := r.URL.Query().Get("olderThanDays")
+	var olderThan int64
+	var olderThanDays int64
+	if olderThanText != "" {
+		parsed, err := strconv.ParseInt(olderThanText, 10, 64)
+		if err != nil || parsed < 0 {
+			errorJSON(w, http.StatusBadRequest, "olderThanDays must be a non-negative integer")
+			return
+		}
+		olderThanDays = parsed
+		olderThan = time.Now().Unix() - parsed*24*60*60
+	}
 	statuses := []string{}
 	if includeCompleted {
 		statuses = append(statuses, "'completed'")
@@ -183,16 +200,38 @@ func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
 	if includeFailed {
 		statuses = append(statuses, "'failed'")
 	}
-	result, err := a.db.Exec(`DELETE FROM pipeline_queue WHERE status IN (` + strings.Join(statuses, ",") + `)`)
+	where := `status IN (` + strings.Join(statuses, ",") + `)`
+	args := []any{}
+	if olderThanText != "" {
+		where += " AND created_at < ?"
+		args = append(args, olderThan)
+	}
+	counts := map[string]int64{"completed": 0, "failed": 0}
+	rows, _ := a.db.Query(`SELECT status,count(*) FROM pipeline_queue WHERE `+where+` GROUP BY status`, args...)
+	for rows != nil && rows.Next() {
+		var status string
+		var count int64
+		_ = rows.Scan(&status, &count)
+		counts[status] = count
+	}
+	if rows != nil {
+		rows.Close()
+	}
+	result, err := a.db.Exec(`DELETE FROM pipeline_queue WHERE `+where, args...)
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to clear tasks")
 		return
 	}
 	deleted, _ := result.RowsAffected()
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "deletedCount": deleted, "breakdown": map[string]any{"completed": 0, "failed": 0}})
+	response := map[string]any{"success": true, "deletedCount": deleted, "breakdown": counts}
+	if olderThanText != "" {
+		response["filter"] = map[string]any{"olderThanDays": olderThanDays, "thresholdDate": time.Unix(olderThan, 0).UTC()}
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 func (a *App) taskRetry(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var b struct {
@@ -202,16 +241,28 @@ func (a *App) taskRetry(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, 400, "Invalid request")
 		return
 	}
-	_, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',error_message=NULL,created_at=unixepoch() WHERE id=?`, b.TaskID)
-	if err != nil {
+	var payload string
+	var status string
+	if err := a.db.QueryRow(`SELECT payload,status FROM pipeline_queue WHERE id=?`, b.TaskID).Scan(&payload, &status); err != nil {
+		errorJSON(w, http.StatusNotFound, "Task not found")
+		return
+	}
+	if status != "failed" {
+		errorJSON(w, http.StatusBadRequest, "Task is not in failed status, current status: "+status)
+		return
+	}
+	if _, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,created_at=unixepoch() WHERE id=?`, b.TaskID); err != nil {
 		errorJSON(w, 500, err.Error())
 		return
 	}
+	var parsed map[string]any
+	_ = json.Unmarshal([]byte(payload), &parsed)
 	a.wakeQueue()
-	writeJSON(w, 200, map[string]any{"success": true})
+	writeJSON(w, 200, map[string]any{"success": true, "message": fmt.Sprintf("Task %d has been reset and will be retried", b.TaskID), "taskId": b.TaskID, "payload": map[string]any{"type": parsed["type"], "storageKey": parsed["storageKey"]}})
 }
 func (a *App) taskRetryBatch(w http.ResponseWriter, r *http.Request) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var b struct {
@@ -222,26 +273,62 @@ func (a *App) taskRetryBatch(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, 400, "Invalid request")
 		return
 	}
+	if !b.RetryAll && len(b.TaskIDs) == 0 {
+		errorJSON(w, http.StatusBadRequest, "Either taskIds array or retryAll flag must be provided")
+		return
+	}
 	if b.RetryAll {
-		result, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',error_message=NULL,created_at=unixepoch() WHERE status='failed'`)
+		var retriedTasks []map[string]any
+		rows, _ := a.db.Query(`SELECT id,payload FROM pipeline_queue WHERE status='failed'`)
+		for rows != nil && rows.Next() {
+			var id int64
+			var payload string
+			_ = rows.Scan(&id, &payload)
+			var parsed map[string]any
+			_ = json.Unmarshal([]byte(payload), &parsed)
+			retriedTasks = append(retriedTasks, map[string]any{"id": id, "type": parsed["type"], "storageKey": parsed["storageKey"]})
+		}
+		if rows != nil {
+			rows.Close()
+		}
+		result, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,created_at=unixepoch() WHERE status='failed'`)
 		if err != nil {
 			errorJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		retried, _ := result.RowsAffected()
 		a.wakeQueue()
-		writeJSON(w, http.StatusOK, map[string]any{"success": true, "retriedCount": retried})
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": fmt.Sprintf("Successfully reset %d failed tasks for retry", retried), "retriedCount": retried, "skippedCount": 0, "retriedTasks": retriedTasks, "skippedTasks": []any{}})
 		return
 	}
+	retried := 0
+	skipped := 0
+	var retriedTasks, skippedTasks []map[string]any
 	for _, id := range b.TaskIDs {
-		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending',error_message=NULL,created_at=unixepoch() WHERE id=?`, id)
+		var payload, status string
+		if err := a.db.QueryRow(`SELECT payload,status FROM pipeline_queue WHERE id=?`, id).Scan(&payload, &status); err != nil {
+			skipped++
+			skippedTasks = append(skippedTasks, map[string]any{"id": id, "status": "missing", "reason": "Task not found"})
+			continue
+		}
+		if status != "failed" {
+			skipped++
+			skippedTasks = append(skippedTasks, map[string]any{"id": id, "status": status, "reason": "Task is not in failed status (current: " + status + ")"})
+			continue
+		}
+		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,created_at=unixepoch() WHERE id=?`, id)
+		var parsed map[string]any
+		_ = json.Unmarshal([]byte(payload), &parsed)
+		retried++
+		retriedTasks = append(retriedTasks, map[string]any{"id": id, "type": parsed["type"], "storageKey": parsed["storageKey"]})
 	}
 	a.wakeQueue()
-	writeJSON(w, 200, map[string]any{"success": true, "retriedCount": len(b.TaskIDs)})
+	writeJSON(w, 200, map[string]any{"success": true, "message": fmt.Sprintf("Successfully reset %d failed tasks for retry", retried), "retriedCount": retried, "skippedCount": skipped, "retriedTasks": retriedTasks, "skippedTasks": skippedTasks})
 }
 
 func (a *App) taskDeleteFailed(w http.ResponseWriter, r *http.Request, idText string) {
-	if !a.requireAdmin(w, r) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	id, err := strconv.ParseInt(idText, 10, 64)
