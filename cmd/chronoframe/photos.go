@@ -123,6 +123,13 @@ func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		found = true
 	}
+	if found && isVideoUpload(b.FileName, b.ContentType) {
+		if storageKeyText, ok := existing.StorageKey.(string); ok && isImageStorageKey(storageKeyText) {
+			// A Live Photo video may share the sanitized ID of its image pair.
+			// Nuxt only treats an existing video as a duplicate in this case.
+			found = false
+		}
+	}
 	if found && !b.SkipDuplicateCheck && duplicateCheckEnabled(a) {
 		mode := duplicateMode(a)
 		response := map[string]any{"duplicate": true, "existingPhoto": existing, "fileKey": key, "title": "Duplicate file", "message": "File already exists"}
@@ -155,6 +162,27 @@ func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}()})
+}
+
+func isVideoUpload(fileName, contentType string) bool {
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(contentType)), "video/") {
+		return true
+	}
+	switch strings.ToLower(filepath.Ext(fileName)) {
+	case ".mov", ".mp4":
+		return true
+	default:
+		return false
+	}
+}
+
+func isImageStorageKey(key string) bool {
+	switch strings.ToLower(filepath.Ext(key)) {
+	case ".avif", ".bmp", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp":
+		return true
+	default:
+		return false
+	}
 }
 func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.user(r); !ok {
