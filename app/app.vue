@@ -52,8 +52,12 @@ const apiEndpoint = computed(() => {
   // 前端页面：登录用户显示所有照片，未登录用户只显示可见照片
   return loggedIn.value ? '/api/photos' : '/api/photos/visible'
 })
-const { data, refresh, status } = await useFetch(() => apiEndpoint.value, {
+// Keep the shell and route visible while the photo collection is loading.
+// The collection can be large, and album pages fetch their own focused data.
+const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
   watch: [apiEndpoint],
+  lazy: true,
+  default: () => [],
 })
 
 // Keep theme application deterministic even when settings arrive after the

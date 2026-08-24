@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { motion } from 'motion-v'
-import type { Album } from '~~/server/utils/db'
+import type { Album } from '~~/shared/types/domain'
 interface AlbumWithPhotos extends Album {
   photoIds?: string[]
 }
@@ -158,7 +158,6 @@ const hoveredAlbum = ref<number | null>(null)
                 <ClientOnly>
                   <ThumbImage
                     class="w-full h-auto object-cover saturate-50"
-                    :lazy="false"
                     :src="photo.thumbnailUrl!"
                     :thumbhash="photo.thumbnailHash"
                     :alt="photo.exif?.ImageDescription || $t('ui.photo.altFallback')"
