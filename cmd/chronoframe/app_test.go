@@ -125,7 +125,7 @@ func TestExifReindexAndLivePhotoDetection(t *testing.T) {
 	}
 	reindex := httptest.NewRecorder()
 	app.ServeHTTP(reindex, adminRequest(t, app, http.MethodPost, "/api/photos/exif/reindex", []byte(`{"action":"single-reindex","photoId":"photo-1"}`)))
-	if reindex.Code != http.StatusOK || !strings.Contains(reindex.Body.String(), `"updated":1`) {
+	if reindex.Code != http.StatusOK || !strings.Contains(reindex.Body.String(), `"success":true`) || !strings.Contains(reindex.Body.String(), `"photoId":"photo-1"`) {
 		t.Fatalf("EXIF reindex failed: %d %s", reindex.Code, reindex.Body.String())
 	}
 	if _, err := app.storage.Create(context.Background(), "photos/sample.mov", []byte("video"), "video/quicktime"); err != nil {
