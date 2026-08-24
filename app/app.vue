@@ -22,10 +22,8 @@ try {
 
 // 初始化设置系统 - 一次性加载所有设置
 const settingsStore = useSettingsStore()
-await settingsStore.initSettings()
-
 const session = useUserSession()
-await session.fetch()
+await Promise.all([settingsStore.initSettings(), session.fetch()])
 const { loggedIn } = session
 
 const appTitle = useSettingRef('app:title')

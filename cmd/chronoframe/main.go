@@ -60,6 +60,11 @@ func main() {
 		log.Fatal(err)
 	}
 	app.migrateEnvironmentSettings()
+	// Warm the small public snapshot before workers begin media/database work.
+	// This keeps the first browser request independent from queue write locks.
+	if _, err := app.publicSettingsSnapshot(context.Background()); err != nil {
+		log.Fatal(err)
+	}
 	app.storage = app.loadStorage()
 	app.startWorkers()
 	defer app.stopWorkers()
