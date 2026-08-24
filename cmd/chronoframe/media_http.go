@@ -155,12 +155,21 @@ func (a *App) writeThumbnail(w http.ResponseWriter, _ *http.Request, data []byte
 }
 func urlPathUnescape(v string) (string, error) { return url.PathUnescape(v) }
 func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
+	webDir := a.cfg.WebDir
+	// Older deployments may still copy the generated bundle to ./web. When
+	// the default output directory is absent, preserve that layout without
+	// requiring a configuration change.
+	if _, err := os.Stat(filepath.Join(webDir, "index.html")); err != nil && a.cfg.WebDir == defaultWebDir {
+		if _, fallbackErr := os.Stat(filepath.Join("web", "index.html")); fallbackErr == nil {
+			webDir = "./web"
+		}
+	}
 	path := r.URL.Path
 	if path == "" || path == "/" || filepath.Ext(path) == "" {
 		path = "/index.html"
 	}
-	file := filepath.Join(a.cfg.WebDir, filepath.FromSlash(strings.TrimPrefix(path, "/")))
-	if !safePath(a.cfg.WebDir, file) {
+	file := filepath.Join(webDir, filepath.FromSlash(strings.TrimPrefix(path, "/")))
+	if !safePath(webDir, file) {
 		errorJSON(w, http.StatusNotFound, "Not Found")
 		return
 	}
@@ -173,7 +182,7 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, file)
 		return
 	}
-	index := filepath.Join(a.cfg.WebDir, "index.html")
+	index := filepath.Join(webDir, "index.html")
 	w.Header().Set("Cache-Control", "no-cache")
 	http.ServeFile(w, r, index)
 }

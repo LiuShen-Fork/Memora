@@ -159,6 +159,10 @@ func (a *App) allSettings(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to read public settings")
 		return
 	}
+	// The snapshot is invalidated whenever a setting changes, so a short
+	// browser cache avoids repeating the same startup request while retaining
+	// prompt updates after administration changes.
+	w.Header().Set("Cache-Control", "private, max-age=30, stale-while-revalidate=300")
 	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UnixMilli(), "data": data})
 }
 
