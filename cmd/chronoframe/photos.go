@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Photo struct {
@@ -332,6 +333,26 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		errorJSON(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
+	if body.Title != nil && utf8.RuneCountInString(*body.Title) > 512 {
+		errorJSON(w, http.StatusBadRequest, "title is too long")
+		return
+	}
+	if body.Description != nil && utf8.RuneCountInString(*body.Description) > 2000 {
+		errorJSON(w, http.StatusBadRequest, "description is too long")
+		return
+	}
+	if body.Tags != nil {
+		if len(*body.Tags) > 64 {
+			errorJSON(w, http.StatusBadRequest, "tags must contain at most 64 items")
+			return
+		}
+		for _, tag := range *body.Tags {
+			if utf8.RuneCountInString(tag) > 128 {
+				errorJSON(w, http.StatusBadRequest, "tag is too long")
+				return
+			}
+		}
+	}
 	if body.Title == nil && body.Description == nil && body.Tags == nil && body.Location == nil && body.Rating == nil {
 		errorJSON(w, http.StatusBadRequest, "No changes provided")
 		return
@@ -349,6 +370,7 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	updates := map[string]any{}
 	sets := []string{}
 	args := []any{}
+	var location map[string]any
 	if body.Title != nil {
 		title := strings.TrimSpace(*body.Title)
 		updates["Title"] = title
@@ -360,6 +382,8 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		description := strings.TrimSpace(*body.Description)
 		updates["Description"] = description
 		updates["ImageDescription"] = description
+		updates["CaptionAbstract"] = description
+		updates["XPComment"] = description
 		updates["UserComment"] = description
 		sets = append(sets, "description=?")
 		args = append(args, nullIfEmpty(description))
@@ -373,7 +397,6 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 		args = append(args, jsonValue(tags))
 	}
 	if body.Location != nil {
-		var location map[string]any
 		if string(body.Location) != "null" && json.Unmarshal(body.Location, &location) != nil {
 			errorJSON(w, http.StatusBadRequest, "Invalid location")
 			return
@@ -425,6 +448,19 @@ func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	if _, err := a.db.Exec(`UPDATE photos SET `+strings.Join(sets, ",")+` WHERE id=?`, args...); err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to update photo")
 		return
+	}
+	if body.Location != nil && location != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"type":      "photo-reverse-geocoding",
+			"photoId":   id,
+			"latitude":  location["latitude"],
+			"longitude": location["longitude"],
+		})
+		if _, queueErr := a.db.Exec(`INSERT INTO pipeline_queue(payload,priority,max_attempts,status) VALUES(?,?,?,'pending')`, string(payload), 1, 3); queueErr != nil {
+			a.logs.Add("queue", "failed to enqueue reverse geocoding for "+id+": "+queueErr.Error())
+		} else {
+			a.wakeQueue()
+		}
 	}
 	updated, err := a.photoByID(id)
 	if err != nil {
