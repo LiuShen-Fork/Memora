@@ -43,7 +43,7 @@ func main() {
 	}
 	defer db.Close()
 	db.SetMaxOpenConns(1)
-	app := &App{cfg: cfg, db: db, queueWake: make(chan struct{}, 1), stop: make(chan struct{}), logs: NewLogBuffer()}
+	app := &App{cfg: cfg, db: db, queueWake: make(chan struct{}, 1), stop: make(chan struct{}), logs: NewLogBuffer(filepath.Join(cfg.DataDir, "logs", "app.log"))}
 	if err := app.ensureSchema(); err != nil {
 		log.Fatal(err)
 	}

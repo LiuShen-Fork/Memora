@@ -317,14 +317,45 @@ func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
-	for _, line := range a.logs.Snapshot() {
+	w.Header().Set("Connection", "keep-alive")
+	initial, offset, err := a.logs.Tail(400)
+	if err != nil {
+		initial, offset = a.logs.Snapshot(), 0
+	}
+	for _, line := range initial {
 		fmt.Fprintf(w, "data: %s\n\n", line)
 	}
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
+	flusher, canFlush := w.(http.Flusher)
+	if canFlush {
+		flusher.Flush()
 	}
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	deadline := time.NewTimer(30 * time.Second)
+	defer deadline.Stop()
 	select {
 	case <-r.Context().Done():
-	case <-time.After(30 * time.Second):
+	case <-deadline.C:
+	case <-ticker.C:
+		// The first tick is handled below so a newly appended line is not lost.
+		for {
+			lines, next, readErr := a.logs.Since(offset)
+			if readErr == nil {
+				for _, line := range lines {
+					fmt.Fprintf(w, "data: %s\n\n", line)
+				}
+				offset = next
+				if canFlush {
+					flusher.Flush()
+				}
+			}
+			select {
+			case <-r.Context().Done():
+				return
+			case <-deadline.C:
+				return
+			case <-ticker.C:
+			}
+		}
 	}
 }
