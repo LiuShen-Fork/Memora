@@ -796,7 +796,10 @@
           "noLocation": "未选择位置",
           "rating": "评分",
           "ratingHint": "点击星星为照片设置评分（0-5 星）。",
-          "noRating": "未评分"
+          "noRating": "未评分",
+          "albums": "相册",
+          "albumsHint": "将此照片添加到相册或从相册中移除。",
+          "albumsPlaceholder": "选择相册"
         },
         "actions": {
           "cancel": "取消",

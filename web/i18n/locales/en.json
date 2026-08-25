@@ -799,7 +799,10 @@
           "noLocation": "No location selected",
           "rating": "Rating",
           "ratingHint": "Click on the stars to set the photo rating (0-5 stars).",
-          "noRating": "No rating"
+          "noRating": "No rating",
+          "albums": "Albums",
+          "albumsHint": "Add or remove this photo from albums.",
+          "albumsPlaceholder": "Choose albums"
         },
         "actions": {
           "cancel": "Cancel",

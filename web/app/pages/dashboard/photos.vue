@@ -147,6 +147,9 @@ interface EditFormState {
 const editingPhoto = ref<Photo | null>(null)
 const isEditModalOpen = ref(false)
 const isSavingMetadata = ref(false)
+const editPhotoAlbums = ref<Album[]>([])
+const selectedEditAlbumIds = ref<number[]>([])
+const originalEditAlbumIds = ref<number[]>([])
 
 const editFormState = reactive<EditFormState>({
   title: '',
@@ -243,13 +246,31 @@ const ratingChanged = computed(
   () => editFormState.rating !== originalMetadata.value.rating,
 )
 
+const editAlbumOptions = computed(() =>
+  editPhotoAlbums.value.map((album) => ({
+    label: album.title,
+    value: album.id,
+    icon: 'tabler:album',
+  })),
+)
+
+const albumMembershipChanged = computed(() => {
+  const current = [...selectedEditAlbumIds.value].sort((a, b) => a - b)
+  const original = [...originalEditAlbumIds.value].sort((a, b) => a - b)
+  return (
+    current.length !== original.length ||
+    current.some((id, i) => id !== original[i])
+  )
+})
+
 const isMetadataDirty = computed(
   () =>
     titleChanged.value ||
     descriptionChanged.value ||
     tagsChanged.value ||
     locationChanged.value ||
-    ratingChanged.value,
+    ratingChanged.value ||
+    albumMembershipChanged.value,
 )
 
 const formattedCoordinates = computed(() => {
@@ -594,6 +615,9 @@ watch(isEditModalOpen, (open) => {
     }
     locationSelection.value = null
     locationTouched.value = false
+    editPhotoAlbums.value = []
+    selectedEditAlbumIds.value = []
+    originalEditAlbumIds.value = []
   }
 })
 
@@ -1371,7 +1395,7 @@ const handleUpload = async () => {
   isUploadSlideoverOpen.value = false
 }
 
-const openMetadataEditor = (photo: Photo) => {
+const openMetadataEditor = async (photo: Photo) => {
   const initialTitle = photo.title?.trim() ?? ''
   const initialDescription = photo.description?.trim() ?? ''
   const initialTags = normalizeTagList(photo.tags ?? [])
@@ -1402,6 +1426,22 @@ const openMetadataEditor = (photo: Photo) => {
 
   locationSelection.value = initialLocation ? { ...initialLocation } : null
   locationTouched.value = false
+
+  try {
+    const [albumResponse, membershipResponse] = await Promise.all([
+      $fetch('/api/albums'),
+      $fetch('/api/photos/' + photo.id + '/albums'),
+    ])
+    editPhotoAlbums.value = albumResponse as Album[]
+    const albumIds = (membershipResponse as Album[]).map((album) => album.id)
+    selectedEditAlbumIds.value = [...albumIds]
+    originalEditAlbumIds.value = [...albumIds]
+  } catch (error) {
+    console.error('Failed to load photo albums:', error)
+    editPhotoAlbums.value = []
+    selectedEditAlbumIds.value = []
+    originalEditAlbumIds.value = []
+  }
 
   isEditModalOpen.value = true
 }
@@ -1508,6 +1548,22 @@ const saveMetadataChanges = async () => {
             : '',
         color: 'success',
       })
+      hasAnySuccessfulAction = true
+    }
+
+    const addedAlbumIds = selectedEditAlbumIds.value.filter(
+      (id) => !originalEditAlbumIds.value.includes(id),
+    )
+    const removedAlbumIds = originalEditAlbumIds.value.filter(
+      (id) => !selectedEditAlbumIds.value.includes(id),
+    )
+    for (const albumId of addedAlbumIds) {
+      await updateAlbumMembership(albumId, 'add', [editingPhoto.value.id])
+    }
+    for (const albumId of removedAlbumIds) {
+      await updateAlbumMembership(albumId, 'remove', [editingPhoto.value.id])
+    }
+    if (addedAlbumIds.length > 0 || removedAlbumIds.length > 0) {
       hasAnySuccessfulAction = true
     }
 
@@ -2754,6 +2810,23 @@ onUnmounted(() => {
                     {{ $t('dashboard.photos.editModal.fields.tagsHint') }}
                   </p>
                 </div>
+
+                <UFormField
+                  :label="$t('dashboard.photos.editModal.fields.albums')"
+                  :description="$t('dashboard.photos.editModal.fields.albumsHint')"
+                  name="albums"
+                >
+                  <USelectMenu
+                    v-model="selectedEditAlbumIds"
+                    :items="editAlbumOptions"
+                    value-key="value"
+                    label-key="label"
+                    multiple
+                    :search-input="editAlbumOptions.length > 6"
+                    class="w-full"
+                    :placeholder="$t('dashboard.photos.editModal.fields.albumsPlaceholder')"
+                  />
+                </UFormField>
 
                 <div class="flex items-center justify-between space-y-2">
                   <label
