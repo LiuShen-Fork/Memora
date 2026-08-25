@@ -10,10 +10,10 @@ import (
 
 const (
 	defaultDBPath = "./data/app.sqlite3"
-	// `pnpm generate` writes the static client to this directory. Keep the
+	// `pnpm --dir web generate` writes the static client to this directory. Keep the
 	// environment override for deployments that serve a separately copied
 	// bundle.
-	defaultWebDir = "./.output/public"
+	defaultWebDir = "./web/.output/public"
 	cookieName    = "cframe_session"
 )
 

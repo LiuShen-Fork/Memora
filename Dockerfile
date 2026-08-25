@@ -4,11 +4,11 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 WORKDIR /src
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/webgl-image/package.json ./packages/webgl-image/
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+COPY web/packages/webgl-image/package.json ./packages/webgl-image/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-COPY . .
+COPY web ./
 RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build:deps \
     && NODE_OPTIONS="--max-old-space-size=8192" pnpm generate \
     && find .output/public -type f -name '*.map' -delete

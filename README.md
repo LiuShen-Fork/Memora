@@ -180,7 +180,7 @@ docker compose up -d
 
 ```bash
 # With pnpm (recommended)
-pnpm install
+pnpm --dir web install
 
 # Or with other package managers
 npm install
@@ -196,44 +196,41 @@ cp .env.example .env
 ### Build and start locally
 
 ```bash
-pnpm install
-pnpm build:deps
-pnpm generate
+pnpm --dir web install
+pnpm --dir web build:deps
+pnpm --dir web generate
 go run ./cmd/chronoframe
 ```
 
-The Go server serves `.output/public` at http://localhost:3000. Set `CFRAME_WEB_DIR` and `DATABASE_URL` to absolute paths when starting outside the repository root.
+The Go server serves `web/.output/public` at http://localhost:3000. Set `CFRAME_WEB_DIR` and `DATABASE_URL` to absolute paths when starting outside the repository root.
 
 ### Project Structure
 
 ```
 chronoframe/
-├── app/                    # Nuxt app
-│   ├── components/         # Components
-│   ├── pages/              # Page routes
-│   ├── composables/        # Composables
-│   └── stores/             # Pinia stores
-├── packages/
-│   └── webgl-image/        # WebGL image viewer
-├── cmd/
-│   └── chronoframe/        # Go backend and HTTP routes
-└── shared/                 # Shared types & utils
+├── web/                    # Static Nuxt frontend
+│   ├── app/                # Pages, components, composables, stores
+│   ├── packages/           # Local frontend packages
+│   └── shared/             # Shared TypeScript contracts
+├── cmd/chronoframe/        # Go backend and HTTP routes
+├── data/                   # SQLite and mounted media data (ignored)
+└── Dockerfile              # Production image
 ```
 
 ### Build commands
 
 ```bash
 # Build frontend dependencies
-pnpm build:deps
+pnpm --dir web build:deps
 
 # Build only dependencies
-pnpm build:deps
+pnpm --dir web build:deps
 
 # Production build
-pnpm build
+pnpm --dir web build
 
 # Generate static frontend
-pnpm generate
+pnpm --dir web generate
 
 # Run backend
 go run ./cmd/chronoframe

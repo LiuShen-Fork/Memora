@@ -181,7 +181,7 @@ docker compose up -d
 
 ```bash
 # 使用 pnpm (推荐)
-pnpm install
+pnpm --dir web install
 
 # 或使用其他包管理器
 npm install
@@ -199,9 +199,9 @@ cp .env.example .env
 ### 构建并启动开发服务
 
 ```bash
-pnpm install
-pnpm build:deps
-pnpm generate
+pnpm --dir web install
+pnpm --dir web build:deps
+pnpm --dir web generate
 go run ./cmd/chronoframe
 ```
 
@@ -211,32 +211,29 @@ Go 服务会在 `http://localhost:3000` 提供静态前端和 API。
 
 ```
 chronoframe/
-├── app/                    # Nuxt 应用
-│   ├── components/         # 组件
-│   ├── pages/              # 页面路由
-│   ├── composables/        # 组合式函数
-│   └── stores/             # Pinia 状态管理
-├── packages/
-│   └── webgl-image/        # WebGL 图片查看器
-├── cmd/
-│   └── chronoframe/        # Go 后端和 HTTP 路由
-└── shared/                 # 共享类型和工具
+├── web/                    # 静态 Nuxt 前端
+│   ├── app/                # 页面、组件、组合式函数和状态
+│   ├── packages/           # 前端本地包
+│   └── shared/             # TypeScript 类型契约
+├── cmd/chronoframe/        # Go 后端和 HTTP 路由
+├── data/                   # SQLite 和挂载的数据目录（忽略）
+└── Dockerfile              # 生产镜像
 ```
 
 ### 构建命令
 
 ```bash
 # 构建前端依赖
-pnpm build:deps
+pnpm --dir web build:deps
 
 # 仅构建依赖包
-pnpm build:deps
+pnpm --dir web build:deps
 
 # 构建生产版本
-pnpm build
+pnpm --dir web build
 
 # 生成静态前端
-pnpm generate
+pnpm --dir web generate
 
 # 启动 Go 后端
 go run ./cmd/chronoframe

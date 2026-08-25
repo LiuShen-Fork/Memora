@@ -20,14 +20,11 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "generate": "nuxt generate",
-    "go:build": "go build ./cmd/chronoframe",
-    "go:test": "go test ./...",
-    "start": "go run ./cmd/chronoframe",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:dev": "vitepress dev ../docs",
+    "docs:build": "vitepress build ../docs",
+    "docs:preview": "vitepress preview ../docs"
   },
   "dependencies": {
     "@chronoframe/webgl-image": "workspace:*",

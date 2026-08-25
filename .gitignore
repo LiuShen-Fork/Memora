@@ -7,6 +7,11 @@
 dist
 node-compile-cache
 
+# Frontend build context
+web/.output
+web/.nuxt
+web/node_modules
+
 .vscode/
 .agents/
 

@@ -6,9 +6,9 @@ ChronoFrame 使用静态 Nuxt 前端和一个 Go HTTP 服务。Go 服务负责�
 ## 构建与启动
 
 ```bash
-pnpm install
-pnpm build:deps
-pnpm generate
+pnpm --dir web install
+pnpm --dir web build:deps
+pnpm --dir web generate
 go test ./...
 go run ./cmd/chronoframe
 ```
@@ -20,13 +20,13 @@ go run ./cmd/chronoframe
 ## 目录
 
 - `cmd/chronoframe/`：Go 路由、SQLite、存储适配器和队列。
-- `app/`：Nuxt 页面、组件、状态和 composables。
-- `packages/webgl-image/`：WebGL 图片查看器。
-- `shared/`：前端共享类型和接口契约。
+- `web/app/`：Nuxt 页面、组件、状态和 composables。
+- `web/packages/webgl-image/`：WebGL 图片查看器。
+- `web/shared/`：前端共享类型和接口契约。
 
 ## 约束
 
 - 保持现有 SQLite 表结构、JSON 字段和数据路径兼容。
 - 不要新增 Nitro 路由、Drizzle 迁移或 Node 后端。
 - 媒体、EXIF、缩略图和地理编码等耗时工作必须进入持久化队列。
-- 提交前运行 `go test ./...`、`go vet ./...`、`pnpm lint` 和 `pnpm generate`。
+- 提交前运行 `go test ./...`、`go vet ./...`、`pnpm --dir web lint` 和 `pnpm --dir web generate`。
