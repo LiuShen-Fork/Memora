@@ -59,8 +59,8 @@ html {
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 html::-webkit-scrollbar-track,
@@ -103,8 +103,8 @@ body::-webkit-scrollbar-thumb:hover {
 }
 
 .table-scroll::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
 .table-scroll::-webkit-scrollbar-track {
@@ -128,8 +128,8 @@ body::-webkit-scrollbar-thumb:hover {
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;

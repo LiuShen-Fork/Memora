@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { motion } from 'motion-v'
 import { clusterMarkers, photosToMarkers } from '~/utils/clustering'
+import { transformCoordinate } from '~/utils/coordinate-transform'
 
 useHead({
   title: () => $t('title.globe'),
@@ -12,6 +13,11 @@ const dayjs = useDayjs()
 
 const { photos } = usePhotos()
 
+const selectedPhotoId = computed(() => {
+  const value = route.query.photoId
+  return typeof value === 'string' && value.length > 0 ? value : null
+})
+
 const photosWithLocation = computed(() => {
   return photos.value.filter(
     (photo) =>
@@ -21,6 +27,10 @@ const photosWithLocation = computed(() => {
       photo.longitude !== undefined,
   )
 })
+
+const selectedPhoto = computed(() =>
+  photosWithLocation.value.find((photo) => photo.id === selectedPhotoId.value),
+)
 
 const timelineProgress = ref(100)
 const isTimelineEnabled = ref(false)
@@ -229,7 +239,7 @@ const toggleTimelineEnabled = () => {
   isTimelineEnabled.value = true
 }
 
-const currentClusterPointId = ref<string | null>(null)
+const currentClusterPointId = ref<string | null>(selectedPhotoId.value)
 const mapInstance = ref<any>(null)
 const currentZoom = ref<number>(4)
 const analysisMode = ref<'none' | 'focalLength' | 'shutterSpeed' | 'altitude'>(
@@ -339,8 +349,10 @@ const analysisLegend = computed(() => {
 
 // Convert photos to markers and apply clustering
 const clusteredMarkers = computed(() => {
-  const markers = photosToMarkers(filteredPhotosWithLocation.value)
-  return clusterMarkers(markers, currentZoom.value)
+  const markers = photosToMarkers(
+    selectedPhoto.value ? [selectedPhoto.value] : filteredPhotosWithLocation.value,
+  )
+  return clusterMarkers(markers, selectedPhoto.value ? 18 : currentZoom.value)
 })
 
 // Separate clusters and single markers
@@ -377,6 +389,14 @@ watch(filteredPhotosWithLocation, (currentPhotos) => {
 })
 
 const mapViewState = computed(() => {
+  if (selectedPhoto.value) {
+    return {
+      longitude: selectedPhoto.value.longitude!,
+      latitude: selectedPhoto.value.latitude!,
+      zoom: 17,
+    }
+  }
+
   if (photosWithLocation.value.length === 0) {
     return {
       longitude: -122.4,
@@ -461,27 +481,37 @@ const onMarkerPinClose = () => {
   currentClusterPointId.value = null
 }
 
+const focusPhoto = (map: any, photo: Photo) => {
+  const center: [number, number] = [photo.longitude!, photo.latitude!]
+
+  if (typeof map.flyTo === 'function') {
+    map.flyTo({
+      center,
+      zoom: 17,
+      essential: true,
+      duration: 1200,
+    })
+    return
+  }
+
+  if (typeof map.setZoomAndCenter === 'function') {
+    map.setZoomAndCenter(
+      17,
+      transformCoordinate(center[0], center[1], 'amap'),
+      false,
+      1200,
+    )
+  }
+}
+
 const onMapLoaded = (map: any) => {
   mapInstance.value = map
 
-  const { photoId } = route.query
-  if (photoId && typeof photoId === 'string') {
-    const photo = photosWithLocation.value.find((photo) => photo.id === photoId)
-    if (photo && photo.latitude && photo.longitude) {
-      setTimeout(() => {
-        map.flyTo({
-          center: [photo.longitude, photo.latitude],
-          zoom: 17,
-          essential: true,
-          duration: 2000,
-        })
-        setTimeout(() => {
-          nextTick(() => {
-            currentClusterPointId.value = photoId
-          })
-        }, 2000)
-      }, 600)
-    }
+  if (selectedPhoto.value) {
+    focusPhoto(map, selectedPhoto.value)
+    nextTick(() => {
+      currentClusterPointId.value = selectedPhoto.value?.id || null
+    })
   }
 
   currentZoom.value = map.getZoom()
@@ -491,6 +521,23 @@ const onMapZoom = useThrottleFn(() => {
   if (!mapInstance.value) return
   currentZoom.value = mapInstance.value.getZoom()
 }, 100)
+
+watch(selectedPhotoId, (photoId) => {
+  currentClusterPointId.value = photoId
+  if (photoId && selectedPhoto.value && mapInstance.value) {
+    focusPhoto(mapInstance.value, selectedPhoto.value)
+  }
+})
+
+watch(
+  [selectedPhoto, mapInstance],
+  ([photo, map]) => {
+    if (!photo || !map) return
+    currentClusterPointId.value = photo.id
+    focusPhoto(map, photo)
+  },
+  { immediate: true },
+)
 
 // Map control functions
 const zoomIn = () => {
@@ -508,13 +555,33 @@ const resetMap = () => {
   // Clear current selection
   currentClusterPointId.value = null
 
-  // Reset to initial view state
-  mapInstance.value.flyTo({
-    center: [mapViewState.value.longitude, mapViewState.value.latitude],
-    zoom: mapViewState.value.zoom,
-    essential: true,
-    duration: 1000,
+  // Wait for the route watcher to remove photoId before restoring the global view.
+  nextTick(() => {
+    if (!mapInstance.value) return
+    const center: [number, number] = [
+      mapViewState.value.longitude,
+      mapViewState.value.latitude,
+    ]
+    if (typeof mapInstance.value.flyTo === 'function') {
+      mapInstance.value.flyTo({
+        center,
+        zoom: mapViewState.value.zoom,
+        essential: true,
+        duration: 1000,
+      })
+    } else if (typeof mapInstance.value.setZoomAndCenter === 'function') {
+      mapInstance.value.setZoomAndCenter(
+        mapViewState.value.zoom,
+        transformCoordinate(center[0], center[1], 'amap'),
+        true,
+        1000,
+      )
+    }
   })
+}
+
+const goHome = () => {
+  router.push('/')
 }
 
 const generateRandomKey = () => {
@@ -541,7 +608,7 @@ onBeforeUnmount(() => {
     <GlassButton
       class="absolute top-4 left-4 z-10"
       icon="tabler:home"
-      @click="$router.push('/')"
+      @click.stop="goHome"
     />
 
     <div class="absolute top-4 right-4 z-10 flex flex-col items-end">

@@ -177,19 +177,22 @@ const handleLogin = () => {
       </template>
 
       <template #footer="{ collapsed }">
-        <UButton
-          :avatar="{
-            src: user?.avatar || '',
-            alt: user?.username || user?.email || 'User Avatar',
-            icon: 'tabler:user',
-          }"
-          :label="collapsed ? undefined : user?.username || 'User'"
-          size="lg"
-          color="neutral"
-          variant="ghost"
-          class="w-full"
-          :block="collapsed"
-        />
+        <div class="flex items-center gap-1" :class="collapsed ? 'flex-col' : ''">
+          <LanguageSwitcher compact />
+          <UButton
+            :avatar="{
+              src: user?.avatar || '',
+              alt: user?.username || user?.email || 'User Avatar',
+              icon: 'tabler:user',
+            }"
+            :label="collapsed ? undefined : user?.username || 'User'"
+            size="lg"
+            color="neutral"
+            variant="ghost"
+            class="min-w-0 flex-1"
+            :block="collapsed"
+          />
+        </div>
       </template>
     </UDashboardSidebar>
 
