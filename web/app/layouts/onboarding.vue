@@ -202,6 +202,9 @@ const currentStepIndex = computed(() => {
       <div
         class="flex-1 flex flex-col relative overflow-hidden bg-neutral-900/20"
       >
+        <div class="absolute top-6 right-6 z-30">
+          <LanguageSwitcher compact />
+        </div>
         <!-- Top Bar (Mobile only) -->
         <div
           class="lg:hidden flex items-center justify-between p-6 border-b border-white/5 bg-neutral-900/50 backdrop-blur-md z-20"

@@ -220,6 +220,7 @@ const isRepoLinkHovering = ref(false)
                 @click="isDark = !isDark"
               />
             </UTooltip>
+            <LanguageSwitcher compact />
             <UTooltip
               v-if="loggedIn"
               :text="$t('ui.action.dashboard.tooltip')"

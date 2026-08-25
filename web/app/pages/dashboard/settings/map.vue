@@ -33,10 +33,31 @@ const mapProviderTabs = [
   { label: 'AMap', value: 'amap' },
 ]
 
+const locationProvider = computed({
+  get: () => String(locationState.provider || 'nominatim'),
+  set: (value: string) => {
+    locationState.provider = value
+  },
+})
+
+const locationProviderTabs = [
+  { label: 'Nominatim', value: 'nominatim' },
+  { label: 'Mapbox', value: 'mapbox' },
+  { label: 'AMap', value: 'amap' },
+]
+
 const visibleMapFields = computed(() =>
   mapFields.value.filter((field) => {
     if (field.key === 'provider') return false
     return field.key.startsWith(mapProvider.value + '.')
+  }),
+)
+
+const visibleLocationFields = computed(() =>
+  locationFields.value.filter((field) => {
+    if (field.key === 'provider') return false
+    if (field.key === 'language') return true
+    return field.key.startsWith(locationProvider.value + '.')
   }),
 )
 
@@ -193,7 +214,7 @@ const handleLocationSettingsSubmit = async () => {
           </header>
 
           <div
-            v-if="locationLoading && locationFields.length === 0"
+            v-if="locationLoading && visibleLocationFields.length === 0"
             class="space-y-4 px-5 py-5"
           >
             <USkeleton class="h-4 w-36" />
@@ -208,8 +229,17 @@ const handleLocationSettingsSubmit = async () => {
             class="space-y-5 px-5 py-5"
             @submit="handleLocationSettingsSubmit"
           >
+            <UTabs
+              v-model="locationProvider"
+              :items="locationProviderTabs"
+              color="primary"
+              variant="pill"
+              class="w-full"
+              :ui="{ list: 'w-full', trigger: 'flex-1 justify-center' }"
+            />
+
             <SettingField
-              v-for="field in locationFields"
+              v-for="field in visibleLocationFields"
               :key="field.key"
               :field="field"
               :model-value="locationState[field.key]"

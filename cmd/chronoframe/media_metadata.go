@@ -84,6 +84,7 @@ func hemisphere(value float64, positive, negative string) string {
 }
 
 func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, longitude float64) error {
+	language := a.geocodingLanguage()
 	var provider any
 	if a.readSetting("location", "provider", &provider) && provider == "amap" {
 		var key any
@@ -93,15 +94,31 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 			_ = a.readSetting("map", "amap.key", &key)
 		}
 		if token := strings.TrimSpace(fmt.Sprint(key)); token != "" {
-			return a.reverseGeocodeAMap(ctx, photoID, token, latitude, longitude)
+			return a.reverseGeocodeAMap(ctx, photoID, token, language, latitude, longitude)
 		}
 		return fmt.Errorf("amap reverse geocoding key is not configured")
+	}
+	if provider == "mapbox" {
+		var token any
+		if !a.readSetting("location", "mapbox.token", &token) || strings.TrimSpace(fmt.Sprint(token)) == "" {
+			_ = a.readSetting("map", "mapbox.token", &token)
+		}
+		if value := strings.TrimSpace(fmt.Sprint(token)); value != "" {
+			return a.reverseGeocodeMapbox(ctx, photoID, value, language, latitude, longitude)
+		}
+		return fmt.Errorf("mapbox reverse geocoding token is not configured")
 	}
 	base := strings.TrimRight(a.cfg.NominatimURL, "/")
 	if base == "" {
 		return nil
 	}
-	query := url.Values{"lat": {strconv.FormatFloat(latitude, 'f', 8, 64)}, "lon": {strconv.FormatFloat(longitude, 'f', 8, 64)}, "format": {"jsonv2"}, "addressdetails": {"1"}}
+	query := url.Values{
+		"lat":             {strconv.FormatFloat(latitude, 'f', 8, 64)},
+		"lon":             {strconv.FormatFloat(longitude, 'f', 8, 64)},
+		"format":          {"jsonv2"},
+		"addressdetails":  {"1"},
+		"accept-language": {language},
+	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(lookupCtx, http.MethodGet, base+"/reverse?"+query.Encode(), nil)
@@ -109,6 +126,7 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 		return err
 	}
 	req.Header.Set("User-Agent", "ChronoFrame/1.0")
+	req.Header.Set("Accept-Language", language)
 	resp, err := externalHTTPClient.Do(req)
 	if err != nil {
 		return err
@@ -144,12 +162,17 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 	return err
 }
 
-func (a *App) reverseGeocodeAMap(ctx context.Context, photoID, key string, latitude, longitude float64) error {
+func (a *App) reverseGeocodeAMap(ctx context.Context, photoID, key, language string, latitude, longitude float64) error {
 	query := url.Values{
 		"key":        {key},
 		"location":   {strconv.FormatFloat(longitude, 'f', 8, 64) + "," + strconv.FormatFloat(latitude, 'f', 8, 64)},
 		"extensions": {"base"},
 		"output":     {"json"},
+	}
+	if language == "zh-CN" {
+		query.Set("lang", "zh_cn")
+	} else if language == "en" {
+		query.Set("lang", "en")
 	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -201,6 +224,75 @@ func (a *App) reverseGeocodeAMap(ctx context.Context, photoID, key string, latit
 	}
 	_, err = a.db.Exec(`UPDATE photos SET country=?,city=?,location_name=? WHERE id=?`, nullIfEmpty(result.Regeo.Component.Country), nullIfEmpty(city), nullIfEmpty(result.Regeo.FormattedAddress), photoID)
 	return err
+}
+
+func (a *App) reverseGeocodeMapbox(ctx context.Context, photoID, token, language string, latitude, longitude float64) error {
+	coordinates := strconv.FormatFloat(longitude, 'f', 8, 64) + "," + strconv.FormatFloat(latitude, 'f', 8, 64)
+	query := url.Values{"access_token": {token}, "language": {language}, "types": {"country,place,locality"}}
+	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	endpoint := "https://api.mapbox.com/geocoding/v5/mapbox.places/" + url.PathEscape(coordinates) + ".json?" + query.Encode()
+	req, err := http.NewRequestWithContext(lookupCtx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := externalHTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("mapbox reverse geocoding: %s", resp.Status)
+	}
+	var result struct {
+		Features []struct {
+			PlaceName string `json:"place_name"`
+			Text      string `json:"text"`
+			Context   []struct {
+				ID   string `json:"id"`
+				Text string `json:"text"`
+			} `json:"context"`
+		} `json:"features"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&result); err != nil {
+		return err
+	}
+	if len(result.Features) == 0 {
+		return fmt.Errorf("mapbox reverse geocoding: no result")
+	}
+	feature := result.Features[0]
+	country, city := "", feature.Text
+	for _, item := range feature.Context {
+		switch {
+		case strings.HasPrefix(item.ID, "country"):
+			country = item.Text
+		case strings.HasPrefix(item.ID, "place"), strings.HasPrefix(item.ID, "locality"):
+			city = item.Text
+		}
+	}
+	_, err = a.db.Exec(`UPDATE photos SET country=?,city=?,location_name=? WHERE id=?`, nullIfEmpty(country), nullIfEmpty(city), nullIfEmpty(feature.PlaceName), photoID)
+	return err
+}
+
+// geocodingLanguage maps the app's locale codes to the values accepted by
+// reverse-geocoding services. It controls place-name responses, not the UI.
+func (a *App) geocodingLanguage() string {
+	var value any
+	if !a.readSetting("location", "language", &value) {
+		return "en"
+	}
+	switch strings.ToLower(strings.TrimSpace(fmt.Sprint(value))) {
+	case "zh", "zh-cn", "zh-hans", "zh_cn":
+		return "zh-CN"
+	case "zh-tw", "zh-hant", "zh-hant-tw", "zh-hant-hk", "zh_tw":
+		return "zh-TW"
+	case "ja", "ja-jp":
+		return "ja"
+	case "ru", "ru-ru":
+		return "ru"
+	default:
+		return "en"
+	}
 }
 
 func nullIfEmpty(value string) any {

@@ -433,6 +433,9 @@
     }
   },
   "common": {
+    "languageSwitcher": {
+      "label": "Language"
+    },
     "unknown": "unknown",
     "unsavedChanges": "There are unsaved changes.",
     "months": {
@@ -1239,7 +1242,7 @@
       },
       "language": {
         "label": "Location Language",
-        "description": "Language for geocoding location names",
+        "description": "Language used for reverse-geocoded photo place names; it does not change the UI or map tiles",
         "help": "Choose the language for reverse geocoding photo locations. Default is English."
       },
       "mapbox": {

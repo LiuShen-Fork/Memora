@@ -165,6 +165,9 @@
     "createdTooltip": "作成日：{date}"
   },
   "map": {
+    "amap": {
+      "missingKey": "地図を表示するには AMap キーを設定してください"
+    },
     "cluster": {
       "details": "クリックして詳細を見る",
       "nearbyPhotos": "近くに {0} 枚の写真",
@@ -430,6 +433,9 @@
     }
   },
   "common": {
+    "languageSwitcher": {
+      "label": "言語"
+    },
     "unsavedChanges": "未保存の変更があります。",
     "months": {
       "jan": "1月",
@@ -1117,12 +1123,26 @@
           "description": "MapLibre 地図スタイル URL"
         }
       },
+      "amap": {
+        "key": {
+          "label": "AMap Web JS キー",
+          "description": "ブラウザ地図で使用する AMap JavaScript API キー"
+        },
+        "securityCode": {
+          "label": "AMap セキュリティコード",
+          "description": "AMap JavaScript API の読み込みに使用する任意のセキュリティコード"
+        }
+      },
       "sectionDescription": "地図の表示と地理コーディングサービスを設定します。地図プロバイダーは地図のスタイルとアクセス認証情報に影響します。"
     },
     "location": {
+      "provider": {
+        "label": "ジオコーディングサービス",
+        "description": "写真の座標を逆ジオコーディングするサービスを選択"
+      },
       "language": {
         "label": "位置情報の言語",
-        "description": "場所名を逆ジオコーディングする際の言語",
+        "description": "写真の場所名を逆ジオコーディングする言語。UI や地図タイルの言語は変更しません",
         "help": "写真の位置情報を決定する逆ジオコーディング用の言語を選択します。デフォルトは英語です。"
       },
       "mapbox": {
@@ -1137,6 +1157,12 @@
           "label": "Nominatim ベース URL",
           "description": "Nominatim リバースジオコーディング API のベース URL",
           "help": "空のままにすると、デフォルトで公開 Nominatim サービスを使用します"
+        }
+      },
+      "amap": {
+        "key": {
+          "label": "AMap Web サービスキー",
+          "description": "サーバー側の逆ジオコーディングに使用する AMap REST API キー"
         }
       }
     },

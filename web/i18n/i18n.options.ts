@@ -81,7 +81,7 @@ export default {
   },
   detectBrowserLanguage: {
     fallbackLocale: defaultLocale,
-    useCookie: false,
+    useCookie: true,
     cookieKey: 'chronoframe-locale',
   },
   strategy: 'no_prefix',

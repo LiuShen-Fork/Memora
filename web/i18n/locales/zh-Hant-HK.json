@@ -1,5 +1,8 @@
 {
   "map": {
+    "amap": {
+      "missingKey": "請設定高德地圖 Key 以顯示地圖"
+    },
     "cluster": {
       "details": "點擊圖片查看詳情",
       "nearbyPhotos": "附近有 {0} 張相片",
@@ -430,6 +433,9 @@
     }
   },
   "common": {
+    "languageSwitcher": {
+      "label": "語言"
+    },
     "unsavedChanges": "目前有尚未儲存的變更。",
     "months": {
       "jan": "一月",
@@ -1117,12 +1123,26 @@
           "description": "MapLibre 地圖樣式 URL"
         }
       },
+      "amap": {
+        "key": {
+          "label": "高德地圖 Web JS Key",
+          "description": "供瀏覽器地圖使用的高德地圖 JavaScript API 金鑰"
+        },
+        "securityCode": {
+          "label": "高德地圖安全密鑰",
+          "description": "載入高德地圖 JavaScript API 時使用的可選安全密鑰"
+        }
+      },
       "sectionDescription": "設定地圖展示與地理編碼服務。地圖服務商會影響地圖樣式與存取憑證。"
     },
     "location": {
+      "provider": {
+        "label": "地理編碼服務",
+        "description": "選擇用於解析照片座標的反向地理編碼服務"
+      },
       "language": {
         "label": "地理位置語言",
-        "description": "進行逆地理編碼時所使用的語言",
+        "description": "解析相片地點名稱時使用的語言；不會改變介面語言或地圖底圖語言",
         "help": "選擇解析照片拍攝地點名稱時所使用的語言。預設為英文。"
       },
       "mapbox": {
@@ -1137,6 +1157,12 @@
           "label": "Nominatim 基礎 URL",
           "description": "Nominatim 反向地理編碼 API 嘅基礎 URL",
           "help": "留空則預設使用公開 Nominatim 服務"
+        }
+      },
+      "amap": {
+        "key": {
+          "label": "高德地圖 Web 服務 Key",
+          "description": "供伺服器反向地理編碼使用的高德地圖 REST API 金鑰"
         }
       }
     },
