@@ -78,21 +78,9 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
   ],
   [
     {
-      label: 'GitHub',
+      label: 'ChronoFrame',
       icon: 'tabler:brand-github',
-      to: 'https://github.com/HoshinoSuzumi/chronoframe',
-      target: '_blank',
-    },
-    {
-      label: $t('dashboard.nav.documentation'),
-      icon: 'tabler:book',
-      to: 'https://chronoframe.bh8.ga/',
-      target: '_blank',
-    },
-    {
-      label: 'Discord',
-      icon: 'tabler:brand-discord',
-      to: 'https://discord.gg/MM4ZK4Ed7s',
+      to: 'https://github.com/LiuShen-Fork/ChronoFrame',
       target: '_blank',
     },
   ],
@@ -189,22 +177,19 @@ const handleLogin = () => {
       </template>
 
       <template #footer="{ collapsed }">
-        <div class="space-y-2">
-          <LanguageSwitcher :compact="collapsed" />
-          <UButton
-            :avatar="{
-              src: user?.avatar || '',
-              alt: user?.username || user?.email || 'User Avatar',
-              icon: 'tabler:user',
-            }"
-            :label="collapsed ? undefined : user?.username || 'User'"
-            size="lg"
-            color="neutral"
-            variant="ghost"
-            class="w-full"
-            :block="collapsed"
-          />
-        </div>
+        <UButton
+          :avatar="{
+            src: user?.avatar || '',
+            alt: user?.username || user?.email || 'User Avatar',
+            icon: 'tabler:user',
+          }"
+          :label="collapsed ? undefined : user?.username || 'User'"
+          size="lg"
+          color="neutral"
+          variant="ghost"
+          class="w-full"
+          :block="collapsed"
+        />
       </template>
     </UDashboardSidebar>
 

@@ -1,28 +1,17 @@
 # ChronoFrame
 
 <p align="center">
-  <img src="https://socialify.git.ci/HoshinoSuzumi/chronoframe/image?custom_description=Self-hosted+personal+gallery+application.&description=1&font=KoHo&forks=0&issues=0&logo=https%3A%2F%2Fgithub.com%2FHoshinoSuzumi%2Fchronoframe%2Fraw%2Frefs%2Fheads%2Fmain%2Fpublic%2Ffavicon.svg&name=1&owner=1&pattern=Plus&pulls=0&stargazers=0&theme=Auto" alt="Chronoframe">
+  <a href="https://github.com/LiuShen-Fork/ChronoFrame"><strong>ChronoFrame Go Edition</strong></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/HoshinoSuzumi/chronoframe/releases/latest">
-    <img src="https://badgen.net/github/release/HoshinoSuzumi/chronoframe/stable?icon=docker&label=stable" alt="Latest Release">
+  <a href="https://github.com/LiuShen-Fork/ChronoFrame/releases/latest">
+    <img src="https://badgen.net/github/release/LiuShen-Fork/ChronoFrame/stable?icon=docker&label=stable" alt="Latest Release">
   </a>
-  <a href="https://github.com/HoshinoSuzumi/chronoframe/releases?q=beta&expanded=false">
-    <img src="https://badgen.net/github/release/HoshinoSuzumi/chronoframe?icon=docker&label=nightly" alt="Latest Nightly Release">
+  <a href="https://github.com/LiuShen-Fork/ChronoFrame/releases?q=beta&expanded=false">
+    <img src="https://badgen.net/github/release/LiuShen-Fork/ChronoFrame?icon=docker&label=nightly" alt="Latest Nightly Release">
   </a>
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-</p>
-
-<p align="center">
-  <a href="https://discord.gg/MM4ZK4Ed7s">
-    <img src="https://dcbadge.limes.pink/api/server/https://discord.gg/MM4ZK4Ed7s" alt="Discord Server" />
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://hellogithub.com/repository/HoshinoSuzumi/chronoframe" target="_blank"><img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=947d47ffe8404985908b266e187dec99&claim_uid=kLVoiAFPJaBtr1D&theme=neutral" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-  <a href="https://www.producthunt.com/products/chronoframe?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-chronoframe" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1029556&theme=neutral&t=1761159404569" alt="ChronoFrame - Self&#0045;hosted&#0032;photo&#0032;gallery&#0032;for&#0032;photographers&#0046; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 </p>
 
 **Languages:** English | [中文](README_zh.md)
@@ -30,6 +19,12 @@
 A smooth photo display and management application, supporting multiple image formats and large-size image rendering.
 
 [Live Demo: TimoYin's Mems](https://lens.bh8.ga)
+
+## This Fork
+
+This repository is a Go migration of the original Nuxt application. The public UI and database/storage layout remain compatible, while the production runtime is now a single Go process that serves the generated static frontend, API, SQLite database, media queue, FFmpeg processing, and ExifTool integration. Node.js is only needed when rebuilding the frontend; it is not required to run the application.
+
+Compared with the original project, this fork keeps the gallery, albums, maps, EXIF processing, uploads, authentication, and settings workflows while reducing runtime memory usage and removing the Nuxt/Nitro server from production. The maintained source repository is [LiuShen-Fork/ChronoFrame](https://github.com/LiuShen-Fork/ChronoFrame).
 
 ## ✨ Features
 
@@ -56,7 +51,7 @@ A smooth photo display and management application, supporting multiple image for
 
 ## 🐳 Deployment
 
-We recommend deploying with the prebuilt Docker image. [View the image on ghcr](https://github.com/HoshinoSuzumi/chronoframe/pkgs/container/chronoframe)
+We recommend deploying with the prebuilt Docker image. [View the image on ghcr](https://github.com/LiuShen-Fork/ChronoFrame/pkgs/container/chronoframe)
 
 Create a `.env` file and configure environment variables.
 

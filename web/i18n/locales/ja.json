@@ -1030,6 +1030,16 @@
         "description": "オーナーのアバター画像へのリンク",
         "help": "アバターはローディングページとホームページに表示されます"
       },
+      "footerLinkText": {
+        "label": "フッターリンクのテキスト",
+        "description": "ホームページのフッターに表示するカスタムリンクのテキスト",
+        "help": "空欄の場合は ChronoFrame を表示します"
+      },
+      "footerLinkUrl": {
+        "label": "フッターリンク URL",
+        "description": "ホームページのフッターリンクで開く URL",
+        "help": "空欄の場合は ChronoFrame リポジトリを使用します"
+      },
       "appearance": {
         "theme": {
           "label": "テーマ",

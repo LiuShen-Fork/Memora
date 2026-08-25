@@ -1130,6 +1130,16 @@
         "description": "Link to the owner's avatar image",
         "help": "The avatar is displayed on the loading page and homepage"
       },
+      "footerLinkText": {
+        "label": "Footer Link Text",
+        "description": "Text shown for the customizable link in the homepage footer",
+        "help": "Leave empty to show ChronoFrame"
+      },
+      "footerLinkUrl": {
+        "label": "Footer Link URL",
+        "description": "URL opened by the customizable homepage footer link",
+        "help": "Leave empty to use the ChronoFrame repository"
+      },
       "appearance": {
         "theme": {
           "label": "Theme",

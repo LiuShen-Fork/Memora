@@ -1130,6 +1130,16 @@
         "description": "所有者头像的图片链接",
         "help": "头像显示加载页面和首页头像中"
       },
+      "footerLinkText": {
+        "label": "页脚链接文本",
+        "description": "首页页脚自定义链接显示的文本",
+        "help": "留空则显示 ChronoFrame"
+      },
+      "footerLinkUrl": {
+        "label": "页脚链接地址",
+        "description": "首页页脚自定义链接打开的地址",
+        "help": "留空则使用 ChronoFrame 仓库地址"
+      },
       "appearance": {
         "theme": {
           "label": "主题",

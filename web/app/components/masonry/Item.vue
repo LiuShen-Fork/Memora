@@ -62,7 +62,7 @@ const itemVariants = {
     :variants="shouldAnimate ? itemVariants : undefined"
     :initial="shouldAnimate ? 'hidden' : 'visible'"
     :animate="'visible'"
-    class="w-full"
+    class="w-full [content-visibility:auto] [contain-intrinsic-size:280px_360px]"
     @animation-complete="
       () => {
         if (shouldAnimate) emit('animationComplete')

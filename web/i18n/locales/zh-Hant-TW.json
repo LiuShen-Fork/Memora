@@ -1030,6 +1030,16 @@
         "description": "所有者頭像的圖片連結",
         "help": "頭像顯示加載頁面和首頁頭像中"
       },
+      "footerLinkText": {
+        "label": "頁尾連結文字",
+        "description": "首頁頁尾自訂連結顯示的文字",
+        "help": "留空則顯示 ChronoFrame"
+      },
+      "footerLinkUrl": {
+        "label": "頁尾連結網址",
+        "description": "首頁頁尾自訂連結開啟的網址",
+        "help": "留空則使用 ChronoFrame 儲存庫網址"
+      },
       "appearance": {
         "theme": {
           "label": "主題",

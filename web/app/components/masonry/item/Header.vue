@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { motion, AnimatePresence } from 'motion-v'
 
 defineProps<{
   stats?: {
@@ -46,7 +45,23 @@ const totalSelectedFilters = computed(() => {
   )
 })
 
-const isRepoLinkHovering = ref(false)
+const defaultFooterLinkUrl = 'https://github.com/LiuShen-Fork/ChronoFrame'
+const footerLinkText = computed(() => {
+  const value = getSetting('app:footerLinkText')
+  return String(value || '').trim() || 'ChronoFrame'
+})
+const footerLinkUrl = computed(() => {
+  const value = String(getSetting('app:footerLinkUrl') || '').trim()
+  try {
+    const parsed = new URL(value)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString()
+    }
+  } catch {
+    // Empty or invalid custom URLs use the project repository.
+  }
+  return defaultFooterLinkUrl
+})
 </script>
 
 <template>
@@ -60,7 +75,10 @@ const isRepoLinkHovering = ref(false)
     <div
       class="absolute inset-0 -z-10 bg-white/50 dark:bg-neutral-900/50"
     ></div>
-    <div class="flex flex-col items-center py-6 pb-0 gap-2">
+    <div class="relative flex flex-col items-center py-6 pb-0 gap-2">
+      <div class="absolute top-3 left-3 z-10">
+        <LanguageSwitcher compact />
+      </div>
       <AuthState>
         <template #default="{ loggedIn, clear }">
           <div class="flex flex-col items-center gap-2">
@@ -220,7 +238,6 @@ const isRepoLinkHovering = ref(false)
                 @click="isDark = !isDark"
               />
             </UTooltip>
-            <LanguageSwitcher compact />
             <UTooltip
               v-if="loggedIn"
               :text="$t('ui.action.dashboard.tooltip')"
@@ -259,38 +276,14 @@ const isRepoLinkHovering = ref(false)
           © {{ $dayjs().format('YYYY') }}
           {{ getSetting('app:author') || getSetting('app:title') }}
         </div>
-        <div
-          class="text-xs text-neutral-500/60 dark:text-neutral-500/80 font-medium inline-flex justify-center items-center gap-0.5"
+        <a
+          :href="footerLinkUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="max-w-[50%] truncate text-xs text-neutral-500/60 dark:text-neutral-500/80 font-medium hover:underline"
         >
-          <a
-            ref="projectLink"
-            href="https://github.com/HoshinoSuzumi/chronoframe"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="hover:underline inline-flex items-center gap-0.5 group"
-            @mouseenter="isRepoLinkHovering = true"
-            @mouseleave="isRepoLinkHovering = false"
-          >
-            <Icon
-              name="mdi:github"
-              class="inline-block text-sm -mt-px"
-              mode="svg"
-            />
-            ChronoFrame
-            <AnimatePresence>
-              <motion.span
-                v-if="isRepoLinkHovering"
-                :initial="{ width: 0, opacity: 0 }"
-                :animate="{ width: 'auto', opacity: 1 }"
-                :exit="{ width: 0, opacity: 0 }"
-                :transition="{ duration: 0.3, ease: 'easeInOut' }"
-                style="overflow: hidden; white-space: nowrap"
-              >
-                ({{ $config.public.VERSION }})
-              </motion.span>
-            </AnimatePresence>
-          </a>
-        </div>
+          {{ footerLinkText }}
+        </a>
       </div>
     </div>
   </div>
