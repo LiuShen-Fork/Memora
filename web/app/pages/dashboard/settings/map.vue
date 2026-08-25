@@ -20,9 +20,25 @@ const {
   loading: locationLoading,
 } = useSettingsForm('location')
 
-// Keep every provider's fields visible so credentials can be configured before
-// switching providers. The selected provider still controls runtime behavior.
-const visibleMapFields = computed(() => mapFields.value)
+const mapProvider = computed({
+  get: () => String(mapState.provider || 'maplibre'),
+  set: (value: string) => {
+    mapState.provider = value
+  },
+})
+
+const mapProviderTabs = [
+  { label: 'Mapbox', value: 'mapbox' },
+  { label: 'MapLibre', value: 'maplibre' },
+  { label: 'AMap', value: 'amap' },
+]
+
+const visibleMapFields = computed(() =>
+  mapFields.value.filter((field) => {
+    if (field.key === 'provider') return false
+    return field.key.startsWith(mapProvider.value + '.')
+  }),
+)
 
 const sameValue = (left: any, right: any) =>
   JSON.stringify(left ?? null) === JSON.stringify(right ?? null)
@@ -31,7 +47,7 @@ const getDefaultFieldValue = (field: (typeof mapFields.value)[number]) =>
   field.value ?? field.defaultValue ?? null
 
 const isMapDirty = computed(() =>
-  visibleMapFields.value.some(
+  mapFields.value.some(
     (field) => !sameValue(mapState[field.key], getDefaultFieldValue(field)),
   ),
 )
@@ -47,7 +63,7 @@ const isLocationDirty = computed(() =>
 )
 
 const resetMapSettings = () => {
-  visibleMapFields.value.forEach((field) => {
+  mapFields.value.forEach((field) => {
     mapState[field.key] = getDefaultFieldValue(field)
   })
 }
@@ -60,7 +76,7 @@ const resetLocationSettings = () => {
 
 const handleMapSettingsSubmit = async () => {
   const mapData = Object.fromEntries(
-    visibleMapFields.value.map((f) => [f.key, mapState[f.key]]),
+    mapFields.value.map((f) => [f.key, mapState[f.key]]),
   )
   try {
     await submitMap(mapData)
@@ -121,6 +137,15 @@ const handleLocationSettingsSubmit = async () => {
             class="space-y-5 px-5 py-5"
             @submit="handleMapSettingsSubmit"
           >
+            <UTabs
+              v-model="mapProvider"
+              :items="mapProviderTabs"
+              color="primary"
+              variant="pill"
+              class="w-full"
+              :ui="{ list: 'w-full', trigger: 'flex-1 justify-center' }"
+            />
+
             <SettingField
               v-for="field in visibleMapFields"
               :key="field.key"

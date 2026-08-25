@@ -54,8 +54,21 @@ var defaultSettings = []settingDefault{
 
 func (a *App) ensureDefaultSettings() error {
 	for _, setting := range defaultSettings {
-		var exists int
-		if err := a.db.QueryRow(`SELECT 1 FROM settings WHERE namespace=? AND key=?`, setting.Namespace, setting.Key).Scan(&exists); err == nil {
+		var existingEnum sql.NullString
+		if err := a.db.QueryRow(`SELECT enum FROM settings WHERE namespace=? AND key=?`, setting.Namespace, setting.Key).Scan(&existingEnum); err == nil {
+			// Keep enum metadata in sync when an existing installation gains a
+			// provider. Existing values and secrets remain unchanged.
+			if len(setting.Enum) > 0 {
+				enum, marshalErr := json.Marshal(setting.Enum)
+				if marshalErr != nil {
+					return marshalErr
+				}
+				if existingEnum.String != string(enum) {
+					if _, updateErr := a.db.Exec(`UPDATE settings SET enum=?,updated_at=unixepoch() WHERE namespace=? AND key=?`, enum, setting.Namespace, setting.Key); updateErr != nil {
+						return fmt.Errorf(`update enum %s:%s: %w`, setting.Namespace, setting.Key, updateErr)
+					}
+				}
+			}
 			continue
 		}
 		value := serializeSetting(setting.Type, setting.Default)
