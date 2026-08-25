@@ -16,19 +16,31 @@ const languageOptions = [
   { label: '日本語', value: 'ja' },
   { label: 'Русский', value: 'ru' },
 ]
+
+const menuItems = computed(() =>
+  languageOptions.map((option) => ({
+    ...option,
+    onSelect: () => {
+      locale.value = option.value
+    },
+  })),
+)
 </script>
 
 <template>
-  <USelectMenu
-    v-model="locale"
-    :items="languageOptions"
-    value-key="value"
-    label-key="label"
-    :search-input="false"
-    :aria-label="$t('common.languageSwitcher.label')"
-    icon="tabler:language"
-    :size="compact ? 'xs' : 'sm'"
-    variant="soft"
-    :class="compact ? 'w-32' : 'w-full'"
-  />
+  <UDropdownMenu
+    :items="menuItems"
+    :content="{ align: compact ? 'start' : 'end' }"
+  >
+    <UTooltip :text="$t('common.languageSwitcher.label')">
+      <UButton
+        variant="soft"
+        color="neutral"
+        icon="tabler:language"
+        :size="compact ? 'xs' : 'sm'"
+        :aria-label="$t('common.languageSwitcher.label')"
+        class="rounded-full cursor-pointer"
+      />
+    </UTooltip>
+  </UDropdownMenu>
 </template>

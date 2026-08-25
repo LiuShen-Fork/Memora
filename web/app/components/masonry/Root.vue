@@ -10,7 +10,20 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const dayjs = useDayjs()
+const { locale } = useI18n()
 const router = useRouter()
+
+const dayjsLocale = computed(() => {
+  const localeMap: Record<string, string> = {
+    'zh-Hans': 'zh-cn',
+    'zh-Hant-TW': 'zh-tw',
+    'zh-Hant-HK': 'zh-hk',
+  }
+  return localeMap[locale.value] || locale.value
+})
+
+const formatDate = (value: string | Date | ReturnType<typeof dayjs>, format = 'll') =>
+  dayjs(value).locale(dayjsLocale.value).format(format)
 
 const { filteredPhotos, hasActiveFilters } = usePhotoFilters()
 const { sortedPhotos } = usePhotoSort()
@@ -153,14 +166,14 @@ const photoStats = computed(() => {
   const allDates = displayPhotos.value
     ?.map((p) => p?.dateTaken)
     .filter((date): date is string => Boolean(date))
-    .map((date) => dayjs(date).format('ll'))
-    .sort((a, b) => (dayjs(a).isBefore(dayjs(b)) ? 1 : -1))
+    .map((date) => dayjs(date))
+    .sort((a, b) => (a.isBefore(b) ? -1 : 1))
 
   const dateRange =
     allDates.length > 0
       ? {
-          start: allDates[0],
-          end: allDates[allDates.length - 1],
+          start: formatDate(allDates[0]),
+          end: formatDate(allDates[allDates.length - 1]),
         }
       : null
 
@@ -282,18 +295,20 @@ const updateDateRange = () => {
   // Check if dates are the same day
   if (startDate.isSame(endDate, 'day')) {
     // Same day
-    dateRange.value = startDate.format('ll')
+    dateRange.value = formatDate(startDate)
   } else if (startDate.isSame(endDate, 'month')) {
     // Same month
-    dateRange.value = startDate.format('MMM YYYY')
+    dateRange.value = formatDate(startDate, 'MMM YYYY')
   } else if (startDate.isSame(endDate, 'year')) {
     // Same year, different months
-    dateRange.value = `${startDate.format('MMM')} - ${endDate.format('MMM YYYY')}`
+    dateRange.value = `${formatDate(startDate, 'MMM')} - ${formatDate(endDate, 'MMM YYYY')}`
   } else {
     // Different years
-    dateRange.value = `${startDate.format('ll')} - ${endDate.format('ll')}`
+    dateRange.value = `${formatDate(startDate)} - ${formatDate(endDate)}`
   }
 }
+
+watch(locale, () => updateDateRange())
 
 const handleScroll = () => {
   const scrollTop = window.pageYOffset || document.documentElement.scrollTop

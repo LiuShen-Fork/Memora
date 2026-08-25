@@ -65,16 +65,7 @@ const footerLinkUrl = computed(() => {
 </script>
 
 <template>
-  <div class="w-full relative overflow-hidden">
-    <div
-      class="absolute inset-0 -z-10 blur-3xl scale-110 bg-cover bg-center opacity-35"
-      :style="{
-        backgroundImage: `url(${getSetting('app:avatarUrl') || '/web-app-manifest-192x192.png'})`,
-      }"
-    ></div>
-    <div
-      class="absolute inset-0 -z-10 bg-white/50 dark:bg-neutral-900/50"
-    ></div>
+  <div class="w-full relative overflow-hidden bg-white dark:bg-neutral-950">
     <div class="relative flex flex-col items-center py-6 pb-0 gap-2">
       <div class="absolute top-3 left-3 z-10">
         <LanguageSwitcher compact />
@@ -134,7 +125,7 @@ const footerLinkUrl = computed(() => {
             </p>
           </div>
           <div
-            class="flex items-center gap-0 p-1 bg-white/30 dark:bg-neutral-900/50 rounded-full"
+            class="flex items-center gap-0 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-full"
           >
             <UTooltip :text="$t('ui.action.globe.tooltip')">
               <UButton
@@ -267,7 +258,7 @@ const footerLinkUrl = computed(() => {
         </template>
       </AuthState>
       <div
-        class="w-full px-2 pb-1 pt-1.5 bg-neutral-200/50 dark:bg-neutral-900/50 flex justify-between items-center gap-2"
+        class="w-full px-2 pb-1 pt-1.5 bg-neutral-100 dark:bg-neutral-900 flex justify-between items-center gap-2"
       >
         <div
           v-if="getSetting('app:author') || getSetting('app:title')"
