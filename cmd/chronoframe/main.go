@@ -17,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type App struct {
@@ -35,6 +37,10 @@ type App struct {
 }
 
 func main() {
+	// Load local configuration for `go run` while preserving explicitly
+	// supplied environment variables. Docker and process managers can still
+	// provide the environment directly.
+	_ = godotenv.Load()
 	cfg := loadConfig()
 	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o755); err != nil {
 		log.Fatal(err)

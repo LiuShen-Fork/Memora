@@ -20,21 +20,9 @@ const {
   loading: locationLoading,
 } = useSettingsForm('location')
 
-const visibleMapFields = computed(() => {
-  const provider = mapState.provider
-  return mapFields.value.filter((field) => {
-    const providerPrefix = `${provider}.`
-    if (field.key.includes('.') &&
-      ['mapbox.', 'maplibre.', 'amap.'].some((prefix) => field.key.startsWith(prefix))) {
-      return field.key.startsWith(providerPrefix)
-    }
-    if (!field.ui.visibleIf) return true
-    if (field.ui.visibleIf.fieldKey === 'provider') {
-      return field.ui.visibleIf.value === provider
-    }
-    return true
-  })
-})
+// Keep every provider's fields visible so credentials can be configured before
+// switching providers. The selected provider still controls runtime behavior.
+const visibleMapFields = computed(() => mapFields.value)
 
 const sameValue = (left: any, right: any) =>
   JSON.stringify(left ?? null) === JSON.stringify(right ?? null)

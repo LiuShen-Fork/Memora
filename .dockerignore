@@ -8,6 +8,7 @@ data
 
 # 开发工具
 .vscode
+.agents
 .idea
 
 # 日志文件

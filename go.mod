@@ -3,6 +3,7 @@ module github.com/hoshinosuzumi/chronoframe-go
 go 1.25.0
 
 require (
+	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.97
 	go.n16f.net/thumbhash v1.1.0
 	golang.org/x/crypto v0.36.0

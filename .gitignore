@@ -7,6 +7,9 @@
 dist
 node-compile-cache
 
+.vscode/
+.agents/
+
 # Date
 data
 
