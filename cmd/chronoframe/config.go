@@ -106,10 +106,17 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 func loadConfig() Config {
 	dataDir := env("CFRAME_DATA_DIR", "./data")
 	secret := env("NUXT_SESSION_PASSWORD", env("CFRAME_SESSION_SECRET", "change-me-in-production"))
+	webDir := env("CFRAME_WEB_DIR", defaultWebDir)
+	// During the Nuxt-to-Go migration, older local commands commonly pointed at
+	// ./.output/public. Prefer the canonical web workspace when that stale
+	// bundle is still present so the server cannot silently serve an old UI.
+	if migrated := migratedWebDir(webDir); migrated != "" {
+		webDir = migrated
+	}
 	return Config{
 		DBPath:             env("DATABASE_URL", filepath.Join(dataDir, "app.sqlite3")),
 		DataDir:            dataDir,
-		WebDir:             env("CFRAME_WEB_DIR", defaultWebDir),
+		WebDir:             webDir,
 		Addr:               env("CFRAME_ADDR", ":3000"),
 		DBMaxOpenConns:     envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
 		SessionKey:         []byte(secret),
@@ -146,4 +153,19 @@ func loadConfig() Config {
 		OpenPathField:      env("NUXT_PROVIDER_OPENLIST_PATH_FIELD", "path"),
 		OpenCDN:            os.Getenv("NUXT_PROVIDER_OPENLIST_CDN_URL"),
 	}
+}
+
+func migratedWebDir(configured string) string {
+	clean := filepath.Clean(configured)
+	if filepath.Base(filepath.Dir(clean)) != ".output" || strings.EqualFold(filepath.Base(filepath.Dir(filepath.Dir(clean))), "web") {
+		return ""
+	}
+	candidate := filepath.Join(filepath.Dir(filepath.Dir(clean)), "web", ".output", "public")
+	if _, err := os.Stat(filepath.Join(candidate, "index.html")); err != nil {
+		return ""
+	}
+	if _, err := os.Stat(filepath.Join(clean, "index.html")); err == nil {
+		return candidate
+	}
+	return ""
 }

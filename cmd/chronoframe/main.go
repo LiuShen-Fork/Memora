@@ -42,6 +42,9 @@ func main() {
 	// provide the environment directly.
 	_ = godotenv.Load()
 	cfg := loadConfig()
+	if configured := strings.TrimSpace(os.Getenv("CFRAME_WEB_DIR")); configured != "" && filepath.Clean(configured) != filepath.Clean(cfg.WebDir) {
+		log.Printf("CFRAME_WEB_DIR points to an old frontend bundle; serving %s instead", cfg.WebDir)
+	}
 	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o755); err != nil {
 		log.Fatal(err)
 	}
