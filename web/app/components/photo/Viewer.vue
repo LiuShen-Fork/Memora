@@ -14,6 +14,7 @@ import ReactionPicker from './ReactionPicker.vue'
 import ReactionConfetti from './ReactionConfetti.vue'
 import { REACTION_ICON_MAP } from './reaction-definitions'
 import type { LoadingIndicatorRef } from './LoadingIndicator.vue'
+import { livePhotoVideoSource } from '~/utils/live-photo'
 
 interface Props {
   photos: Photo[]
@@ -250,10 +251,11 @@ const handleImageLoaded = () => {
 // LivePhoto processing and playback functions
 const processCurrentLivePhoto = async () => {
   const photo = currentPhoto.value
-  if (!photo || !photo.isLivePhoto || !photo.livePhotoVideoUrl) return
+  const videoSource = photo ? livePhotoVideoSource(photo) : null
+  if (!photo || !photo.isLivePhoto || !videoSource) return
 
   try {
-    const blob = await convertMovToMp4(photo.livePhotoVideoUrl, photo.id)
+    const blob = await convertMovToMp4(videoSource, photo.id)
     if (blob) {
       livePhotoVideoBlob.value = blob
       // Clean up previous blob URL
@@ -261,6 +263,10 @@ const processCurrentLivePhoto = async () => {
         URL.revokeObjectURL(livePhotoVideoBlobUrl.value)
       }
       livePhotoVideoBlobUrl.value = URL.createObjectURL(blob)
+      if (isLivePhotoHovering.value) {
+        await nextTick()
+        if (isLivePhotoHovering.value) playLivePhotoVideo()
+      }
     }
   } catch (error) {
     console.error('Failed to process LivePhoto in viewer:', error)

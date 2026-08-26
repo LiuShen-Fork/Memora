@@ -100,9 +100,13 @@ export const useLivePhotoProcessor = () => {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch MOV file: ${response.status} ${response.statusText}`,
-        )
+        const error = new Error(
+          `Failed to fetch LivePhoto video: ${response.status} ${response.statusText}`,
+        ) as Error & { retryable?: boolean }
+        // A missing object is deterministic; retrying it three times only
+        // delays the static-photo fallback and spams the console.
+        error.retryable = [408, 429, 502, 503, 504].includes(response.status)
+        throw error
       }
 
       updateProgress(30)
@@ -132,6 +136,11 @@ export const useLivePhotoProcessor = () => {
       }
 
       const movBlob = new Blob(chunks)
+      if (movBlob.size === 0) {
+        throw Object.assign(new Error('LivePhoto video is empty'), {
+          retryable: false,
+        })
+      }
       updateProgress(70)
 
       // 优化的视频处理：先检查格式兼容性
@@ -149,6 +158,15 @@ export const useLivePhotoProcessor = () => {
 
         video.onloadedmetadata = () => {
           clearTimeout(timeout)
+          if (!Number.isFinite(video.duration) || video.duration <= 0) {
+            reject(
+              Object.assign(
+                new Error('LivePhoto video has no playable duration'),
+                { retryable: false },
+              ),
+            )
+            return
+          }
           resolve()
         }
         video.onerror = () => {
@@ -176,7 +194,10 @@ export const useLivePhotoProcessor = () => {
         error instanceof Error ? error.message : 'Unknown error'
 
       // 增加重试逻辑
-      if (currentRetry < maxRetries - 1) {
+      const retryable =
+        !(error instanceof Error) ||
+        (error as Error & { retryable?: boolean }).retryable !== false
+      if (retryable && currentRetry < maxRetries - 1) {
         console.warn(
           `LivePhoto processing failed (attempt ${currentRetry + 1}/${maxRetries}), retrying...`,
           errorMessage,

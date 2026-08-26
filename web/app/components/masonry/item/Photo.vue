@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatCameraInfo } from '~/utils/camera'
+import { livePhotoVideoSource } from '~/utils/live-photo'
 import { motion, useDomRef } from 'motion-v'
 
 interface Props {
@@ -89,7 +90,8 @@ const handleMouseEnter = async () => {
 
   isHovering.value = true
 
-  if (!props.photo.isLivePhoto || !props.photo.livePhotoVideoUrl) return
+  const videoSource = livePhotoVideoSource(props.photo)
+  if (!props.photo.isLivePhoto || !videoSource) return
 
   // 如果视频已准备好，立即播放
   if (videoBlob.value && videoBlobUrl.value && isVideoLoaded.value) {
@@ -305,19 +307,14 @@ const handleClick = (event: Event) => {
 
 // 智能LivePhoto处理：基于可见性和用户行为
 const processLivePhotoWhenVisible = async () => {
-  if (
-    !props.photo.isLivePhoto ||
-    !props.photo.livePhotoVideoUrl ||
-    !isVisible.value
-  )
-    return
+  const videoSource = livePhotoVideoSource(props.photo)
+  if (!props.photo.isLivePhoto || !videoSource || !isVisible.value) return
 
   try {
     // 使用优化的转换函数，支持重试和缓存
-    const blob = await convertMovToMp4(
-      props.photo.livePhotoVideoUrl,
-      props.photo.id,
-    )
+    const blob = await convertMovToMp4(videoSource, props.photo.id)
+
+    if (!blob) return
 
     if (blob) {
       videoBlob.value = blob
@@ -327,7 +324,6 @@ const processLivePhotoWhenVisible = async () => {
       }
       videoBlobUrl.value = URL.createObjectURL(blob)
       isVideoLoaded.value = true
-
       // 预热视频元素以提高播放性能
       if (videoRef.value) {
         videoRef.value.load()
@@ -393,7 +389,6 @@ const formatExposureTime = (
     return `1/${denominator}`
   }
 }
-
 // Preload image on mount to get dimensions
 onMounted(() => {
   // Get container width

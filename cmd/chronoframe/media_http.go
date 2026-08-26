@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime"
@@ -57,18 +58,18 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	mediaCtx, cancel := a.mediaContext(r.Context())
 	defer cancel()
 	if streamStorage, ok := a.storage.(ReaderStorage); ok {
-		reader, object, err := streamStorage.Open(mediaCtx, key)
+		reader, object, resolvedKey, err := a.openMedia(streamStorage, mediaCtx, key)
 		if err != nil {
 			errorJSON(w, http.StatusNotFound, "Photo not found")
 			return
 		}
 		defer reader.Close()
 		w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
-		if contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(key))); contentType != "" {
+		if contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(resolvedKey))); contentType != "" {
 			w.Header().Set("Content-Type", contentType)
 		}
 		if seeker, ok := reader.(io.ReadSeeker); ok {
-			http.ServeContent(w, r, filepath.Base(key), object.ModTime, seeker)
+			http.ServeContent(w, r, filepath.Base(resolvedKey), object.ModTime, seeker)
 			return
 		}
 		if r.Header.Get("Range") != "" {
@@ -77,7 +78,7 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 				errorJSON(w, http.StatusBadGateway, "Unable to read photo")
 				return
 			}
-			http.ServeContent(w, r, filepath.Base(key), object.ModTime, bytes.NewReader(data))
+			http.ServeContent(w, r, filepath.Base(resolvedKey), object.ModTime, bytes.NewReader(data))
 			return
 		}
 		if object.Size >= 0 {
@@ -93,6 +94,28 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "public,max-age=31536000,immutable")
 	http.ServeContent(w, r, filepath.Base(key), time.Time{}, bytes.NewReader(data))
+}
+
+// openMedia tolerates legacy records whose video extension does not match the
+// object that was actually uploaded. The requested key remains the public URL;
+// only the storage lookup and response metadata use the resolved key.
+func (a *App) openMedia(storage ReaderStorage, ctx context.Context, key string) (io.ReadCloser, Object, string, error) {
+	keys := []string{key}
+	switch strings.ToLower(filepath.Ext(key)) {
+	case ".mov":
+		keys = append(keys, strings.TrimSuffix(key, filepath.Ext(key))+".mp4")
+	case ".mp4":
+		keys = append(keys, strings.TrimSuffix(key, filepath.Ext(key))+".mov")
+	}
+	var lastErr error
+	for _, candidate := range keys {
+		reader, object, err := storage.Open(ctx, candidate)
+		if err == nil {
+			return reader, object, candidate, nil
+		}
+		lastErr = err
+	}
+	return nil, Object{}, "", lastErr
 }
 func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	target := strings.TrimPrefix(r.URL.Path, "/thumb/")

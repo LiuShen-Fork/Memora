@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
+import { livePhotoVideoSource } from '~/utils/live-photo'
 interface Props {
   photos: Photo[]
   columns?: number | 'auto'
@@ -221,8 +222,8 @@ const processVisibleLivePhotos = async () => {
     .filter(
       (photo): photo is Photo =>
         photo != null &&
-        photo.isLivePhoto === 1 &&
-        Boolean(photo.livePhotoVideoUrl) &&
+        Boolean(photo.isLivePhoto) &&
+        Boolean(livePhotoVideoSource(photo)) &&
         !processedBatch.value.has(photo.id),
     )
 
@@ -237,7 +238,7 @@ const processVisibleLivePhotos = async () => {
   batchProcessLivePhotos(
     livePhotosToProcess.map((photo) => ({
       id: photo.id,
-      livePhotoVideoUrl: photo.livePhotoVideoUrl!,
+      livePhotoVideoUrl: livePhotoVideoSource(photo)!,
     })),
   )
 }
