@@ -597,7 +597,11 @@ onBeforeRouteLeave(() => {
   stopTimelineDragging()
   stopTimelinePlayback()
   if (mapInstance.value) {
-    mapInstance.value.remove()
+    if (typeof mapInstance.value.remove === 'function') {
+      mapInstance.value.remove()
+    } else if (typeof mapInstance.value.destroy === 'function') {
+      mapInstance.value.destroy()
+    }
     mapInstance.value = null
   }
 })
