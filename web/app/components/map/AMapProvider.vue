@@ -28,12 +28,16 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLDivElement | null>(null)
 const mapInstance = shallowRef<AMapMap>()
 const isLoaded = ref(false)
+const colorMode = useColorMode()
 const mapConfig = computed(() => {
   const config = getSetting('map')
   return typeof config === 'object' && config ? config : {}
 })
 const amapKey = computed(() => String(mapConfig.value['amap.key'] || ''))
 const securityCode = computed(() => String(mapConfig.value['amap.securityCode'] || ''))
+const mapStyle = computed(() =>
+  colorMode.value === 'dark' ? 'amap://styles/dark' : 'amap://styles/normal',
+)
 
 let scriptRequest: Promise<void> | null = null
 const loadScript = () => {
@@ -71,6 +75,7 @@ const initMap = async () => {
       scrollWheel: props.interactive,
       touchZoom: props.interactive,
       viewMode: '2D',
+      mapStyle: mapStyle.value,
     })
     mapInstance.value = map
     map.on('complete', () => {
@@ -95,6 +100,10 @@ watch(
     )
   },
 )
+
+watch(mapStyle, (style) => {
+  mapInstance.value?.setMapStyle?.(style)
+})
 
 provide('amap', mapInstance)
 onMounted(initMap)
