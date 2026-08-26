@@ -154,9 +154,9 @@ onBeforeUnmount(() => {
         :lnglat="markerCoordinates"
       >
         <template #marker>
-          <div class="relative">
+          <div class="relative size-10 flex items-center justify-center">
             <div
-              class="absolute inset-0 animate-ping rounded-full bg-primary/40"
+              class="absolute size-4 animate-ping rounded-full bg-primary/40"
             />
             <div
               class="relative size-4 rounded-full bg-primary border-2 border-white shadow"
