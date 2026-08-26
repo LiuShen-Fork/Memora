@@ -116,24 +116,19 @@ func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string
 		size = int64(len(data))
 	}
 	ext := strings.ToLower(filepath.Ext(videoKey))
-	if ext != ".mov" || size > 12*1024*1024 {
+	if (ext != ".mov" && ext != ".mp4") || size > 12*1024*1024 {
 		return false, nil
 	}
-	base := strings.TrimSuffix(videoKey, filepath.Ext(videoKey))
-	for _, imageExt := range []string{".HEIC", ".heic", ".JPG", ".jpg", ".JPEG", ".jpeg"} {
-		candidate := base + imageExt
-		var photoID string
-		if err := a.db.QueryRow(`SELECT id FROM photos WHERE storage_key=? OR id=? LIMIT 1`, candidate, safePhotoID(candidate)).Scan(&photoID); err != nil {
-			continue
-		}
-		url := a.storage.PublicURL(videoKey)
-		if url == "" {
-			url = "/image/" + strings.TrimLeft(videoKey, "/")
-		}
-		_, err = a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, videoKey, photoID)
-		return err == nil, err
+	photoID, _ := a.findPairedPhoto(videoKey)
+	if photoID == "" {
+		return false, nil
 	}
-	return false, nil
+	url := a.storage.PublicURL(videoKey)
+	if url == "" {
+		url = "/image/" + strings.TrimLeft(videoKey, "/")
+	}
+	_, err = a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, videoKey, photoID)
+	return err == nil, err
 }
 
 func (a *App) detectLivePhoto(r *http.Request, photoID string) (bool, string, error) {
@@ -144,12 +139,8 @@ func (a *App) detectLivePhoto(r *http.Request, photoID string) (bool, string, er
 	if err := a.db.QueryRow(`SELECT storage_key FROM photos WHERE id=?`, photoID).Scan(&imageKey); err != nil {
 		return false, "", errPhotoNotFound
 	}
-	base := strings.TrimSuffix(imageKey, filepath.Ext(imageKey))
-	for _, extension := range []string{".mov", ".mp4"} {
-		candidate := base + extension
-		if _, err := a.storage.Meta(r.Context(), candidate); err != nil {
-			continue
-		}
+	candidate := a.pairedLiveVideo(r.Context(), imageKey)
+	if candidate != "" {
 		url := a.storage.PublicURL(candidate)
 		if url == "" {
 			url = "/image/" + candidate
