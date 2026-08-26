@@ -161,14 +161,30 @@ const handleLogin = () => {
       </template>
 
       <template #footer="{ collapsed }">
-        <div
-          class="w-full gap-1"
-          :class="collapsed ? 'flex flex-col' : 'grid grid-cols-3 items-center'"
-        >
-          <LanguageSwitcher
-            compact
-            block
-          />
+        <div class="flex w-full flex-col gap-1">
+          <div
+            class="flex w-full gap-1"
+            :class="collapsed ? 'flex-col' : 'items-center'"
+          >
+            <div :class="collapsed ? 'w-full' : 'size-9 shrink-0'">
+              <LanguageSwitcher
+                compact
+                block
+              />
+            </div>
+            <UButton
+              icon="tabler:brand-github"
+              :label="collapsed ? undefined : 'LiuShen-Fork/Memora'"
+              to="https://github.com/LiuShen-Fork/Memora"
+              target="_blank"
+              rel="noopener noreferrer"
+              size="sm"
+              color="neutral"
+              variant="ghost"
+              class="h-9 min-w-0 flex-1 justify-start px-2"
+              :class="collapsed ? 'w-full flex-none justify-center' : ''"
+            />
+          </div>
           <UButton
             :avatar="{
               src: user?.avatar || '',
@@ -176,18 +192,6 @@ const handleLogin = () => {
               icon: 'tabler:user',
             }"
             :label="collapsed ? undefined : user?.username || 'User'"
-            size="sm"
-            color="neutral"
-            variant="ghost"
-            class="h-9 w-full min-w-0 justify-start px-2"
-            :class="collapsed ? 'justify-center' : ''"
-          />
-          <UButton
-            icon="tabler:brand-github"
-            :label="collapsed ? undefined : 'Memora'"
-            to="https://github.com/LiuShen-Fork/Memora"
-            target="_blank"
-            rel="noopener noreferrer"
             size="sm"
             color="neutral"
             variant="ghost"
