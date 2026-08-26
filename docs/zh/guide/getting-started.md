@@ -27,16 +27,16 @@
 
 我们推荐使用预构建的 Docker 镜像进行部署，镜像托管在 GHCR 和 Docker Hub，您可以根据网络情况选择合适的源。
 
-#### [GitHub Container Registry (GHCR)](https://github.com/HoshinoSuzumi/chronoframe/pkgs/container/chronoframe)
+#### [GitHub Container Registry (GHCR)](https://github.com/LiuShen-Fork/Memora/pkgs/container/memora)
 
 ```bash
-docker pull ghcr.io/hoshinosuzumi/chronoframe:latest
+docker pull ghcr.io/liu-shen-fork/memora:latest
 ```
 
-#### [Docker Hub](https://hub.docker.com/r/hoshinosuzumi/chronoframe)
+#### [Docker Hub](https://hub.docker.com/r/liu-shen-fork/memora)
 
 ```bash
-docker pull hoshinosuzumi/chronoframe:latest
+docker pull liu-shen-fork/memora:latest
 ```
 
 ### 创建配置文件
@@ -106,7 +106,7 @@ NUXT_OAUTH_GITHUB_CLIENT_SECRET=
 #### 快速启动
 
 ```bash
-docker run -d --name chronoframe -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env ghcr.io/hoshinosuzumi/chronoframe:latest
+docker run -d --name memora -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env ghcr.io/liu-shen-fork/memora:latest
 ```
 
 ### Docker Compose 部署
@@ -118,7 +118,7 @@ docker run -d --name chronoframe -p 3000:3000 -v $(pwd)/data:/app/data --env-fil
 ```yaml
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
+    image: ghcr.io/liu-shen-fork/memora:latest
     container_name: chronoframe
     restart: unless-stopped
     ports:
@@ -215,7 +215,7 @@ server {
 ```yaml
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
+    image: ghcr.io/liu-shen-fork/memora:latest
     container_name: chronoframe
     restart: unless-stopped
     volumes:

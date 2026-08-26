@@ -132,7 +132,7 @@ const onShareSite = () => {
     body: `## Description / Motto\n\n${config.public.app.slogan}\n\n## URL\n\n[${window.location.origin}](${window.location.origin})`,
   })
   window.open(
-    `https://github.com/LiuShen-Fork/ChronoFrame/discussions/new?${discussionParams}`,
+    `https://github.com/LiuShen-Fork/Memora/discussions/new?${discussionParams}`,
     '_blank',
   )
 }
@@ -198,7 +198,7 @@ const onShareSite = () => {
                 class="text-lg font-bold hover:text-primary"
                 target="_blank"
                 external
-                :to="`https://github.com/LiuShen-Fork/ChronoFrame/releases/tag/v${$config.public.VERSION}`"
+                :to="`https://github.com/LiuShen-Fork/Memora/releases/tag/v${$config.public.VERSION}`"
               >
                 v{{ $config.public.VERSION }}
               </NuxtLink>

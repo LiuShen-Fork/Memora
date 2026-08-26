@@ -28,7 +28,7 @@ ts=$(date +%Y%m%d-%H%M%S) && mkdir -p backups/$ts && cp -r data/ .env docker-com
 
 #### 2. Check Compatibility
 
-Review [Release Notes](https://github.com/HoshinoSuzumi/chronoframe/releases) to understand:
+Review [Release Notes](https://github.com/LiuShen-Fork/Memora/releases) to understand:
 
 - Breaking changes
 - New environment variables
@@ -66,7 +66,7 @@ If you need to update to a specific version:
 # docker-compose.yml
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:v1.2.3 # Specify version
+    image: ghcr.io/liu-shen-fork/memora:v1.2.3 # Specify version
     # ... other configurations
 ```
 
@@ -82,7 +82,7 @@ docker stop chronoframe
 docker rm chronoframe
 
 # Pull latest image
-docker pull ghcr.io/hoshinosuzumi/chronoframe:latest
+docker pull ghcr.io/liu-shen-fork/memora:latest
 
 # Start new container with same configuration
 docker run -d \
@@ -90,7 +90,7 @@ docker run -d \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
   --env-file .env \
-  ghcr.io/hoshinosuzumi/chronoframe:latest
+  ghcr.io/liu-shen-fork/memora:latest
 ```
 
 ## Database Compatibility

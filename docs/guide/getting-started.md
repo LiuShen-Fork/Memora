@@ -27,16 +27,16 @@ The documentation is still being written; some sections may be incomplete.
 
 Use the published image on GitHub Container Registry and Docker Hub. Choose the source that works best for your network:
 
-#### [GitHub Container Registry (GHCR)](https://github.com/HoshinoSuzumi/chronoframe/pkgs/container/chronoframe)
+#### [GitHub Container Registry (GHCR)](https://github.com/LiuShen-Fork/Memora/pkgs/container/memora)
 
 ```bash
-docker pull ghcr.io/hoshinosuzumi/chronoframe:latest
+docker pull ghcr.io/liu-shen-fork/memora:latest
 ```
 
-#### [Docker Hub](https://hub.docker.com/r/hoshinosuzumi/chronoframe)
+#### [Docker Hub](https://hub.docker.com/r/liu-shen-fork/memora)
 
 ```bash
-docker pull hoshinosuzumi/chronoframe:latest
+docker pull liu-shen-fork/memora:latest
 ```
 
 ### Create `.env`
@@ -112,7 +112,7 @@ docker run -d \
   -p 3000:3000 \
   -v "$(pwd)/data:/app/data" \
   --env-file .env \
-  ghcr.io/hoshinosuzumi/chronoframe:latest
+  ghcr.io/liu-shen-fork/memora:latest
 ```
 
 ### Docker Compose
@@ -122,7 +122,7 @@ Create `docker-compose.yml`:
 ```yaml
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
+    image: ghcr.io/liu-shen-fork/memora:latest
     container_name: chronoframe
     restart: unless-stopped
     ports:
@@ -205,7 +205,7 @@ server {
 ```yaml
 services:
   chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
+    image: ghcr.io/liu-shen-fork/memora:latest
     container_name: chronoframe
     restart: unless-stopped
     volumes:

@@ -16,7 +16,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/HoshinoSuzumi/chronoframe
+      link: https://github.com/LiuShen-Fork/Memora
     - theme: alt
       text: View Demo
       link: https://lens.bh8.ga
@@ -50,10 +50,9 @@ Here are some well-running ChronoFrame instances built by developers and communi
 
 ## 💬 Community Support
 
-- **GitHub Issues**: [Report Issues](https://github.com/HoshinoSuzumi/chronoframe/issues)
-- **GitHub Discussions**: [Discussions](https://github.com/HoshinoSuzumi/chronoframe/discussions)
-- **Discord**: [Join Us](https://discord.gg/MM4ZK4Ed7s)
+- **GitHub Issues**: [Report Issues](https://github.com/LiuShen-Fork/Memora/issues)
+- **GitHub Discussions**: [Discussions](https://github.com/LiuShen-Fork/Memora/discussions)
 
 ## 📄 License
 
-ChronoFrame is open source under the [MIT License](https://github.com/HoshinoSuzumi/chronoframe/blob/main/LICENSE), welcome to use and contribute freely.
+Memora is open source under the [MIT License](https://github.com/LiuShen-Fork/Memora/blob/main/LICENSE), welcome to use and contribute freely. Memora is based on [ChronoFrame](https://github.com/HoshinoSuzumi/chronoframe).

@@ -78,9 +78,9 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
   ],
   [
     {
-      label: 'ChronoFrame',
+      label: 'Memora',
       icon: 'tabler:brand-github',
-      to: 'https://github.com/LiuShen-Fork/ChronoFrame',
+      to: 'https://github.com/LiuShen-Fork/Memora',
       target: '_blank',
     },
   ],

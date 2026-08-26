@@ -10,7 +10,7 @@ docker compose up -d
 docker compose logs -f chronoframe
 ```
 
-指定版本时，将镜像改为 `ghcr.io/hoshinosuzumi/chronoframe:v1.2.3`。
+指定版本时，将镜像改为 `ghcr.io/liu-shen-fork/memora:v1.2.3`。
 
 ## 数据库兼容性
 

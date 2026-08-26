@@ -16,7 +16,7 @@ hero:
       link: /zh/guide/getting-started
     - theme: alt
       text: 查看 GitHub
-      link: https://github.com/HoshinoSuzumi/chronoframe
+      link: https://github.com/LiuShen-Fork/Memora
     - theme: alt
       text: 查看演示
       link: https://lens.bh8.ga
@@ -50,10 +50,9 @@ features:
 
 ## 💬 社区支持
 
-- **GitHub Issues**: [报告问题](https://github.com/HoshinoSuzumi/chronoframe/issues)
-- **GitHub Discussions**: [讨论分享](https://github.com/HoshinoSuzumi/chronoframe/discussions)
-- **Discord**: [加入我们](https://discord.gg/MM4ZK4Ed7s)
+- **GitHub Issues**: [报告问题](https://github.com/LiuShen-Fork/Memora/issues)
+- **GitHub Discussions**: [讨论分享](https://github.com/LiuShen-Fork/Memora/discussions)
 
 ## 📄 开源协议
 
-ChronoFrame 基于 [MIT 协议](https://github.com/HoshinoSuzumi/chronoframe/blob/main/LICENSE) 开源，欢迎自由使用和贡献。
+Memora 基于 [MIT 协议](https://github.com/LiuShen-Fork/Memora/blob/main/LICENSE) 开源，欢迎自由使用和贡献。Memora 基于 [ChronoFrame](https://github.com/HoshinoSuzumi/chronoframe) 重构而来。

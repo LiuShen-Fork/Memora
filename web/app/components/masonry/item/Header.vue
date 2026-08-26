@@ -45,10 +45,10 @@ const totalSelectedFilters = computed(() => {
   )
 })
 
-const defaultFooterLinkUrl = 'https://github.com/LiuShen-Fork/ChronoFrame'
+const defaultFooterLinkUrl = 'https://github.com/LiuShen-Fork/Memora'
 const footerLinkText = computed(() => {
   const value = getSetting('app:footerLinkText')
-  return String(value || '').trim() || 'ChronoFrame'
+  return String(value || '').trim() || 'Memora'
 })
 const footerLinkUrl = computed(() => {
   const value = String(getSetting('app:footerLinkUrl') || '').trim()

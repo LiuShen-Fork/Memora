@@ -1,330 +1,68 @@
-# ChronoFrame
+# Memora
 
-<p align="center">
-  <img src="https://socialify.git.ci/HoshinoSuzumi/chronoframe/image?custom_description=Self-hosted+personal+gallery+application.&description=1&font=KoHo&forks=0&issues=0&logo=https%3A%2F%2Fgithub.com%2FHoshinoSuzumi%2Fchronoframe%2Fraw%2Frefs%2Fheads%2Fmain%2Fpublic%2Ffavicon.svg&name=1&owner=1&pattern=Plus&pulls=0&stargazers=0&theme=Auto" alt="Chronoframe">
-</p>
+Memora 是一个可自托管的个人相册，用于浏览、整理和在地图上探索照片。它支持 EXIF 信息、逆地理编码、相册、Live/Motion Photo、多种存储后端，以及桌面和移动端布局。
 
-<p align="center">
-  <a href="https://github.com/HoshinoSuzumi/chronoframe/releases/latest">
-    <img src="https://badgen.net/github/release/HoshinoSuzumi/chronoframe/stable?icon=docker&label=稳定" alt="Latest Release">
-  </a>
-  <a href="https://github.com/HoshinoSuzumi/chronoframe/releases?q=beta&expanded=false">
-    <img src="https://badgen.net/github/release/HoshinoSuzumi/chronoframe?icon=docker&label=测试" alt="Latest Nightly Release">
-  </a>
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-</p>
+## 与原项目的区别
 
-<p align="center">
-  <a href="https://discord.gg/MM4ZK4Ed7s">
-    <img src="https://dcbadge.limes.pink/api/server/https://discord.gg/MM4ZK4Ed7s" alt="Discord Server" />
-  </a>
-</p>
+Memora 是对原 Nuxt 应用的大幅重构：
 
-<p align="center">
-  <a href="https://hellogithub.com/repository/HoshinoSuzumi/chronoframe" target="_blank"><img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=947d47ffe8404985908b266e187dec99&claim_uid=kLVoiAFPJaBtr1D&theme=neutral" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-  <a href="https://www.producthunt.com/products/chronoframe?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-chronoframe" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1029556&theme=neutral&t=1761159404569" alt="ChronoFrame - Self&#0045;hosted&#0032;photo&#0032;gallery&#0032;for&#0032;photographers&#0046; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-</p>
+- 生产环境使用轻量 Go 进程，同时提供 API 和预生成的静态前端。
+- SQLite 数据库结构和 Docker 的 `/app/data` 挂载保持兼容，原有数据无需迁移。
+- 使用 FFmpeg 生成缩略图并处理 Live/Motion Photo，使用 ExifTool 提取元数据。
+- Node.js 仅在重新构建前端时需要，生产运行不再需要 Node.js/Nitro 服务。
 
-**Languages:** [English](README.md) | 中文
+当前维护仓库为 [LiuShen-Fork/Memora](https://github.com/LiuShen-Fork/Memora)。
 
-丝滑的照片展示和管理应用，支持多种图片格式和大尺寸图片渲染。
+## 功能
 
-[在线演示: TimoYin's Mems](https://lens.bh8.ga)
+- 响应式瀑布流相册浏览
+- 相册、搜索、筛选、反应和照片信息编辑
+- MapLibre、Mapbox、AMap 地图浏览
+- JPEG、PNG、WebP、GIF、BMP、TIFF、HEIC/HEIF 和 Live/Motion Photo
+- 本地文件系统、S3 兼容存储和 OpenList
+- 自动生成缩略图、解析 EXIF、逆地理编码和持久化任务队列
 
-## ✨ 特性
-
-### 🖼️ 强大的图片管理
-
-- **在线管理照片** - 通过 Web 界面轻松管理和浏览照片
-- **探索地图** - 在地图上浏览照片拍摄位置
-- **智能 EXIF 解析** - 自动提取拍摄时间、地理位置、相机参数等元数据
-- **地理位置识别** - 自动识别(Reverse Geocoding)照片拍摄地点
-- **多格式支持** - 支持 JPEG、PNG、HEIC/HEIF 等主流图片格式
-- **智能缩略图** - 基于 ThumbHash 技术的高效缩略图生成
-
-### 🔧 现代技术栈
-
-- **Go 服务端** - 单进程提供 API、媒体文件和静态前端，直接复用 SQLite 与既有存储对象
-- **Nuxt 4 静态前端** - 预生成 SPA，不在生产环境运行 Nitro/Node 服务端
-- **TypeScript** - 完整的类型安全保障
-- **TailwindCSS** - 现代化的 CSS 框架
-- **SQLite** - 通过 Go 标准数据库接口访问，保持原有数据结构
-
-### ☁️ 灵活的存储方案
-
-- **多存储后端** - 支持 S3 兼容存储、本地文件系统
-- **CDN 加速** - 可配置 CDN 地址加速图片访问
-
-## 🐳 部署
-
-推荐使用预构建的 docker 镜像部署，[在 ghcr 上查看镜像](https://github.com/HoshinoSuzumi/chronoframe/pkgs/container/chronoframe)
-
-镜像采用多阶段构建：Node 仅用于生成静态前端，运行时只包含 Go 服务、FFmpeg、ExifTool 与静态资源。已有的 `./data` 挂载保持不变，SQLite、图库文件和本地存储路径不需要迁移。
-
-下面是**最小化配置**示例，完整的配置项参考 [配置指南](https://chronoframe.bh8.ga/zh/guide/configuration.html)：
-
-```bash
-# 管理员邮箱（必须）
-CFRAME_ADMIN_EMAIL=
-# 管理员用户名（可选，默认 ChronoFrame）
-CFRAME_ADMIN_NAME=
-# 管理员密码（可选，默认 CF1234@!）
-CFRAME_ADMIN_PASSWORD=
-
-# 站点信息（均可选）
-NUXT_PUBLIC_APP_TITLE=
-NUXT_PUBLIC_APP_SLOGAN=
-NUXT_PUBLIC_APP_AUTHOR=
-NUXT_PUBLIC_APP_AVATAR_URL=
-
-# 地图提供器 (maplibre/mapbox)
-NUXT_PUBLIC_MAP_PROVIDER=maplibre
-# 使用 MapLibre 需要 MapTiler 访问令牌
-NUXT_PUBLIC_MAP_MAPLIBRE_TOKEN=
-# 使用 Mapbox 需要 Mapbox 访问令牌
-NUXT_PUBLIC_MAPBOX_ACCESS_TOKEN=
-
-# Mapbox 无域名限制令牌（反向地理编码，可选）
-NUXT_MAPBOX_ACCESS_TOKEN=
-
-# 存储提供者（local、s3 或 openlist）
-NUXT_STORAGE_PROVIDER=local
-NUXT_PROVIDER_LOCAL_PATH=/app/data/storage
-
-# 会话密码（必须，32 位随机字符串）
-NUXT_SESSION_PASSWORD=
-# 用于稳定签名 OG 图片的密钥
-# 使用命令生成：npx nuxt-og-image generate-secret
-NUXT_OG_IMAGE_SECRET=
-```
-
-### 拉取镜像
-
-我们推荐使用预构建的 Docker 镜像进行部署，镜像托管在 GHCR 和 Docker Hub，您可以根据网络情况选择合适的源。
-
-#### [GitHub Container Registry (GHCR)](https://github.com/HoshinoSuzumi/chronoframe/pkgs/container/chronoframe)
-
-```bash
-docker pull ghcr.io/hoshinosuzumi/chronoframe:latest
-```
-
-#### [Docker Hub](https://hub.docker.com/r/hoshinosuzumi/chronoframe)
-
-```bash
-docker pull hoshinosuzumi/chronoframe:latest
-```
+## 快速开始
 
 ### Docker
 
-一行命令启动：
-
 ```bash
-docker run -d --name chronoframe -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env ghcr.io/hoshinosuzumi/chronoframe:latest
+docker run -d --name memora -p 3000:3000 \
+  -v $(pwd)/data:/app/data --env-file .env \
+  ghcr.io/liu-shen-fork/memora:latest
 ```
 
-### Docker Compose
+从 ChronoFrame 迁移时请保持原有的 `./data:/app/data` 挂载不变。完整环境变量请参考[配置指南](https://chronoframe.bh8.ga/zh/guide/configuration.html)，存储和应用设置也可以在后台修改。
 
-创建 `docker-compose.yml`：
+### 本地开发
 
-```yaml
-services:
-  chronoframe:
-    image: ghcr.io/hoshinosuzumi/chronoframe:latest
-    container_name: chronoframe
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    volumes:
-      - ./data:/app/data
-    env_file:
-      - .env
-```
-
-启动：
-
-```bash
-docker compose up -d
-```
-
-## 📖 使用指南
-
-> 如未配置 `CFRAME_ADMIN_EMAIL` 和 `CFRAME_ADMIN_PASSWORD`，默认账号如下：
->
-> - 邮箱: `admin@chronoframe.com`
-> - 密码: `CF1234@!`
-
-### 登录到控制台
-
-1. 点击头像跳转到登录页面，可以使用账号密码或 GitHub 登录
-
-### 上传照片
-
-1. 访问仪表板页面 `/dashboard`
-2. 在 `Photos` 页面中选择图片并点击上传（支持批量上传和拖拽上传）
-3. 系统将自动提取 EXIF 信息、生成缩略图并逆编码照片地理位置
-
-## 📸 截图
-
-![Gallery](./docs/images/screenshot1.png)
-![Photo Detail](./docs/images/screenshot2.png)
-![Map Explore](./docs/images/screenshot3.png)
-![Dashboard](./docs/images/screenshot4.png)
-
-## 🛠️ 开发
-
-### 环境要求
-
-- Node.js 18+
-- pnpm 9.0+
-
-### 安装依赖
-
-```bash
-# 使用 pnpm (推荐)
-pnpm --dir web install
-
-# 或使用其他包管理器
-npm install
-yarn install
-```
-
-### 配置环境变量
-
-复制环境变量模板并根据需要配置：
-
-```bash
-cp .env.example .env
-```
-
-### 构建并启动开发服务
+需要 Go 1.23+、Node.js 18+ 和 pnpm 9+：
 
 ```bash
 pnpm --dir web install
-pnpm --dir web build:deps
 pnpm --dir web generate
 go run ./cmd/chronoframe
 ```
 
-Go 服务会在 `http://localhost:3000` 提供静态前端和 API。
+访问 <http://127.0.0.1:3000>。Go 进程会在同一端口提供 `web/.output/public` 静态前端和 API。请安装 FFmpeg、ExifTool，或通过 `CFRAME_FFMPEG_PATH`、`CFRAME_FFPROBE_PATH`、`EXIFTOOL_PATH` 指定可执行文件路径。
 
-### 项目结构
+## 项目结构
 
-```
-chronoframe/
-├── web/                    # 静态 Nuxt 前端
-│   ├── app/                # 页面、组件、组合式函数和状态
-│   ├── packages/           # 前端本地包
-│   └── shared/             # TypeScript 类型契约
-├── cmd/chronoframe/        # Go 后端和 HTTP 路由
-├── data/                   # SQLite 和挂载的数据目录（忽略）
-└── Dockerfile              # 生产镜像
+```text
+web/                  静态 Nuxt 前端源码
+cmd/chronoframe/      Go 服务、API、任务队列和存储适配器
+data/                 SQLite 数据库和挂载的媒体文件（不要替换）
+Dockerfile            生产镜像定义
 ```
 
-### 构建命令
+## 参与贡献
 
-```bash
-# 构建前端依赖
-pnpm --dir web build:deps
+欢迎提交 Pull Request。提交前请运行 `go test ./...` 和 `pnpm --dir web generate`。
 
-# 仅构建依赖包
-pnpm --dir web build:deps
+## 致谢
 
-# 构建生产版本
-pnpm --dir web build
+Memora 的设计和功能大量参考并基于 [HoshinoSuzumi/chronoframe](https://github.com/HoshinoSuzumi/chronoframe)。感谢原项目作者及贡献者提供的设计、功能和开源基础。
 
-# 生成静态前端
-pnpm --dir web generate
+## 许可证
 
-# 启动 Go 后端
-go run ./cmd/chronoframe
-```
-
-## 🤝 贡献
-
-欢迎贡献代码！请确保：
-
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 开启 Pull Request
-
-### 开发规范
-
-- 使用 TypeScript 进行类型安全的开发
-- 遵循 ESLint 和 Prettier 代码规范
-- 更新相关文档
-
-## 📄 许可证
-
-本项目基于 [MIT 许可证](LICENSE) 开源。
-
-## 👤 作者
-
-**Timothy Yin**
-
-- Email: master@uniiem.com
-- GitHub: [@HoshinoSuzumi](https://github.com/HoshinoSuzumi)
-- Website: [bh8.ga](https://bh8.ga)
-- Gallery: [lens.bh8.ga](https://lens.bh8.ga)
-
-## ❓ FAQ
-
-<details>
-  <summary>如何创建管理员用户？</summary>
-  <p>
-    首次启动时，会根据环境变量 <code>CFRAME_ADMIN_EMAIL</code>、<code>CFRAME_ADMIN_NAME</code> 和 <code>CFRAME_ADMIN_PASSWORD</code> 环境变量创建一个管理员用户。<code>CFRAME_ADMIN_EMAIL</code> 必须是登录使用的 GitHub 账户的邮箱。
-  </p>
-</details>
-<details>
-  <summary>支持哪些图片格式？</summary>
-  <p>
-    支持 JPEG、PNG、HEIC/HEIF、MOV(作为实况照片) 格式。
-  </p>
-</details>
-<details>
-  <summary>为什么无法使用 GitHub/Local 存储？</summary>
-  <p>
-    目前支持 S3 兼容存储，未来计划支持 GitHub 和本地文件系统存储。
-  </p>
-</details>
-<details>
-  <summary>为什么需要/如何配置地图服务？</summary>
-  <p>
-    地图服务用于在地图上浏览照片拍摄位置，以及照片详情中的小地图渲染。目前使用 Mapbox，注册后<a href="https://console.mapbox.com/account/access-tokens/">获取访问令牌</a>并配置到 <code>MAPBOX_TOKEN</code> 环境变量中。
-  </p>
-</details>
-<details>
-  <summary>为什么我上传的 MOV 文件没有被识别为实况照片？</summary>
-  <p>
-    需要确保实况照片对的图片(.heic)和视频(.mov)的文件名一致（例如 <code>IMG_1234.heic</code> 与 <code>IMG_1234.mov</code> 会自动匹配）。
-    一般情况来说，不管是上传 .heic 还是 .mov，都会检测一次配对，因此上传的顺序无关紧要。
-    如果仍然没有被识别为实况照片，请在仪表盘中找到图片，在操作菜单中手动触发配对检测。
-  </p>
-</details>
-<details>
-  <summary>如何导入存储中已有的照片？</summary>
-  <p>
-    目前不支持直接导入已有照片，未来计划支持通过指定目录扫描导入。
-  </p>
-</details>
-
-## 🙏 致谢
-
-本项目受启发于 Afilmory，同样优秀的个人相册项目。
-
-感谢以下优秀的开源项目和库：
-
-- [Nuxt](https://nuxt.com/)
-- [TailwindCSS](https://tailwindcss.com/)
-- [Go](https://go.dev/)
-
-## ⭐️ Star History
-
-<a href="https://star-history.dera.page/#HoshinoSuzumi/chronoframe&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=HoshinoSuzumi/chronoframe&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=HoshinoSuzumi/chronoframe&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=HoshinoSuzumi/chronoframe&type=date&legend=top-left" />
- </picture>
-</a>
+Memora 使用 MIT 许可证，详见 [LICENSE](LICENSE)。
