@@ -2968,7 +2968,21 @@ onUnmounted(() => {
                     label-key="label"
                     :search-input="false"
                     class="w-full"
-                  />
+                    :ui="{
+                      item: 'items-center',
+                      itemLeadingIcon: 'size-4 shrink-0',
+                      itemLabel: 'leading-5',
+                    }"
+                  >
+                    <template #item-leading="{ item }">
+                      <Icon
+                        v-if="item.icon"
+                        :name="item.icon"
+                        class="size-4 shrink-0 text-neutral-500 dark:text-neutral-400"
+                        aria-hidden="true"
+                      />
+                    </template>
+                  </USelectMenu>
                 </UFormField>
                 <UFormField
                   :label="$t('dashboard.photos.albumSelection.targetLabel')"
@@ -2982,7 +2996,21 @@ onUnmounted(() => {
                     :search-input="photoAlbums.length > 6"
                     class="w-full"
                     :placeholder="$t('dashboard.photos.albumSelection.targetPlaceholder')"
-                  />
+                    :ui="{
+                      item: 'items-center',
+                      itemLeadingIcon: 'size-4 shrink-0',
+                      itemLabel: 'leading-5',
+                    }"
+                  >
+                    <template #item-leading="{ item }">
+                      <Icon
+                        v-if="item.icon"
+                        :name="item.icon"
+                        class="size-4 shrink-0 text-neutral-500 dark:text-neutral-400"
+                        aria-hidden="true"
+                      />
+                    </template>
+                  </USelectMenu>
                 </UFormField>
               </div>
 
