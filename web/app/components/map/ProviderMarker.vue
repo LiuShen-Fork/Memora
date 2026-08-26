@@ -6,6 +6,7 @@ withDefaults(
     markerId?: string
     lnglat?: [number, number]
     map?: AMapMap
+    offset?: [number, number]
   }>(),
   {
     markerId: undefined,
@@ -37,6 +38,7 @@ const provider = computed(() => mapConfig.value.provider || 'maplibre')
     :marker-id
     :lnglat
     :map
+    :offset
   >
     <template #marker>
       <slot name="marker" />

@@ -11,7 +11,7 @@ const props = withDefaults(
   }>(),
   {
     modelValue: null,
-    zoom: 4,
+    zoom: 5,
     class: undefined,
   },
 )
@@ -152,6 +152,7 @@ onBeforeUnmount(() => {
       <MapProviderMarker
         v-if="markerCoordinates"
         :lnglat="markerCoordinates"
+        :offset="[-16, -16]"
       >
         <template #marker>
           <div class="relative size-10 flex items-center justify-center">

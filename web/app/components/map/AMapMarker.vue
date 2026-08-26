@@ -7,8 +7,14 @@ const props = withDefaults(
     markerId?: string
     lnglat?: [number, number]
     map?: AMapMap
+    offset?: [number, number]
   }>(),
-  { markerId: undefined, lnglat: undefined, map: undefined },
+  {
+    markerId: undefined,
+    lnglat: undefined,
+    map: undefined,
+    offset: () => [-20, -20],
+  },
 )
 
 const marker = shallowRef<any>()
@@ -34,7 +40,7 @@ const createMarker = (map: AMapMap, coordinates: [number, number]) => {
   marker.value = new window.AMap.Marker({
     position: transformCoordinate(coordinates[0], coordinates[1], 'amap'),
     content: container,
-    offset: new window.AMap.Pixel(-20, -20),
+    offset: new window.AMap.Pixel(props.offset[0], props.offset[1]),
   })
   map.add(marker.value)
 }
