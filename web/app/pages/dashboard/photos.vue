@@ -85,6 +85,8 @@ const setEraseLocationLoading = (photoId: string, loading: boolean) => {
 // 表态数据
 const reactionsData = ref<Record<string, Record<string, number>>>({})
 const reactionsLoading = ref(false)
+let reactionsSchedule: ReturnType<typeof setTimeout> | null = null
+let reactionsRequestId = 0
 
 // 获取表态数据
 const fetchReactions = async (photoIds: string[]) => {
@@ -746,11 +748,22 @@ const filteredData = computed(() => {
 // 监听过滤后的照片变化，自动获取表态数据
 watch(
   () => filteredData.value,
-  async (photos) => {
-    if (photos && photos.length > 0) {
-      const photoIds = photos.map((p: Photo) => p.id)
-      await fetchReactions(photoIds)
+  (photos) => {
+    if (reactionsSchedule) {
+      clearTimeout(reactionsSchedule)
+      reactionsSchedule = null
     }
+    const photoIds = photos?.map((p: Photo) => p.id) ?? []
+    if (photoIds.length === 0) return
+
+    const requestId = ++reactionsRequestId
+    // Let the table render its first frame before loading secondary metadata.
+    reactionsSchedule = setTimeout(() => {
+      reactionsSchedule = null
+      if (requestId === reactionsRequestId) {
+        void fetchReactions(photoIds)
+      }
+    }, 0)
   },
   { immediate: true },
 )
@@ -2228,6 +2241,12 @@ onMounted(() => {
 
 // 清理定时器
 onUnmounted(() => {
+  if (reactionsSchedule) {
+    clearTimeout(reactionsSchedule)
+    reactionsSchedule = null
+  }
+  reactionsRequestId++
+
   // 清理所有状态检查定时器
   statusIntervals.value.forEach((intervalId) => {
     clearInterval(intervalId)
@@ -2597,7 +2616,7 @@ onUnmounted(() => {
             }"
             :data="filteredData as Photo[]"
             :columns="columns"
-            :loading="status === 'pending'"
+            :loading="status === 'pending' || reactionsLoading"
             sticky
             class="h-full flex-1"
             :ui="{
