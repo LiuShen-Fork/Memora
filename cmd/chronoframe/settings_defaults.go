@@ -44,7 +44,7 @@ var defaultSettings = []settingDefault{
 	{Namespace: "map", Key: "maplibre.style", Type: "string", Default: "", Public: true, Label: "settings.map.maplibre.style.label", Description: "settings.map.maplibre.style.description"},
 	{Namespace: "map", Key: "amap.key", Type: "string", Default: "", Public: true, Label: "settings.map.amap.key.label", Description: "settings.map.amap.key.description"},
 	{Namespace: "map", Key: "amap.securityCode", Type: "string", Default: "", Public: true, Secret: true, Label: "settings.map.amap.securityCode.label", Description: "settings.map.amap.securityCode.description"},
-	{Namespace: "location", Key: "language", Type: "string", Default: "en", Public: true, Label: "settings.location.language.label", Description: "settings.location.language.description"},
+	{Namespace: "location", Key: "language", Type: "string", Default: "en", Public: true, Enum: []string{"zh-CN", "en", "ja", "ru"}, Label: "settings.location.language.label", Description: "settings.location.language.description"},
 	{Namespace: "location", Key: "provider", Type: "string", Default: "nominatim", Public: true, Enum: []string{"nominatim", "mapbox", "amap"}, Label: "settings.location.provider.label", Description: "settings.location.provider.description"},
 	{Namespace: "location", Key: "mapbox.token", Type: "string", Default: "", Public: true, Label: "settings.location.mapbox.token.label", Description: "settings.location.mapbox.token.description"},
 	{Namespace: "location", Key: "amap.key", Type: "string", Default: "", Secret: true, Label: "settings.location.amap.key.label", Description: "settings.location.amap.key.description"},
@@ -142,6 +142,9 @@ func settingUI(namespace, key, typ string, enum []string) map[string]any {
 	if len(enum) > 0 {
 		uiType = "tabs"
 	}
+	if key == "language" {
+		uiType = "select"
+	}
 	ui := map[string]any{"type": uiType, "required": false}
 	if key == "auth.github.clientSecret" || strings.HasSuffix(key, ".token") {
 		ui["type"] = "password"
@@ -149,7 +152,20 @@ func settingUI(namespace, key, typ string, enum []string) map[string]any {
 	if len(enum) > 0 {
 		options := make([]map[string]any, 0, len(enum))
 		for _, value := range enum {
-			options = append(options, map[string]any{"label": value, "value": value})
+			label := value
+			if key == "language" {
+				switch value {
+				case "zh-CN":
+					label = "中文（简体）"
+				case "en":
+					label = "English"
+				case "ja":
+					label = "日本語"
+				case "ru":
+					label = "Русский"
+				}
+			}
+			options = append(options, map[string]any{"label": label, "value": value})
 		}
 		ui["options"] = options
 	}
