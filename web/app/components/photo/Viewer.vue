@@ -812,7 +812,7 @@ const swiperModules = [Navigation, Keyboard, Virtual]
                         :animate="{ opacity: 0.6, scale: 1 }"
                         :exit="{ opacity: 0, scale: 0.95 }"
                         :transition="{ duration: 0.2 }"
-                        class="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 bg-black/50 rounded-lg border border-white/10 px-2 py-1 shadow-2xl text-white text-xs font-bold"
+                        class="absolute top-2 left-1/2 z-20 -translate-x-1/2 bg-black/50 rounded-lg border border-white/10 px-2 py-1 shadow-2xl text-white text-xs font-bold sm:top-4"
                       >
                         <span v-if="currentPhoto?.isLivePhoto && isMobile">
                           {{ $t('viewer.hint.livePhoto.mobile') }}

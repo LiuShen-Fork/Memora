@@ -63,10 +63,19 @@ const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
 // Keep theme application deterministic even when settings arrive after the
 // first gallery response.
 const themeSetting = useSettingRef('app:appearance.theme')
+// A browser-level choice must win over the server default on subsequent
+// visits. The color-mode module writes this key whenever the user toggles it.
+const hasStoredThemePreference = import.meta.client
+  ? Boolean(window.localStorage.getItem('cframe-color-mode'))
+  : false
 watch(
   themeSetting,
   (theme) => {
-    if (typeof theme === 'string' && theme.length > 0) {
+    if (
+      !hasStoredThemePreference &&
+      typeof theme === 'string' &&
+      theme.length > 0
+    ) {
       colorMode.preference = theme
     }
   },
