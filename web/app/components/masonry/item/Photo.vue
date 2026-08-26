@@ -332,6 +332,16 @@ const processLivePhotoWhenVisible = async () => {
       if (videoRef.value) {
         videoRef.value.load()
       }
+
+      // The first hover can arrive while the MOV is being prepared. Continue
+      // playback once the video element has been mounted, as long as the
+      // pointer is still over this photo.
+      if (isHovering.value) {
+        await nextTick()
+        if (isHovering.value) {
+          playLivePhotoVideo()
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to process LivePhoto:', error)
