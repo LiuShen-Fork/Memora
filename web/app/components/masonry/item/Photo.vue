@@ -512,18 +512,18 @@ onUnmounted(() => {
           v-if="photo.isLivePhoto && videoBlobUrl"
           ref="videoRef"
           :src="videoBlobUrl"
-          class="absolute inset-0 w-full h-full object-cover"
+          class="absolute inset-0 w-full h-full object-contain bg-black/5"
           :class="{ 'select-none pointer-events-none': isVideoPlaying }"
           muted
           playsinline
           preload="metadata"
           :initial="{
             opacity: 0,
-            scale: 1.02,
+            scale: 1,
           }"
           :animate="{
             opacity: isVideoPlaying ? 1 : 0,
-            scale: isVideoPlaying ? 1 : 1.02,
+            scale: 1,
           }"
           :transition="{
             duration: isVideoPlaying ? 0.3 : 0.2,
