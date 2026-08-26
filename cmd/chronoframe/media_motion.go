@@ -40,6 +40,9 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 	if !ok {
 		return "", errors.New("motion photo metadata found but embedded MP4 was not located")
 	}
+	if existing, err := a.storage.Meta(ctx, photoID+".mp4"); err == nil {
+		return existing.Key, nil
+	}
 	object, err := a.storage.Create(ctx, photoID+".mp4", video, "video/mp4")
 	if err != nil {
 		return "", err
@@ -77,14 +80,26 @@ func validMP4At(data []byte, start int) ([]byte, bool) {
 	if start <= 0 || start >= len(data)-8*1024 {
 		return nil, false
 	}
-	end := start + 32
-	if end > len(data) {
-		end = len(data)
+	// An ISO base media file starts with a size, the `ftyp` box, and a
+	// four-byte major brand. HEIC/AVIF files use the same container marker, so
+	// checking only for `ftyp` would incorrectly save still-image data as MP4.
+	if start+16 > len(data) || string(data[start+4:start+8]) != "ftyp" {
+		return nil, false
 	}
-	if bytes.Index(data[start:end], []byte("ftyp")) < 0 {
+	majorBrand := string(data[start+8 : start+12])
+	if !isVideoBrand(majorBrand) {
 		return nil, false
 	}
 	return data[start:], true
+}
+
+func isVideoBrand(brand string) bool {
+	switch brand {
+	case "isom", "iso2", "iso3", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1", "av01", "3gp4", "3gp5", "M4V ", "qt  ":
+		return true
+	default:
+		return false
+	}
 }
 
 func motionBool(value any) bool {

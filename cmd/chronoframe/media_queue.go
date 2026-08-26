@@ -256,15 +256,18 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 		hasGPS = false
 	}
 	a.setStage(t.ID, "motion-photo")
-	motionVideoKey, motionErr := a.extractMotionPhoto(ctx, id, key, raw, exif)
-	if motionErr != nil {
-		a.logs.Add("queue", motionError(key, motionErr).Error())
+	// Prefer an already-uploaded paired video. Reprocessing the image must not
+	// overwrite a valid remote MP4 with a newly extracted (or malformed) blob.
+	motionVideoKey := a.pairedLiveVideo(ctx, key)
+	if motionVideoKey == "" {
+		var motionErr error
+		motionVideoKey, motionErr = a.extractMotionPhoto(ctx, id, key, raw, exif)
+		if motionErr != nil {
+			a.logs.Add("queue", motionError(key, motionErr).Error())
+		}
 	}
 	var liveVideoURL any
 	var isLivePhoto int
-	if motionVideoKey == "" {
-		motionVideoKey = a.pairedLiveVideo(ctx, key)
-	}
 	if motionVideoKey != "" {
 		isLivePhoto = 1
 		liveVideoURL = publicMediaURL(a.storage, motionVideoKey)
