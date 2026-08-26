@@ -266,6 +266,9 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 			a.logs.Add("queue", motionError(key, motionErr).Error())
 		}
 	}
+	if motionVideoKey == "" {
+		a.removeInvalidGeneratedVideo(ctx, id)
+	}
 	var liveVideoURL any
 	var isLivePhoto int
 	if motionVideoKey != "" {
@@ -309,6 +312,19 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 	}
 	a.logs.Add("queue", "processed photo "+id)
 	return nil
+}
+
+// removeInvalidGeneratedVideo cleans up stale files produced by the old
+// Motion Photo detector. Only the generated <photoID>.mp4 name is eligible;
+// unrelated user media is never removed here.
+func (a *App) removeInvalidGeneratedVideo(ctx context.Context, photoID string) {
+	key := photoID + ".mp4"
+	if _, err := a.storage.Meta(ctx, key); err != nil || a.validStoredVideo(ctx, key) {
+		return
+	}
+	if err := a.storage.Delete(ctx, key); err != nil {
+		a.logs.Add("queue", fmt.Sprintf("failed to remove invalid Live Photo video %s: %v", key, err))
+	}
 }
 
 // processPhotoMetadata keeps ExifTool and the storage round-trip off the
