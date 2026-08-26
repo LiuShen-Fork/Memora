@@ -23,7 +23,16 @@ const emit = defineEmits<{
 
 const mapInstance = ref<MapInstance | null>(null)
 const markerCoordinates = ref<[number, number] | null>(null)
+const initialCenter = ref<[number, number] | undefined>(undefined)
+const initialZoom = Math.max(props.zoom ?? 2, 2)
 const { locale } = useI18n()
+
+const mapConfig = computed(() => {
+  const config = getSetting('map')
+  return typeof config === 'object' && config ? config : {}
+})
+
+const provider = computed(() => mapConfig.value.provider || 'maplibre')
 
 let clickHandler: ((event: any) => void) | null = null
 
@@ -32,18 +41,8 @@ const syncFromProps = (
 ) => {
   if (value) {
     markerCoordinates.value = [value.longitude, value.latitude]
-    if (mapInstance.value) {
-      const map: any = mapInstance.value
-      const center = transformCoordinate(
-        value.longitude,
-        value.latitude,
-        provider.value,
-      )
-      map.flyTo?.({
-        center,
-        zoom: Math.max(props.zoom ?? 4, 4),
-        essential: true,
-      })
+    if (!mapInstance.value && !initialCenter.value) {
+      initialCenter.value = [...markerCoordinates.value]
     }
   } else {
     markerCoordinates.value = null
@@ -78,15 +77,24 @@ const updateValue = (
 const handleMapClick = (event: any) => {
   const point =
     event?.lngLat ||
+    event?.lnglat ||
     event?.latlng ||
     (Array.isArray(event) ? { lng: event[0], lat: event[1] } : null)
   if (!point) {
     return
   }
   const latitude =
-    typeof point.lat === 'number' ? point.lat : (point.latitude ?? point[1])
+    typeof point.lat === 'number'
+      ? point.lat
+      : typeof point.getLat === 'function'
+        ? point.getLat()
+        : (point.latitude ?? point[1])
   const longitude =
-    typeof point.lng === 'number' ? point.lng : (point.longitude ?? point[0])
+    typeof point.lng === 'number'
+      ? point.lng
+      : typeof point.getLng === 'function'
+        ? point.getLng()
+        : (point.longitude ?? point[0])
   if (typeof latitude !== 'number' || typeof longitude !== 'number') {
     return
   }
@@ -104,10 +112,10 @@ const onMapLoad = (map: MapInstance) => {
       provider.value,
     )
     if (typeof anyMap.setZoomAndCenter === 'function') {
-      anyMap.setZoomAndCenter(Math.max(props.zoom ?? 4, 4), center, true, 0)
+      anyMap.setZoomAndCenter(initialZoom, center, true, 0)
     } else {
       anyMap.setCenter?.(center)
-      anyMap.setZoom?.(Math.max(props.zoom ?? 4, 4))
+      anyMap.setZoom?.(initialZoom)
     }
   }
 
@@ -135,10 +143,8 @@ onBeforeUnmount(() => {
     <MapProvider
       class="w-full h-full"
       :map-id="'photo-location-picker'"
-      :center="markerCoordinates ?? undefined"
-      :zoom="
-        markerCoordinates ? Math.max($props.zoom ?? 4, 4) : ($props.zoom ?? 2)
-      "
+      :center="initialCenter"
+      :zoom="initialZoom"
       :interactive="true"
       :language="locale"
       @load="onMapLoad"
