@@ -11,79 +11,69 @@ const appTitle = computed(() => {
   return value ? String(value) : $t('title.dashboard')
 })
 
-const navItems = computed<NavigationMenuItem[][]>(() => [
-  [
-    {
-      label: $t('title.dashboard'),
-      icon: 'tabler:dashboard',
-      to: '/dashboard',
-    },
-    {
-      label: $t('title.photos'),
-      icon: 'tabler:photo-cog',
-      to: '/dashboard/photos',
-    },
-    {
-      label: $t('title.albums'),
-      icon: 'tabler:album',
-      to: '/dashboard/albums',
-    },
-    {
-      label: $t('title.queue'),
-      icon: 'tabler:list-check',
-      to: '/dashboard/queue',
-    },
-    {
-      label: $t('title.logs'),
-      icon: 'tabler:file-text',
-      to: '/dashboard/logs',
-    },
-    {
-      label: $t('title.siteAdministration'),
-      icon: 'tabler:settings',
-      defaultOpen: route.path.startsWith('/dashboard/settings'),
-      children: [
-        {
-          label: $t('title.generalSettings'),
-          icon: 'tabler:settings-2',
-          to: '/dashboard/settings/general',
-        },
-        {
-          label: $t('title.storageSettings'),
-          icon: 'tabler:database',
-          to: '/dashboard/settings/storage',
-        },
-        {
-          label: $t('title.privacySettings'),
-          icon: 'tabler:shield-lock',
-          to: '/dashboard/settings/privacy',
-        },
-        {
-          label: $t('title.mapAndLocation'),
-          icon: 'tabler:map-pin',
-          to: '/dashboard/settings/map',
-        },
-        {
-          label: $t('title.systemSettings'),
-          icon: 'tabler:cpu',
-          to: '/dashboard/settings/system',
-        },
-        {
-          label: $t('title.analyticsSettings'),
-          icon: 'tabler:chart-bar',
-          to: '/dashboard/settings/analytics',
-        },
-      ],
-    },
-  ],
-  [
-    {
-      label: 'Memora',
-      icon: 'tabler:brand-github',
-      to: 'https://github.com/LiuShen-Fork/Memora',
-      target: '_blank',
-    },
-  ],
+const navItems = computed<NavigationMenuItem[]>(() => [
+  {
+    label: $t('title.dashboard'),
+    icon: 'tabler:dashboard',
+    to: '/dashboard',
+  },
+  {
+    label: $t('title.photos'),
+    icon: 'tabler:photo-cog',
+    to: '/dashboard/photos',
+  },
+  {
+    label: $t('title.albums'),
+    icon: 'tabler:album',
+    to: '/dashboard/albums',
+  },
+  {
+    label: $t('title.queue'),
+    icon: 'tabler:list-check',
+    to: '/dashboard/queue',
+  },
+  {
+    label: $t('title.logs'),
+    icon: 'tabler:file-text',
+    to: '/dashboard/logs',
+  },
+  {
+    label: $t('title.siteAdministration'),
+    icon: 'tabler:settings',
+    defaultOpen: route.path.startsWith('/dashboard/settings'),
+    children: [
+      {
+        label: $t('title.generalSettings'),
+        icon: 'tabler:settings-2',
+        to: '/dashboard/settings/general',
+      },
+      {
+        label: $t('title.storageSettings'),
+        icon: 'tabler:database',
+        to: '/dashboard/settings/storage',
+      },
+      {
+        label: $t('title.privacySettings'),
+        icon: 'tabler:shield-lock',
+        to: '/dashboard/settings/privacy',
+      },
+      {
+        label: $t('title.mapAndLocation'),
+        icon: 'tabler:map-pin',
+        to: '/dashboard/settings/map',
+      },
+      {
+        label: $t('title.systemSettings'),
+        icon: 'tabler:cpu',
+        to: '/dashboard/settings/system',
+      },
+      {
+        label: $t('title.analyticsSettings'),
+        icon: 'tabler:chart-bar',
+        to: '/dashboard/settings/analytics',
+      },
+    ],
+  },
 ])
 
 useHead({
@@ -165,20 +155,20 @@ const handleLogin = () => {
       <template #default="{ collapsed }">
         <UNavigationMenu
           :collapsed="collapsed"
-          :items="navItems[0]"
+          :items="navItems"
           orientation="vertical"
-        />
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="navItems[1]"
-          orientation="vertical"
-          class="mt-auto"
         />
       </template>
 
       <template #footer="{ collapsed }">
-        <div class="flex items-center gap-1" :class="collapsed ? 'flex-col' : ''">
-          <LanguageSwitcher compact />
+        <div
+          class="w-full gap-1"
+          :class="collapsed ? 'flex flex-col' : 'grid grid-cols-3 items-center'"
+        >
+          <LanguageSwitcher
+            compact
+            block
+          />
           <UButton
             :avatar="{
               src: user?.avatar || '',
@@ -186,11 +176,23 @@ const handleLogin = () => {
               icon: 'tabler:user',
             }"
             :label="collapsed ? undefined : user?.username || 'User'"
-            size="lg"
+            size="sm"
             color="neutral"
             variant="ghost"
-            class="min-w-0 flex-1"
-            :block="collapsed"
+            class="h-9 w-full min-w-0 justify-start px-2"
+            :class="collapsed ? 'justify-center' : ''"
+          />
+          <UButton
+            icon="tabler:brand-github"
+            :label="collapsed ? undefined : 'Memora'"
+            to="https://github.com/LiuShen-Fork/Memora"
+            target="_blank"
+            rel="noopener noreferrer"
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            class="h-9 w-full min-w-0 justify-start px-2"
+            :class="collapsed ? 'justify-center' : ''"
           />
         </div>
       </template>

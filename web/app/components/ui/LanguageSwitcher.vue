@@ -2,8 +2,9 @@
 withDefaults(
   defineProps<{
     compact?: boolean
+    block?: boolean
   }>(),
-  { compact: false },
+  { compact: false, block: false },
 )
 
 const { locale } = useI18n()
@@ -39,7 +40,11 @@ const menuItems = computed(() =>
         icon="tabler:language"
         :size="compact ? 'xs' : 'sm'"
         :aria-label="$t('common.languageSwitcher.label')"
-        class="rounded-full cursor-pointer"
+        :class="[
+          'cursor-pointer',
+          compact ? 'size-9 rounded-lg' : 'rounded-full',
+          block ? 'w-full justify-center' : '',
+        ]"
       />
     </UTooltip>
   </UDropdownMenu>
