@@ -347,29 +347,38 @@ func (a *App) processLivePhoto(ctx context.Context, t *Task) error {
 	if key == "" {
 		return errors.New("missing storageKey")
 	}
-	base := strings.TrimSuffix(key, filepath.Ext(key))
-	imageKey := ""
-	for _, ext := range []string{".jpg", ".JPG", ".jpeg", ".JPEG", ".heic", ".HEIC", ".heif", ".HEIF"} {
-		candidate := base + ext
-		var found string
-		if a.db.QueryRow(`SELECT storage_key FROM photos WHERE storage_key=? OR id=? LIMIT 1`, candidate, safePhotoID(candidate)).Scan(&found) == nil {
-			imageKey = found
-			break
-		}
-	}
-	if imageKey == "" {
+	photoID, imageKey := a.findPairedPhoto(key)
+	if photoID == "" || imageKey == "" {
 		return errors.New("paired photo not found")
-	}
-	var id string
-	if err := a.db.QueryRow(`SELECT id FROM photos WHERE storage_key=? OR id=? LIMIT 1`, imageKey, safePhotoID(imageKey)).Scan(&id); err != nil {
-		return err
 	}
 	url := a.storage.PublicURL(key)
 	if url == "" {
 		url = "/image/" + key
 	}
-	_, err := a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, key, id)
+	_, err := a.db.Exec(`UPDATE photos SET is_live_photo=1,live_photo_video_url=?,live_photo_video_key=? WHERE id=?`, url, key, photoID)
 	return err
+}
+
+// findPairedPhoto matches a standalone Live Photo video by filename, even
+// when the image and video records use different storage prefixes.
+func (a *App) findPairedPhoto(videoKey string) (id, imageKey string) {
+	base := strings.TrimSuffix(filepath.Base(videoKey), filepath.Ext(videoKey))
+	rows, err := a.db.Query(`SELECT id,storage_key FROM photos WHERE storage_key IS NOT NULL`)
+	if err != nil {
+		return "", ""
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var candidateID, candidateKey string
+		if rows.Scan(&candidateID, &candidateKey) != nil {
+			continue
+		}
+		candidateBase := strings.TrimSuffix(filepath.Base(candidateKey), filepath.Ext(candidateKey))
+		if candidateBase == base && isImageStorageKey(candidateKey) {
+			return candidateID, candidateKey
+		}
+	}
+	return "", ""
 }
 func (a *App) processReverseGeocoding(ctx context.Context, t *Task) error {
 	photoID, _ := t.Payload["photoId"].(string)
