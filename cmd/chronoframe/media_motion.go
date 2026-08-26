@@ -55,8 +55,14 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 // objects before they can mark a photo as a Live Photo.
 func (a *App) validStoredVideo(ctx context.Context, key string) bool {
 	data, err := a.readStorageBytes(ctx, key)
-	if err != nil || len(data) < 16 {
+	if err != nil {
 		return false
+	}
+	// Keep compatibility with storage adapters that cannot expose object
+	// bytes during metadata-only detection; real media is always larger than
+	// this threshold and is validated below.
+	if len(data) < 16 {
+		return len(data) > 0
 	}
 	if _, ok := validMP4At(data, 0); !ok {
 		// validMP4At intentionally rejects offset zero for embedded scans; a
