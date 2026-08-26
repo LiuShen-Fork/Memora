@@ -2709,7 +2709,7 @@ onUnmounted(() => {
                   variant="ghost"
                   size="sm"
                   class="rounded-full text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800"
-                  icon="tabler:albums"
+                  icon="tabler:album"
                   @click="openBatchAlbumModal"
                 >
                   <span class="hidden sm:inline">{{
