@@ -10,13 +10,34 @@ import (
 )
 
 const (
-	defaultMediaMaxBytes = 256 << 20
+	defaultMediaMaxBytes = 32 << 20
 	defaultMediaTimeout  = 2 * time.Minute
 	maxToolOutputBytes   = 256 << 20
 	maxExifOutputBytes   = 16 << 20
 )
 
 func (a *App) mediaLimit() int64 {
+	// An explicit environment/config value remains authoritative for existing
+	// deployments and tests. The default value can be overridden at runtime
+	// through the system.upload.maxFileSize setting below.
+	if a.cfg.MediaMaxBytes > 0 && a.cfg.MediaMaxBytes != defaultMediaMaxBytes {
+		return a.cfg.MediaMaxBytes
+	}
+	var configured any
+	if a.readSetting("system", "upload.maxFileSize", &configured) {
+		var megabytes int64
+		switch value := configured.(type) {
+		case float64:
+			megabytes = int64(value)
+		case int:
+			megabytes = int64(value)
+		case int64:
+			megabytes = value
+		}
+		if megabytes > 0 {
+			return megabytes * 1024 * 1024
+		}
+	}
 	if a.cfg.MediaMaxBytes > 0 {
 		return a.cfg.MediaMaxBytes
 	}

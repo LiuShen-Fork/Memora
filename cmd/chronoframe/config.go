@@ -122,7 +122,7 @@ func loadConfig() Config {
 		SessionKey:         []byte(secret),
 		WorkerCount:        envInt("CFRAME_WORKERS", 2),
 		MediaConcurrency:   envInt("CFRAME_MEDIA_CONCURRENCY", 1),
-		MediaMaxBytes:      envBytesMB("CFRAME_MEDIA_MAX_MB", 256),
+		MediaMaxBytes:      envBytesMB("CFRAME_MEDIA_MAX_MB", 32),
 		MediaTimeout:       envDuration("CFRAME_MEDIA_TIMEOUT", 2*time.Minute),
 		FFmpeg:             env("CFRAME_FFMPEG_PATH", "ffmpeg"),
 		FFprobe:            env("CFRAME_FFPROBE_PATH", "ffprobe"),
