@@ -158,7 +158,7 @@ func (a *App) pairedLiveVideo(ctx context.Context, imageKey string) string {
 		}
 	}
 	for _, candidate := range uniqueStrings(candidates) {
-		if _, err := a.storage.Meta(ctx, candidate); err == nil {
+		if _, err := a.storage.Meta(ctx, candidate); err == nil && a.validStoredVideo(ctx, candidate) {
 			return candidate
 		}
 	}

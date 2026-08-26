@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -40,7 +41,7 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 	if !ok {
 		return "", errors.New("motion photo metadata found but embedded MP4 was not located")
 	}
-	if existing, err := a.storage.Meta(ctx, photoID+".mp4"); err == nil {
+	if existing, err := a.storage.Meta(ctx, photoID+".mp4"); err == nil && a.validStoredVideo(ctx, photoID+".mp4") {
 		return existing.Key, nil
 	}
 	object, err := a.storage.Create(ctx, photoID+".mp4", video, "video/mp4")
@@ -48,6 +49,30 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 		return "", err
 	}
 	return object.Key, nil
+}
+
+// validStoredVideo rejects mislabeled image containers and zero-duration
+// objects before they can mark a photo as a Live Photo.
+func (a *App) validStoredVideo(ctx context.Context, key string) bool {
+	data, err := a.readStorageBytes(ctx, key)
+	if err != nil || len(data) < 16 {
+		return false
+	}
+	if _, ok := validMP4At(data, 0); !ok {
+		// validMP4At intentionally rejects offset zero for embedded scans; a
+		// standalone object starts at byte zero, so check its ftyp explicitly.
+		if string(data[4:8]) != "ftyp" || !isVideoBrand(string(data[8:12])) {
+			return false
+		}
+	}
+	cmd := exec.CommandContext(ctx, a.cfg.FFprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration", "-of", "default=nw=1:nk=1", "pipe:0")
+	cmd.Stdin = bytes.NewReader(data)
+	out, err := runCommandOutput(ctx, cmd, 64*1024)
+	if err != nil {
+		return false
+	}
+	duration, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+	return err == nil && duration > 0
 }
 
 func findEmbeddedMP4(data []byte, offsets []int) ([]byte, bool) {
