@@ -22,6 +22,7 @@ interface Album {
 
 const dayjs = useDayjs()
 const router = useRouter()
+const route = useRoute()
 const { localizeExif } = useExifLocalization()
 
 const props = defineProps<Props>()
@@ -444,7 +445,10 @@ const isMobile = useMediaQuery('(max-width: 768px)')
 const onMinimapClick = (photoId: string) => {
   router.push({
     path: '/globe',
-    query: { photoId },
+    query: {
+      photoId,
+      from: route.fullPath,
+    },
   })
 }
 

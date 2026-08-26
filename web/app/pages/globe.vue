@@ -581,6 +581,12 @@ const resetMap = () => {
 }
 
 const goBack = () => {
+  const returnPath = route.query.from
+  if (typeof returnPath === 'string' && returnPath.startsWith('/')) {
+    router.replace(returnPath)
+    return
+  }
+
   if (window.history.length > 1) {
     router.back()
     return
@@ -597,10 +603,14 @@ onBeforeRouteLeave(() => {
   stopTimelineDragging()
   stopTimelinePlayback()
   if (mapInstance.value) {
-    if (typeof mapInstance.value.remove === 'function') {
-      mapInstance.value.remove()
-    } else if (typeof mapInstance.value.destroy === 'function') {
-      mapInstance.value.destroy()
+    try {
+      if (typeof mapInstance.value.remove === 'function') {
+        mapInstance.value.remove()
+      } else if (typeof mapInstance.value.destroy === 'function') {
+        mapInstance.value.destroy()
+      }
+    } catch (error) {
+      console.warn('[Globe] failed to dispose map before navigation:', error)
     }
     mapInstance.value = null
   }
