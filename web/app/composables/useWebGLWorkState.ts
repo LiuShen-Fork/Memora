@@ -1,5 +1,5 @@
 import type { LoadingIndicatorRef } from '~/components/photo/LoadingIndicator.vue'
-import { LoadingState } from '@chronoframe/webgl-image'
+import { LoadingState } from '@memora/webgl-image'
 
 export const useWebGLWorkState = (
   loadingIndicatorRef: LoadingIndicatorRef | null,

@@ -1,6 +1,6 @@
 # 存储提供器配置
 
-ChronoFrame 支持多种存储后端来保存您的照片和缩略图。本文档将详细介绍如何配置不同的存储提供器。
+Memora 支持多种存储后端来保存您的照片和缩略图。本文档将详细介绍如何配置不同的存储提供器。
 
 | 提供器                            | 支持 | 适用场景           | 成本         |
 | --------------------------------- | :--: | ------------------ | ------------ |
@@ -20,7 +20,7 @@ NUXT_STORAGE_PROVIDER=s3
 
 # S3 基础配置
 NUXT_PROVIDER_S3_ENDPOINT=https://your-s3-endpoint.com
-NUXT_PROVIDER_S3_BUCKET=chronoframe-photos
+NUXT_PROVIDER_S3_BUCKET=memora-photos
 NUXT_PROVIDER_S3_REGION=us-east-1
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=your-access-key-id
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=your-secret-access-key
@@ -38,7 +38,7 @@ NUXT_PROVIDER_S3_FORCE_PATH_STYLE=false
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=https://s3.amazonaws.com
-NUXT_PROVIDER_S3_BUCKET=my-chronoframe-bucket
+NUXT_PROVIDER_S3_BUCKET=my-memora-bucket
 NUXT_PROVIDER_S3_REGION=us-east-1
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=AKIA...
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=...
@@ -50,7 +50,7 @@ NUXT_PROVIDER_S3_CDN_URL=https://d1234567890.cloudfront.net
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=https://[account-id].r2.cloudflarestorage.com
-NUXT_PROVIDER_S3_BUCKET=chronoframe
+NUXT_PROVIDER_S3_BUCKET=memora
 NUXT_PROVIDER_S3_REGION=auto
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=...
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=...
@@ -62,7 +62,7 @@ NUXT_PROVIDER_S3_CDN_URL=https://photos.example.com
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com
-NUXT_PROVIDER_S3_BUCKET=chronoframe-photos
+NUXT_PROVIDER_S3_BUCKET=memora-photos
 NUXT_PROVIDER_S3_REGION=oss-cn-hangzhou
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=LTAI...
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=...
@@ -74,7 +74,7 @@ NUXT_PROVIDER_S3_CDN_URL=https://cdn.example.com
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=https://cos.ap-beijing.myqcloud.com
-NUXT_PROVIDER_S3_BUCKET=chronoframe-1234567890
+NUXT_PROVIDER_S3_BUCKET=memora-1234567890
 NUXT_PROVIDER_S3_REGION=ap-beijing
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=AKID...
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=...
@@ -85,7 +85,7 @@ NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=...
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=https://minio.example.com
-NUXT_PROVIDER_S3_BUCKET=chronoframe
+NUXT_PROVIDER_S3_BUCKET=memora
 NUXT_PROVIDER_S3_REGION=us-east-1
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=minioadmin
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=minioadmin
@@ -157,7 +157,7 @@ NUXT_STORAGE_PROVIDER=openlist
 
 # OpenList 基础配置
 NUXT_PROVIDER_OPENLIST_BASE_URL=https://your-openlist-server.com
-NUXT_PROVIDER_OPENLIST_ROOT_PATH=/chronoframe/photos
+NUXT_PROVIDER_OPENLIST_ROOT_PATH=/memora/photos
 
 # 认证配置 - Token 认证
 NUXT_PROVIDER_OPENLIST_TOKEN=your-api-token
@@ -179,7 +179,7 @@ NUXT_PROVIDER_OPENLIST_CDN_URL=
 ```bash
 NUXT_STORAGE_PROVIDER=openlist
 NUXT_PROVIDER_OPENLIST_BASE_URL=https://openlist.example.com
-NUXT_PROVIDER_OPENLIST_ROOT_PATH=/115pan/chronoframe
+NUXT_PROVIDER_OPENLIST_ROOT_PATH=/115pan/memora
 NUXT_PROVIDER_OPENLIST_TOKEN=your-static-token
 ```
 

@@ -7,7 +7,7 @@
 ```bash
 docker compose pull
 docker compose up -d
-docker compose logs -f chronoframe
+docker compose logs -f memora
 ```
 
 指定版本时，将镜像改为 `ghcr.io/liu-shen-fork/memora:v1.2.3`。

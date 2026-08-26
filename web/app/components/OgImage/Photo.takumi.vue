@@ -14,7 +14,7 @@ const { photo } = defineProps<PhotoProps>()
 const { $i18n } = useNuxtApp()
 const config = useRuntimeConfig()
 
-const headline = computed(() => (photo ? $i18n.t('title.fallback.photo') : 'ChronoFrame'))
+const headline = computed(() => (photo ? $i18n.t('title.fallback.photo') : 'Memora'))
 const title = computed(() => (photo?.title || config.public.app.title).slice(0, 60))
 const description = computed(() => (photo ? photo.description || '' : config.public.app.title).slice(0, 200))
 const thumbnailUrl = computed(() => 

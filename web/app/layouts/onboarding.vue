@@ -95,7 +95,7 @@ const currentStepIndex = computed(() => {
           <span
             class="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-white/60"
           >
-            ChronoFrame
+            Memora
           </span>
         </div>
 
@@ -215,7 +215,7 @@ const currentStepIndex = computed(() => {
               :alt="$t('onboarding.layout.logoAlt')"
               class="size-8 object-contain"
             />
-            <span class="font-bold">ChronoFrame</span>
+            <span class="font-bold">Memora</span>
           </div>
           <div class="text-sm text-neutral-400">
             {{ $t('onboarding.layout.stepCounter', [currentStepIndex + 1, steps.length]) }}

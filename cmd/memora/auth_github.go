@@ -220,7 +220,7 @@ func githubJSON(ctx context.Context, token, endpoint string, output any) error {
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "ChronoFrame/1.0")
+	req.Header.Set("User-Agent", "Memora/1.0")
 	resp, err := externalHTTPClient.Do(req)
 	if err != nil {
 		return err

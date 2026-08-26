@@ -19,7 +19,7 @@ func (a *App) rewritePhotoMetadata(ctx context.Context, key string, data []byte,
 	if len(updates) == 0 {
 		return data, nil
 	}
-	dir, err := os.MkdirTemp("", "chronoframe-metadata-")
+	dir, err := os.MkdirTemp("", "memora-metadata-")
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "ChronoFrame/1.0")
+	req.Header.Set("User-Agent", "Memora/1.0")
 	req.Header.Set("Accept-Language", language)
 	resp, err := externalHTTPClient.Do(req)
 	if err != nil {

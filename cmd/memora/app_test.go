@@ -522,7 +522,7 @@ func TestPublicSettingsCacheInvalidatesAfterUpdate(t *testing.T) {
 	app := newTestApp(t)
 	first := httptest.NewRecorder()
 	app.ServeHTTP(first, httptest.NewRequest(http.MethodGet, "/api/system/settings/all", nil))
-	if first.Code != http.StatusOK || !strings.Contains(first.Body.String(), "ChronoFrame") {
+	if first.Code != http.StatusOK || !strings.Contains(first.Body.String(), "Memora") {
 		t.Fatalf("initial settings response failed: %d %s", first.Code, first.Body.String())
 	}
 	app.setSetting("app", "title", "Updated title")

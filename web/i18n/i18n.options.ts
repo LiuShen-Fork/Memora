@@ -82,7 +82,7 @@ export default {
   detectBrowserLanguage: {
     fallbackLocale: defaultLocale,
     useCookie: true,
-    cookieKey: 'chronoframe-locale',
+    cookieKey: 'memora-locale',
   },
   strategy: 'no_prefix',
   defaultLocale,

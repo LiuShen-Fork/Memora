@@ -7,7 +7,7 @@ func (a *App) migrateEnvironmentSettings() {
 		envKey    string
 		fallback  string
 	}{
-		{"app", "title", "NUXT_PUBLIC_APP_TITLE", "ChronoFrame"},
+		{"app", "title", "NUXT_PUBLIC_APP_TITLE", "Memora"},
 		{"app", "slogan", "NUXT_PUBLIC_APP_SLOGAN", ""},
 		{"app", "author", "NUXT_PUBLIC_APP_AUTHOR", ""},
 		{"app", "avatarUrl", "NUXT_PUBLIC_APP_AVATAR_URL", ""},

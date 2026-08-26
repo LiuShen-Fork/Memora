@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WebGLImageViewer } from '@chronoframe/webgl-image'
+import { WebGLImageViewer } from '@memora/webgl-image'
 import type { LoadingIndicatorRef } from './LoadingIndicator.vue'
 import type { ImageLoaderManager } from '~/libs/image-loader-manager'
 

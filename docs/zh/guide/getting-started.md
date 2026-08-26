@@ -1,6 +1,6 @@
 # 快速开始
 
-本文档将指导您如何快速部署并开始使用 ChronoFrame。
+本文档将指导您如何快速部署并开始使用 Memora。
 
 :::warning 🚧施工中
 文档正在编写中，部分功能文档尚未完成。
@@ -46,7 +46,7 @@ docker pull liu-shen-fork/memora:latest
 ```bash
 # 管理员邮箱（必须）
 CFRAME_ADMIN_EMAIL=
-# 管理员用户名（可选，默认 ChronoFrame）
+# 管理员用户名（可选，默认 Memora）
 CFRAME_ADMIN_NAME=
 # 管理员密码（可选，默认 CF1234@!）
 CFRAME_ADMIN_PASSWORD=
@@ -77,7 +77,7 @@ NUXT_SESSION_PASSWORD=
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=
-NUXT_PROVIDER_S3_BUCKET=chronoframe
+NUXT_PROVIDER_S3_BUCKET=memora
 NUXT_PROVIDER_S3_REGION=auto
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=
@@ -90,7 +90,7 @@ NUXT_PROVIDER_S3_CDN_URL=
 ```bash
 NUXT_STORAGE_PROVIDER=openlist
 NUXT_PROVIDER_OPENLIST_BASE_URL=https://openlist.example.com
-NUXT_PROVIDER_OPENLIST_ROOT_PATH=/115pan/chronoframe
+NUXT_PROVIDER_OPENLIST_ROOT_PATH=/115pan/memora
 NUXT_PROVIDER_OPENLIST_TOKEN=your-static-token
 ```
 
@@ -117,9 +117,9 @@ docker run -d --name memora -p 3000:3000 -v $(pwd)/data:/app/data --env-file .en
 
 ```yaml
 services:
-  chronoframe:
+  memora:
     image: ghcr.io/liu-shen-fork/memora:latest
-    container_name: chronoframe
+    container_name: memora
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -129,14 +129,14 @@ services:
       - .env
 ```
 
-#### 2. 启动 ChronoFrame 服务
+#### 2. 启动 Memora 服务
 
 ```bash
 # 启动服务
 docker compose up -d
 
 # 查看日志
-docker compose logs -f chronoframe
+docker compose logs -f memora
 
 # 停止服务
 docker compose down
@@ -214,9 +214,9 @@ server {
 
 ```yaml
 services:
-  chronoframe:
+  memora:
     image: ghcr.io/liu-shen-fork/memora:latest
-    container_name: chronoframe
+    container_name: memora
     restart: unless-stopped
     volumes:
       - ./data:/app/data
@@ -224,10 +224,10 @@ services:
       - .env
     labels:
       - 'traefik.enable=true'
-      - 'traefik.http.routers.chronoframe.rule=Host(`your-domain.com`)'
-      - 'traefik.http.routers.chronoframe.entrypoints=websecure'
-      - 'traefik.http.routers.chronoframe.tls.certresolver=letsencrypt'
-      - 'traefik.http.services.chronoframe.loadbalancer.server.port=3000'
+      - 'traefik.http.routers.memora.rule=Host(`your-domain.com`)'
+      - 'traefik.http.routers.memora.entrypoints=websecure'
+      - 'traefik.http.routers.memora.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.memora.loadbalancer.server.port=3000'
     networks:
       - traefik
 

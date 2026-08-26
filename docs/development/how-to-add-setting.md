@@ -1,6 +1,6 @@
 # Adding A Setting
 
-Settings are defined in `cmd/chronoframe/settings_defaults.go`.
+Settings are defined in `cmd/memora/settings_defaults.go`.
 
 1. Add a `settingDefault` entry to `defaultSettings` with its namespace, key, type, default value, and visibility.
 2. Add matching translation keys under `web/i18n/locales/en.json` and `web/i18n/locales/zh-Hans.json`.

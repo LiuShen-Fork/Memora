@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through deploying and using ChronoFrame quickly.
+This guide walks you through deploying and using Memora quickly.
 
 :::warning 🚧 Under Construction
 The documentation is still being written; some sections may be incomplete.
@@ -46,7 +46,7 @@ Below is the minimal configuration for running with local storage. For the compl
 ```bash
 # Admin email (required)
 CFRAME_ADMIN_EMAIL=
-# Admin username (optional, default Chronoframe)
+# Admin username (optional, default Memora)
 CFRAME_ADMIN_NAME=
 # Admin password (optional, default CF1234@!)
 CFRAME_ADMIN_PASSWORD=
@@ -80,7 +80,7 @@ If you want to use S3 instead of local storage, replace the storage section with
 ```bash
 NUXT_STORAGE_PROVIDER=s3
 NUXT_PROVIDER_S3_ENDPOINT=
-NUXT_PROVIDER_S3_BUCKET=chronoframe
+NUXT_PROVIDER_S3_BUCKET=memora
 NUXT_PROVIDER_S3_REGION=auto
 NUXT_PROVIDER_S3_ACCESS_KEY_ID=
 NUXT_PROVIDER_S3_SECRET_ACCESS_KEY=
@@ -93,7 +93,7 @@ If you want to use openlist instead of local storage, replace the storage sectio
 ```bash
 NUXT_STORAGE_PROVIDER=openlist
 NUXT_PROVIDER_OPENLIST_BASE_URL=https://openlist.example.com
-NUXT_PROVIDER_OPENLIST_ROOT_PATH=/115pan/chronoframe
+NUXT_PROVIDER_OPENLIST_ROOT_PATH=/115pan/memora
 NUXT_PROVIDER_OPENLIST_TOKEN=your-static-token
 ```
 
@@ -108,7 +108,7 @@ NUXT_OAUTH_GITHUB_CLIENT_SECRET=
 
 ```bash
 docker run -d \
-  --name chronoframe \
+  --name memora \
   -p 3000:3000 \
   -v "$(pwd)/data:/app/data" \
   --env-file .env \
@@ -121,9 +121,9 @@ Create `docker-compose.yml`:
 
 ```yaml
 services:
-  chronoframe:
+  memora:
     image: ghcr.io/liu-shen-fork/memora:latest
-    container_name: chronoframe
+    container_name: memora
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -140,7 +140,7 @@ Start / manage lifecycle:
 docker compose up -d
 
 # Follow logs
-docker compose logs -f chronoframe
+docker compose logs -f memora
 
 # Stop
 docker compose down
@@ -152,7 +152,7 @@ docker compose up -d
 
 ## Reverse Proxy
 
-For production you typically place ChronoFrame behind a reverse proxy (Nginx, Caddy, Traefik) to terminate HTTPS and serve via your domain.
+For production you typically place Memora behind a reverse proxy (Nginx, Caddy, Traefik) to terminate HTTPS and serve via your domain.
 
 ### Nginx Example
 
@@ -204,9 +204,9 @@ server {
 
 ```yaml
 services:
-  chronoframe:
+  memora:
     image: ghcr.io/liu-shen-fork/memora:latest
-    container_name: chronoframe
+    container_name: memora
     restart: unless-stopped
     volumes:
       - ./data:/app/data
@@ -214,10 +214,10 @@ services:
       - .env
     labels:
       - 'traefik.enable=true'
-      - 'traefik.http.routers.chronoframe.rule=Host(`your-domain.com`)'
-      - 'traefik.http.routers.chronoframe.entrypoints=websecure'
-      - 'traefik.http.routers.chronoframe.tls.certresolver=letsencrypt'
-      - 'traefik.http.services.chronoframe.loadbalancer.server.port=3000'
+      - 'traefik.http.routers.memora.rule=Host(`your-domain.com`)'
+      - 'traefik.http.routers.memora.entrypoints=websecure'
+      - 'traefik.http.routers.memora.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.memora.loadbalancer.server.port=3000'
     networks:
       - traefik
 

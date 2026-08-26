@@ -1,5 +1,7 @@
 # Memora
 
+原项目地址：[HoshinoSuzumi/chronoframe](https://github.com/HoshinoSuzumi/chronoframe)
+
 Memora 是一个可自托管的个人相册，用于浏览、整理和在地图上探索照片。它支持 EXIF 信息、逆地理编码、相册、Live/Motion Photo、多种存储后端，以及桌面和移动端布局。
 
 ## 与原项目的区别
@@ -11,7 +13,7 @@ Memora 是对原 Nuxt 应用的大幅重构：
 - 使用 FFmpeg 生成缩略图并处理 Live/Motion Photo，使用 ExifTool 提取元数据。
 - Node.js 仅在重新构建前端时需要，生产运行不再需要 Node.js/Nitro 服务。
 
-当前维护仓库为 [LiuShen-Fork/Memora](https://github.com/LiuShen-Fork/Memora)。
+当前维护仓库为 [LiuShen-Fork/Memora](https://github.com/LiuShen-Fork/Memora)，发布的 Docker 镜像为 `ghcr.io/liushen-fork/memora`（Docker 镜像名通常使用小写）。
 
 ## 功能
 
@@ -32,7 +34,36 @@ docker run -d --name memora -p 3000:3000 \
   ghcr.io/liu-shen-fork/memora:latest
 ```
 
-从 ChronoFrame 迁移时请保持原有的 `./data:/app/data` 挂载不变。完整环境变量请参考[配置指南](https://chronoframe.bh8.ga/zh/guide/configuration.html)，存储和应用设置也可以在后台修改。
+从 ChronoFrame 迁移时请保持原有的 `./data:/app/data` 挂载不变。大多数配置都可以在后台完成，无需填写大量环境变量。
+
+## 配置
+
+首次启动时设置管理员邮箱和密码，之后可以在后台配置数据库、媒体文件、地图服务、存储提供商、上传大小、语言、主题和页脚链接。
+
+通常只需要在 `.env` 中填写：
+
+```dotenv
+CFRAME_ADMIN_EMAIL=admin@example.com
+CFRAME_ADMIN_PASSWORD=change-this-password
+NUXT_SESSION_PASSWORD=use-a-long-random-secret
+```
+
+使用本地存储时保持默认的 `./data` 目录即可。需要 S3 或 OpenList 时，在“仪表板 → 设置 → 存储”中选择提供商并填写凭据。地图服务和 API Key 位于“仪表板 → 设置 → 地图和位置”。
+
+可选启动变量：
+
+| 变量 | 用途 | 默认值 |
+| --- | --- | --- |
+| `DATABASE_URL` | SQLite 数据库路径 | `./data/app.sqlite3` |
+| `CFRAME_DATA_DIR` | 应用数据目录 | `./data` |
+| `CFRAME_WEB_DIR` | 静态前端目录 | `./web/.output/public` |
+| `CFRAME_ADDR` | 监听地址 | `:3000` |
+| `CFRAME_MEDIA_MAX_MB` | 媒体处理大小后备值 | `32` |
+| `CFRAME_FFMPEG_PATH` | FFmpeg 可执行文件 | `ffmpeg` |
+| `CFRAME_FFPROBE_PATH` | FFprobe 可执行文件 | `ffprobe` |
+| `EXIFTOOL_PATH` | ExifTool 可执行文件 | `exiftool` |
+
+最大上传和处理大小可在“系统设置 → 文件处理”中运行时修改，默认 32MB。环境变量仍保留用于兼容旧部署和自动化脚本。
 
 ### 本地开发
 
@@ -41,7 +72,7 @@ docker run -d --name memora -p 3000:3000 \
 ```bash
 pnpm --dir web install
 pnpm --dir web generate
-go run ./cmd/chronoframe
+go run ./cmd/memora
 ```
 
 访问 <http://127.0.0.1:3000>。Go 进程会在同一端口提供 `web/.output/public` 静态前端和 API。请安装 FFmpeg、ExifTool，或通过 `CFRAME_FFMPEG_PATH`、`CFRAME_FFPROBE_PATH`、`EXIFTOOL_PATH` 指定可执行文件路径。
@@ -50,7 +81,7 @@ go run ./cmd/chronoframe
 
 ```text
 web/                  静态 Nuxt 前端源码
-cmd/chronoframe/      Go 服务、API、任务队列和存储适配器
+cmd/memora/           Go 服务、API、任务队列和存储适配器
 data/                 SQLite 数据库和挂载的媒体文件（不要替换）
 Dockerfile            生产镜像定义
 ```

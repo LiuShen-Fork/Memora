@@ -1033,12 +1033,12 @@
       "footerLinkText": {
         "label": "フッターリンクのテキスト",
         "description": "ホームページのフッターに表示するカスタムリンクのテキスト",
-        "help": "空欄の場合は ChronoFrame を表示します"
+        "help": "空欄の場合は Memora を表示します"
       },
       "footerLinkUrl": {
         "label": "フッターリンク URL",
         "description": "ホームページのフッターリンクで開く URL",
-        "help": "空欄の場合は ChronoFrame リポジトリを使用します"
+        "help": "空欄の場合は Memora リポジトリを使用します"
       },
       "appearance": {
         "theme": {
@@ -1413,16 +1413,16 @@
       },
       "current": "進行中",
       "stepCounter": "ステップ {0} / {1}",
-      "logoAlt": "ChronoFrame ロゴ"
+      "logoAlt": "Memora ロゴ"
     },
     "actions": {
       "next": "次へ",
       "completeSetup": "設定を完了"
     },
     "welcome": {
-      "title": "ChronoFrame へようこそ",
+      "title": "Memora へようこそ",
       "description": "ウィザードに従って、数分でギャラリーを設定できます。",
-      "intro": "ChronoFrame は多機能な個人ギャラリーアプリです。写真をアップロードする前に、いくつかの項目を設定しましょう。",
+      "intro": "Memora は多機能な個人ギャラリーアプリです。写真をアップロードする前に、いくつかの項目を設定しましょう。",
       "cards": {
         "admin": {
           "title": "管理者アカウント",
@@ -1441,7 +1441,7 @@
           "description": "位置の可視化と撮影地点の表示"
         }
       },
-      "privacyNotice": "ChronoFrame はあなたのデータを収集しません。",
+      "privacyNotice": "Memora はあなたのデータを収集しません。",
       "start": "はじめる"
     },
     "admin": {
@@ -1462,7 +1462,7 @@
     },
     "complete": {
       "title": "まもなく完了です！",
-      "description": "ChronoFrame ギャラリーの準備ができました。",
+      "description": "Memora ギャラリーの準備ができました。",
       "body": "基本設定はすべて完了しました。管理者アカウントでログインして写真のアップロードを開始できます。",
       "goToDashboard": "ダッシュボードへ",
       "setupFailedTitle": "セットアップ失敗",

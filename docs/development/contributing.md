@@ -1,6 +1,6 @@
 # Development Guide
 
-ChronoFrame uses a static Nuxt client and one Go HTTP process. The Go process
+Memora uses a static Nuxt client and one Go HTTP process. The Go process
 serves `web/.output/public` and owns all `/api`, `/storage`, `/image`, and `/thumb`
 routes.
 
@@ -11,7 +11,7 @@ pnpm --dir web install
 pnpm --dir web build:deps
 pnpm --dir web generate
 go test ./...
-go run ./cmd/chronoframe
+go run ./cmd/memora
 ```
 
 The default database is `./data/app.sqlite3`. Docker deployments must keep the
@@ -21,7 +21,7 @@ for media processing; set `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and
 
 ## Structure
 
-- `cmd/chronoframe/`: Go handlers, SQLite access, storage adapters, and queue.
+- `cmd/memora/`: Go handlers, SQLite access, storage adapters, and queue.
 - `web/app/`: Nuxt pages, components, stores, and composables.
 - `web/packages/webgl-image/`: WebGL image viewer.
 - `web/shared/`: shared TypeScript contracts.

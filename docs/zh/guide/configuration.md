@@ -6,10 +6,10 @@
 
 | 环境变量                                 | 说明                                                 | 默认值                                | 必需                                                                  |
 | ---------------------------------------- | ---------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| CFRAME_ADMIN_EMAIL                       | 初始管理员用户的邮箱                                 | `admin@chronoframe.com`               | 是                                                                    |
-| CFRAME_ADMIN_NAME                        | 初始管理员用户的用户名                               | `Chronoframe`                         | 否                                                                    |
+| CFRAME_ADMIN_EMAIL                       | 初始管理员用户的邮箱                                 | `admin@memora.com`               | 是                                                                    |
+| CFRAME_ADMIN_NAME                        | 初始管理员用户的用户名                               | `Memora`                              | 否                                                                    |
 | CFRAME_ADMIN_PASSWORD                    | 初始管理员用户的密码                                 | `CF1234@!`                            | 否                                                                    |
-| NUXT_PUBLIC_APP_TITLE                    | 应用标题                                             | `ChronoFrame`                         | 否                                                                    |
+| NUXT_PUBLIC_APP_TITLE                    | 应用标题                                             | `Memora`                         | 否                                                                    |
 | NUXT_PUBLIC_APP_SLOGAN                   | 应用口号                                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_APP_AUTHOR                   | 应用作者                                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_APP_AVATAR_URL               | 应用头像 URL                                         | 无                                    | 否                                                                    |
@@ -22,7 +22,7 @@
 | NUXT_PROVIDER_LOCAL_PATH                 | 本地存储路径                                         | `/app/data/storage`                   | 否                                                                    |
 | NUXT_PROVIDER_LOCAL_BASE_URL             | 本地存储的访问 URL                                   | `/storage`                            | 否                                                                    |
 | NUXT_PROVIDER_S3_ENDPOINT                | S3 兼容存储服务的 Endpoint                           | 无                                    | 当 `NUXT_STORAGE_PROVIDER` 为 `s3` 时必需                             |
-| NUXT_PROVIDER_S3_BUCKET                  | S3 存储桶名称                                        | `chronoframe`                         | 当 `NUXT_STORAGE_PROVIDER` 为 `s3` 时必需                             |
+| NUXT_PROVIDER_S3_BUCKET                  | S3 存储桶名称                                        | `memora`                         | 当 `NUXT_STORAGE_PROVIDER` 为 `s3` 时必需                             |
 | NUXT_PROVIDER_S3_REGION                  | S3 存储桶区域                                        | `auto`                                | 当 `NUXT_STORAGE_PROVIDER` 为 `s3` 时必需                             |
 | NUXT_PROVIDER_S3_ACCESS_KEY_ID           | S3 访问密钥 ID                                       | 无                                    | 当 `NUXT_STORAGE_PROVIDER` 为 `s3` 时必需                             |
 | NUXT_PROVIDER_S3_SECRET_ACCESS_KEY       | S3 访问密钥                                          | 无                                    | 当 `NUXT_STORAGE_PROVIDER` 为 `s3` 时必需                             |

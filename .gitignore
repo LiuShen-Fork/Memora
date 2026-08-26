@@ -51,3 +51,4 @@ data/**/*.json
 # VitePress outputs
 docs/.vitepress/dist
 docs/.vitepress/cache
+docs/.vitepress/.temp

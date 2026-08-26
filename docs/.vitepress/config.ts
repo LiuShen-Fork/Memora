@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: 'ChronoFrame',
+  title: 'Memora',
   description: 'A Self-hosted photo gallery',
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }],
@@ -72,13 +72,12 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/HoshinoSuzumi/chronoframe' },
-      { icon: 'discord', link: 'https://discord.gg/MM4ZK4Ed7s' },
+      { icon: 'github', link: 'https://github.com/LiuShen-Fork/Memora' },
     ],
 
     editLink: {
       pattern:
-        'https://github.com/HoshinoSuzumi/chronoframe/edit/main/docs/:path',
+        'https://github.com/LiuShen-Fork/Memora/edit/main/docs/:path',
       text: 'Edit this page on GitHub',
     },
 

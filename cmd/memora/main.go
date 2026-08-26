@@ -90,8 +90,8 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    1 << 20,
 	}
-	app.logs.Add("server", "ChronoFrame Go backend listening on "+cfg.Addr)
-	log.Printf("ChronoFrame Go backend listening on %s", cfg.Addr)
+	app.logs.Add("server", "Memora Go backend listening on "+cfg.Addr)
+	log.Printf("Memora Go backend listening on %s", cfg.Addr)
 	if err := app.serve(server); err != nil {
 		log.Fatal(err)
 	}

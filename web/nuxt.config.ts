@@ -33,7 +33,7 @@ export default defineNuxtConfig({
         accessToken: '',
       },
       app: {
-        title: 'ChronoFrame',
+        title: 'Memora',
         slogan: '',
         author: '',
         avatarUrl: '',

@@ -1,10 +1,10 @@
 services:
-  chronoframe:
+  memora:
     build:
       context: .
       dockerfile: Dockerfile
-    image: chronoframe:go
-    container_name: chronoframe
+    image: ghcr.io/liushen-fork/memora:latest
+    container_name: memora
     restart: unless-stopped
     ports:
       - '3000:3000'

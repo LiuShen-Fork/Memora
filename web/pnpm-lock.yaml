@@ -8,15 +8,15 @@ importers:
 
   .:
     dependencies:
-      '@chronoframe/webgl-image':
-        specifier: workspace:*
-        version: link:packages/webgl-image
       '@iconify/vue':
         specifier: 5.0.1
         version: 5.0.1(vue@3.5.35(typescript@5.9.3))
       '@indoorequal/vue-maplibre-gl':
         specifier: ^8.4.2
         version: 8.4.2(maplibre-gl@5.24.0)(vue@3.5.35(typescript@5.9.3))
+      '@memora/webgl-image':
+        specifier: workspace:*
+        version: link:packages/memora-webgl-image
       '@nuxt/fonts':
         specifier: 0.14.0
         version: 0.14.0(db0@0.3.4(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260402.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)))(ioredis@5.10.1)(magicast@0.5.3)(vite@7.3.5(@types/node@24.9.0)(jiti@2.7.0)(lightningcss@1.32.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.44.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -178,7 +178,7 @@ importers:
         specifier: 2.0.0-alpha.17
         version: 2.0.0-alpha.17(@types/node@24.9.0)(axios@1.16.1)(change-case@5.4.4)(fuse.js@7.4.2)(jiti@2.7.0)(lightningcss@1.32.0)(oxc-minify@0.133.0)(postcss@8.5.15)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.44.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.9.0)
 
-  packages/webgl-image:
+  packages/memora-webgl-image:
     dependencies:
       vue:
         specifier: ^3.5.35
@@ -5925,9 +5925,6 @@ packages:
     resolution: {integrity: sha512-CvkkH1i81zl7mmb94DsRiFeG9V2fR2JeuK8yDgS8oiZSFa++wWLEgZ5ufEOyLHbvSbD1gTRKv9NdX69Rnvr9JA==}
     engines: {node: '>=20.19.0'}
 
-  magic-string@0.30.19:
-    resolution: {integrity: sha512-2N21sPY9Ws53PZvsEpVtNuSW+ScYbQdp4b9qUaL+9QkHUrGFKo56Lg9Emg5s9V/qrtNBmiR01sYhUOwu3H+VOw==}
-
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -6260,7 +6257,7 @@ packages:
       nitropack: ^2.13.4
       playwright-core: ^1.50.0
       satori: '>=0.19.2'
-      sharp: 0.34.5
+      sharp: ^0.34.0
       tailwindcss: ^4.0.0
       unifont: ^0.7.0
       unstorage: ^1.15.0
@@ -11535,7 +11532,7 @@ snapshots:
 
   '@types/better-sqlite3@7.6.13':
     dependencies:
-      '@types/node': 24.9.0
+      '@types/node': 22.19.20
     optional: true
 
   '@types/cacheable-request@6.0.3':
@@ -11954,9 +11951,9 @@ snapshots:
   '@vue/language-core@2.2.0(typescript@5.9.3)':
     dependencies:
       '@volar/language-core': 2.4.23
-      '@vue/compiler-dom': 3.5.34
+      '@vue/compiler-dom': 3.5.40
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.34
+      '@vue/shared': 3.5.40
       alien-signals: 0.4.14
       minimatch: 9.0.5
       muggle-string: 0.4.1
@@ -13884,10 +13881,6 @@ snapshots:
   magic-string-ast@1.0.3:
     dependencies:
       magic-string: 0.30.21
-
-  magic-string@0.30.19:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
 
   magic-string@0.30.21:
     dependencies:
@@ -16504,8 +16497,8 @@ snapshots:
       compare-versions: 6.1.1
       debug: 4.4.3
       kolorist: 1.8.0
-      local-pkg: 1.1.2
-      magic-string: 0.30.19
+      local-pkg: 1.2.1
+      magic-string: 0.30.21
       typescript: 5.9.3
     optionalDependencies:
       vite: 7.3.5(@types/node@22.19.20)(jiti@2.7.0)(lightningcss@1.32.0)(sass-embedded@1.100.0)(sass@1.100.0)(terser@5.44.0)(tsx@4.21.0)(yaml@2.9.0)
@@ -16573,9 +16566,9 @@ snapshots:
       esbuild: 0.27.5
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.14
+      postcss: 8.5.19
       rollup: 4.60.3
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 22.19.20
       fsevents: 2.3.3
@@ -16592,9 +16585,9 @@ snapshots:
       esbuild: 0.27.5
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.14
+      postcss: 8.5.19
       rollup: 4.60.3
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
     optionalDependencies:
       '@types/node': 24.9.0
       fsevents: 2.3.3

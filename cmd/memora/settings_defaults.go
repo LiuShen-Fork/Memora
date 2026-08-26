@@ -22,7 +22,7 @@ type settingDefault struct {
 
 var defaultSettings = []settingDefault{
 	{Namespace: "system", Key: "firstLaunch", Type: "boolean", Default: true, Readonly: true, Label: "settings.system.firstLaunch.label", Description: "settings.system.firstLaunch.description"},
-	{Namespace: "app", Key: "title", Type: "string", Default: "ChronoFrame", Public: true, Label: "settings.app.title.label", Description: "settings.app.title.description"},
+	{Namespace: "app", Key: "title", Type: "string", Default: "Memora", Public: true, Label: "settings.app.title.label", Description: "settings.app.title.description"},
 	{Namespace: "app", Key: "slogan", Type: "string", Default: "", Public: true, Label: "settings.app.slogan.label", Description: "settings.app.slogan.description"},
 	{Namespace: "app", Key: "author", Type: "string", Default: "", Public: true, Label: "settings.app.author.label", Description: "settings.app.author.description"},
 	{Namespace: "app", Key: "avatarUrl", Type: "string", Default: "", Public: true, Label: "settings.app.avatarUrl.label", Description: "settings.app.avatarUrl.description"},

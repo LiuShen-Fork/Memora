@@ -3,12 +3,12 @@
 layout: home
 
 hero:
-  name: 'ChronoFrame'
+  name: 'Memora'
   text: '自部署个人画廊'
   tagline: '在线管理照片，多存储后端、LivePhoto、地球仪视图'
   image:
     src: /logo.png
-    alt: ChronoFrame
+    alt: Memora
     style: 'filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.7)) drop-shadow(0 0 60px rgba(59, 130, 246, 0.5)) drop-shadow(0 0 100px rgba(168, 85, 247, 0.3)); width: 300px; height: 300px;'
   actions:
     - theme: brand
@@ -44,7 +44,7 @@ features:
 
 ## 🌍 演示站点
 
-下面是一些由开发者、社区成员搭建的，运行良好的 ChronoFrame 实例：
+下面是一些由开发者、社区成员搭建的，运行良好的 Memora 实例：
 
 - [**TimoYin's Mems**](https://lens.bh8.ga)
 
@@ -55,4 +55,4 @@ features:
 
 ## 📄 开源协议
 
-Memora 基于 [MIT 协议](https://github.com/LiuShen-Fork/Memora/blob/main/LICENSE) 开源，欢迎自由使用和贡献。Memora 基于 [ChronoFrame](https://github.com/HoshinoSuzumi/chronoframe) 重构而来。
+Memora 基于 [MIT 协议](https://github.com/LiuShen-Fork/Memora/blob/main/LICENSE) 开源，欢迎自由使用和贡献。本项目是基于 [ChronoFrame](https://github.com/HoshinoSuzumi/chronoframe) 的独立硬分叉。

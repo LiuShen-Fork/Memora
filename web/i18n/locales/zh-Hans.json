@@ -1133,12 +1133,12 @@
       "footerLinkText": {
         "label": "页脚链接文本",
         "description": "首页页脚自定义链接显示的文本",
-        "help": "留空则显示 ChronoFrame"
+        "help": "留空则显示 Memora"
       },
       "footerLinkUrl": {
         "label": "页脚链接地址",
         "description": "首页页脚自定义链接打开的地址",
-        "help": "留空则使用 ChronoFrame 仓库地址"
+        "help": "留空则使用 Memora 仓库地址"
       },
       "appearance": {
         "theme": {
@@ -1513,16 +1513,16 @@
       },
       "current": "当前进行",
       "stepCounter": "第 {0} 步 / 共 {1} 步",
-      "logoAlt": "ChronoFrame 标志"
+      "logoAlt": "Memora 标志"
     },
     "actions": {
       "next": "下一步",
       "completeSetup": "完成设置"
     },
     "welcome": {
-      "title": "欢迎使用 ChronoFrame",
+      "title": "欢迎使用 Memora",
       "description": "跟随向导，在几分钟内设置好您的画廊。",
-      "intro": "ChronoFrame 是一款多功能个人画廊应用程序。在您开始上传照片之前，我们需要先配置一些内容：",
+      "intro": "Memora 是一款多功能个人画廊应用程序。在您开始上传照片之前，我们需要先配置一些内容：",
       "cards": {
         "admin": {
           "title": "管理员账户",
@@ -1541,7 +1541,7 @@
           "description": "位置可视化、照片拍摄地标记"
         }
       },
-      "privacyNotice": "ChronoFrame 不会收集您的任何数据。",
+      "privacyNotice": "Memora 不会收集您的任何数据。",
       "start": "开始吧"
     },
     "admin": {
@@ -1562,7 +1562,7 @@
     },
     "complete": {
       "title": "即将完成！",
-      "description": "您的 ChronoFrame 画廊已准备好使用。",
+      "description": "您的 Memora 画廊已准备好使用。",
       "body": "您已完成了所有基本配置。现在可以使用管理员账户登录并开始上传照片。",
       "goToDashboard": "前往仪表盘",
       "setupFailedTitle": "设置失败",

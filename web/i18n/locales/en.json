@@ -1133,12 +1133,12 @@
       "footerLinkText": {
         "label": "Footer Link Text",
         "description": "Text shown for the customizable link in the homepage footer",
-        "help": "Leave empty to show ChronoFrame"
+        "help": "Leave empty to show Memora"
       },
       "footerLinkUrl": {
         "label": "Footer Link URL",
         "description": "URL opened by the customizable homepage footer link",
-        "help": "Leave empty to use the ChronoFrame repository"
+        "help": "Leave empty to use the Memora repository"
       },
       "appearance": {
         "theme": {
@@ -1513,16 +1513,16 @@
       },
       "current": "In Progress",
       "stepCounter": "Step {0} / {1}",
-      "logoAlt": "ChronoFrame Logo"
+      "logoAlt": "Memora Logo"
     },
     "actions": {
       "next": "Next",
       "completeSetup": "Complete Setup"
     },
     "welcome": {
-      "title": "Welcome to ChronoFrame",
+      "title": "Welcome to Memora",
       "description": "Follow the wizard to set up your gallery in a few minutes.",
-      "intro": "ChronoFrame is a versatile personal gallery app. Before uploading photos, we need to configure a few essentials:",
+      "intro": "Memora is a versatile personal gallery app. Before uploading photos, we need to configure a few essentials:",
       "cards": {
         "admin": {
           "title": "Admin Account",
@@ -1541,7 +1541,7 @@
           "description": "Visualize locations and mark shooting spots"
         }
       },
-      "privacyNotice": "ChronoFrame does not collect any of your data.",
+      "privacyNotice": "Memora does not collect any of your data.",
       "start": "Get Started"
     },
     "admin": {
@@ -1562,7 +1562,7 @@
     },
     "complete": {
       "title": "Almost Done!",
-      "description": "Your ChronoFrame gallery is ready to use.",
+      "description": "Your Memora gallery is ready to use.",
       "body": "You have completed all essential setup steps. You can now sign in with your admin account and start uploading photos.",
       "goToDashboard": "Go to Dashboard",
       "setupFailedTitle": "Setup Failed",

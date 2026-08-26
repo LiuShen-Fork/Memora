@@ -1,6 +1,6 @@
 # 开发指南
 
-ChronoFrame 使用静态 Nuxt 前端和一个 Go HTTP 服务。Go 服务负责静态文件、
+Memora 使用静态 Nuxt 前端和一个 Go HTTP 服务。Go 服务负责静态文件、
 `/api`、`/storage`、`/image`、`/thumb` 路由以及媒体队列。
 
 ## 构建与启动
@@ -10,7 +10,7 @@ pnpm --dir web install
 pnpm --dir web build:deps
 pnpm --dir web generate
 go test ./...
-go run ./cmd/chronoframe
+go run ./cmd/memora
 ```
 
 默认数据库为 `./data/app.sqlite3`。Docker 必须保留 `./data:/app/data` 挂载。
@@ -19,7 +19,7 @@ go run ./cmd/chronoframe
 
 ## 目录
 
-- `cmd/chronoframe/`：Go 路由、SQLite、存储适配器和队列。
+- `cmd/memora/`：Go 路由、SQLite、存储适配器和队列。
 - `web/app/`：Nuxt 页面、组件、状态和 composables。
 - `web/packages/webgl-image/`：WebGL 图片查看器。
 - `web/shared/`：前端共享类型和接口契约。

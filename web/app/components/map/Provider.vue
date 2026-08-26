@@ -3,8 +3,8 @@ import type { AttributionControlOptions, StyleSpecification } from 'maplibre-gl'
 import { twMerge } from 'tailwind-merge'
 import type { MapboxMap, MapInstance, MaplibreMap } from '~~/shared/types/map'
 
-import ChronoFrameLightStyle from '~/assets/mapStyles/chronoframe_light.json'
-import ChronoFrameDarkStyle from '~/assets/mapStyles/chronoframe_dark.json'
+import MemoraLightStyle from '~/assets/mapStyles/memora_light.json'
+import MemoraDarkStyle from '~/assets/mapStyles/memora_dark.json'
 
 withDefaults(
   defineProps<{
@@ -45,7 +45,7 @@ const mapStyle = computed(() => {
     return mapConfig.value['mapbox.style'] || `mapbox://styles/mapbox/standard`
   } else {
     const styleConfig =
-      colorMode.value === 'dark' ? ChronoFrameDarkStyle : ChronoFrameLightStyle
+      colorMode.value === 'dark' ? MemoraDarkStyle : MemoraLightStyle
     return (
       mapConfig.value['maplibre.style'] ||
       ({

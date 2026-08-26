@@ -60,7 +60,7 @@ func wizardFields(namespace string) []map[string]any {
 		}
 	case "app":
 		return []map[string]any{
-			field("title", "string", "settings.app.title.label", env("NUXT_PUBLIC_APP_TITLE", "ChronoFrame"), input(true, "ChronoFrame")),
+			field("title", "string", "settings.app.title.label", env("NUXT_PUBLIC_APP_TITLE", "Memora"), input(true, "Memora")),
 			field("slogan", "string", "settings.app.slogan.label", env("NUXT_PUBLIC_APP_SLOGAN", ""), input(false, "Your gallery slogan")),
 			field("author", "string", "settings.app.author.label", env("NUXT_PUBLIC_APP_AUTHOR", ""), input(false, "Your name")),
 			field("avatarUrl", "string", "settings.app.avatarUrl.label", env("NUXT_PUBLIC_APP_AVATAR_URL", ""), map[string]any{"type": "url", "required": false, "placeholder": "https://example.com/avatar.jpg"}),

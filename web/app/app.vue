@@ -38,7 +38,7 @@ const appTitle = useSettingRef('app:title')
 
 useHead({
   titleTemplate: (title) =>
-    `${title ? title + ' | ' : ''}${appTitle.value || 'ChronoFrame'}`,
+    `${title ? title + ' | ' : ''}${appTitle.value || 'Memora'}`,
 })
 
 // 根据用户登录状态和当前路由决定使用哪个 API

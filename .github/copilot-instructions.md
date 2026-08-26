@@ -1,12 +1,12 @@
-# ChronoFrame Coding Guidelines
+# Memora Coding Guidelines
 
-ChronoFrame is a static Nuxt 4 frontend served by a Go HTTP backend. SQLite schema and the `./data:/app/data` Docker mount are compatibility contracts.
+Memora is a static Nuxt 4 frontend served by a Go HTTP backend. SQLite schema and the `./data:/app/data` Docker mount are compatibility contracts.
 
 ## Architecture
 
 - `web/app/`: Vue/Nuxt static client, Pinia stores, composables, maps, and WebGL viewer.
-- `cmd/chronoframe/`: Go server, SQLite access, authentication, storage adapters, HTTP routes, and durable media queue.
-- `web/packages/webgl-image/`: local WebGL viewer package.
+- `cmd/memora/`: Go server, SQLite access, authentication, storage adapters, HTTP routes, and durable media queue.
+- `web/packages/memora-webgl-image/`: local WebGL viewer package.
 - `web/shared/`: client/server TypeScript contracts.
 
 The production process is one Go binary. It serves `web/.output/public` (or `CFRAME_WEB_DIR`) and owns all `/api`, `/storage`, `/image`, and `/thumb` routes. Do not add Nitro API routes or a second Node server.
@@ -17,7 +17,7 @@ The production process is one Go binary. It serves `web/.output/public` (or `CFR
 pnpm --dir web install
 pnpm --dir web build:deps
 pnpm --dir web generate
-go run ./cmd/chronoframe
+go run ./cmd/memora
 ```
 
 On PowerShell, use an absolute database path when the working directory may vary:
@@ -25,7 +25,7 @@ On PowerShell, use an absolute database path when the working directory may vary
 ```powershell
 $env:DATABASE_URL = (Resolve-Path "data/app.sqlite3").Path
 $env:CFRAME_WEB_DIR = (Resolve-Path "web/.output/public").Path
-go run ./cmd/chronoframe
+go run ./cmd/memora
 ```
 
 Useful checks: `go test ./...`, `go test -race ./...`, `go vet ./...`, `pnpm --dir web lint`, and `pnpm --dir web generate`.

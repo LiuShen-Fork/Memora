@@ -5,7 +5,7 @@ import "strings"
 const defaultUploadMIMEs = "image/jpeg,image/png,image/webp,image/gif,image/bmp,image/tiff,image/heic,image/heif,video/quicktime,video/mp4"
 
 func (a *App) maxUploadBytes() int64 {
-	megabytes := envInt("CFRAME_MAX_UPLOAD_MB", 256)
+	megabytes := envInt("CFRAME_MAX_UPLOAD_MB", 32)
 	var configured any
 	if a.readSetting("system", "upload.maxFileSize", &configured) {
 		switch value := configured.(type) {

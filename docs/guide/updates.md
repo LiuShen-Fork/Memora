@@ -1,6 +1,6 @@
 # Update Guide
 
-This document will guide you through safely updating and upgrading ChronoFrame to the latest version.
+This document will guide you through safely updating and upgrading Memora to the latest version.
 
 ## Version Check
 
@@ -8,7 +8,7 @@ This document will guide you through safely updating and upgrading ChronoFrame t
 
 #### Through Web Interface
 
-1. Login to ChronoFrame admin dashboard
+1. Login to Memora admin dashboard
 2. Go to "Dashboard" page
 3. Check version number in "Runtime Information" panel
 
@@ -40,7 +40,7 @@ Review [Release Notes](https://github.com/LiuShen-Fork/Memora/releases) to under
 
 ```bash
 # 1. Enter project directory
-cd /path/to/chronoframe
+cd /path/to/memora
 
 # 2. Backup current configuration
 cp docker-compose.yml docker-compose.yml.backup
@@ -55,7 +55,7 @@ docker-compose pull
 docker-compose up -d
 
 # 6. View startup logs
-docker-compose logs -f chronoframe
+docker-compose logs -f memora
 ```
 
 #### Specific Version Update
@@ -65,7 +65,7 @@ If you need to update to a specific version:
 ```yaml
 # docker-compose.yml
 services:
-  chronoframe:
+  memora:
     image: ghcr.io/liu-shen-fork/memora:v1.2.3 # Specify version
     # ... other configurations
 ```
@@ -78,15 +78,15 @@ docker-compose up -d
 
 ```bash
 # Stop existing container
-docker stop chronoframe
-docker rm chronoframe
+docker stop memora
+docker rm memora
 
 # Pull latest image
 docker pull ghcr.io/liu-shen-fork/memora:latest
 
 # Start new container with same configuration
 docker run -d \
-  --name chronoframe \
+  --name memora \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
   --env-file .env \

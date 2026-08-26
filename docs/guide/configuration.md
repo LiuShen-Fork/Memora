@@ -6,10 +6,10 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 
 | Environment Variable                     | Description                                                     | Default                               | Required                                             |
 | ---------------------------------------- | --------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- |
-| CFRAME_ADMIN_EMAIL                       | Initial admin user email                                        | `admin@chronoframe.com`               | Yes                                                  |
-| CFRAME_ADMIN_NAME                        | Initial admin username                                          | `Chronoframe`                         | No                                                   |
+| CFRAME_ADMIN_EMAIL                       | Initial admin user email                                        | `admin@memora.com`               | Yes                                                  |
+| CFRAME_ADMIN_NAME                        | Initial admin username                                          | `Memora`                              | No                                                   |
 | CFRAME_ADMIN_PASSWORD                    | Initial admin user password                                     | `CF1234@!`                            | No                                                   |
-| NUXT_PUBLIC_APP_TITLE                    | Application title                                               | `ChronoFrame`                         | No                                                   |
+| NUXT_PUBLIC_APP_TITLE                    | Application title                                               | `Memora`                         | No                                                   |
 | NUXT_PUBLIC_APP_SLOGAN                   | Application slogan                                              | None                                  | No                                                   |
 | NUXT_PUBLIC_APP_AUTHOR                   | Application author                                              | None                                  | No                                                   |
 | NUXT_PUBLIC_APP_AVATAR_URL               | Application avatar URL                                          | None                                  | No                                                   |
@@ -22,7 +22,7 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 | NUXT_PROVIDER_LOCAL_PATH                 | Local storage path                                              | `/app/data/storage`                   | No                                                   |
 | NUXT_PROVIDER_LOCAL_BASE_URL             | Local storage access URL                                        | `/storage`                            | No                                                   |
 | NUXT_PROVIDER_S3_ENDPOINT                | S3 compatible storage service endpoint                          | None                                  | Required when `NUXT_STORAGE_PROVIDER` is `s3`        |
-| NUXT_PROVIDER_S3_BUCKET                  | S3 bucket name                                                  | `chronoframe`                         | Required when `NUXT_STORAGE_PROVIDER` is `s3`        |
+| NUXT_PROVIDER_S3_BUCKET                  | S3 bucket name                                                  | `memora`                         | Required when `NUXT_STORAGE_PROVIDER` is `s3`        |
 | NUXT_PROVIDER_S3_REGION                  | S3 bucket region                                                | `auto`                                | Required when `NUXT_STORAGE_PROVIDER` is `s3`        |
 | NUXT_PROVIDER_S3_ACCESS_KEY_ID           | S3 access key ID                                                | None                                  | Required when `NUXT_STORAGE_PROVIDER` is `s3`        |
 | NUXT_PROVIDER_S3_SECRET_ACCESS_KEY       | S3 secret access key                                            | None                                  | Required when `NUXT_STORAGE_PROVIDER` is `s3`        |

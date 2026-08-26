@@ -3,12 +3,12 @@
 layout: home
 
 hero:
-  name: 'ChronoFrame'
+  name: 'Memora'
   text: 'Self-hosted Personal Gallery'
   tagline: 'Manage photos online with multi-storage backends, LivePhoto, and globe view'
   image:
     src: /logo.png
-    alt: ChronoFrame
+    alt: Memora
     style: 'filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.7)) drop-shadow(0 0 60px rgba(59, 130, 246, 0.5)) drop-shadow(0 0 100px rgba(168, 85, 247, 0.3)); width: 300px; height: 300px;'
   actions:
     - theme: brand
@@ -44,7 +44,7 @@ features:
 
 ## 🌍 Demo Sites
 
-Here are some well-running ChronoFrame instances built by developers and community members:
+Here are some well-running Memora instances built by developers and community members:
 
 - [**TimoYin's Mems**](https://lens.bh8.ga)
 
@@ -55,4 +55,4 @@ Here are some well-running ChronoFrame instances built by developers and communi
 
 ## 📄 License
 
-Memora is open source under the [MIT License](https://github.com/LiuShen-Fork/Memora/blob/main/LICENSE), welcome to use and contribute freely. Memora is based on [ChronoFrame](https://github.com/HoshinoSuzumi/chronoframe).
+Memora is open source under the [MIT License](https://github.com/LiuShen-Fork/Memora/blob/main/LICENSE), welcome to use and contribute freely. This project is a hard fork based on [ChronoFrame](https://github.com/HoshinoSuzumi/chronoframe).

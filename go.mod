@@ -1,4 +1,4 @@
-module github.com/hoshinosuzumi/chronoframe-go
+module github.com/LiuShen-Fork/Memora
 
 go 1.25.0
 
