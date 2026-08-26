@@ -67,15 +67,37 @@ NUXT_SESSION_PASSWORD=use-a-long-random-secret
 
 ### 本地开发
 
-需要 Go 1.23+、Node.js 18+ 和 pnpm 9+：
+需要 Go 1.23+、Node.js 18+、pnpm 9+、FFmpeg 和 ExifTool。以下命令均在仓库根目录执行。
+
+首次只需安装一次前端依赖：
 
 ```bash
 pnpm --dir web install
+```
+
+日常调试时，使用以下命令同时启动 Go API 和支持热更新的前端：
+
+```bash
+pnpm --dir web dev:debug
+```
+
+访问 <http://127.0.0.1:3001>。Go 后端运行在 `3000` 端口，Nuxt 开发服务器会将 `/api`、`/storage`、`/image` 和 `/thumb` 代理到后端。后端会自动读取根目录的 `.env`；本地存储可不创建该文件，或复制 `.env.example` 后仅填写实际需要的配置。需要代理到其他后端时，在启动前设置 `MEMORA_BACKEND_ORIGIN`。
+
+若要联调最终的静态前端，而不是使用热更新：
+
+```bash
 pnpm --dir web generate
 go run ./cmd/memora
 ```
 
-访问 <http://127.0.0.1:3000>。Go 进程会在同一端口提供 `web/.output/public` 静态前端和 API。请安装 FFmpeg、ExifTool，或通过 `CFRAME_FFMPEG_PATH`、`CFRAME_FFPROBE_PATH`、`EXIFTOOL_PATH` 指定可执行文件路径。
+访问 <http://127.0.0.1:3000>。Go 进程会在同一端口提供 `web/.output/public` 静态前端和 API。当媒体工具不在 `PATH` 时，通过 `CFRAME_FFMPEG_PATH`、`CFRAME_FFPROBE_PATH`、`EXIFTOOL_PATH` 指定可执行文件路径。
+
+提交前请运行：
+
+```bash
+go test ./...
+pnpm --dir web generate
+```
 
 ## 项目结构
 

@@ -2,6 +2,8 @@ import pkg from './package.json'
 import type { AnalyticsConfig } from './shared/types/config'
 import i18n, { dayjsLocales } from './i18n/i18n.options'
 
+const backendOrigin = process.env.MEMORA_BACKEND_ORIGIN || 'http://127.0.0.1:3000'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -140,6 +142,14 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    server: {
+      proxy: {
+        '/api': backendOrigin,
+        '/storage': backendOrigin,
+        '/image': backendOrigin,
+        '/thumb': backendOrigin,
+      },
+    },
     optimizeDeps: {
       include: [
         'zod',

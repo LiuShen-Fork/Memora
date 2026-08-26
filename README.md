@@ -67,15 +67,37 @@ The maximum upload/processing size is configurable at runtime under **System Set
 
 ### Local Development
 
-Requirements: Go 1.23+, Node.js 18+, and pnpm 9+.
+Requirements: Go 1.23+, Node.js 18+, pnpm 9+, FFmpeg, and ExifTool. Run all commands from the repository root.
+
+Install frontend dependencies once:
 
 ```bash
 pnpm --dir web install
+```
+
+For day-to-day development, start the Go API and the hot-reloading frontend together:
+
+```bash
+pnpm --dir web dev:debug
+```
+
+Open <http://127.0.0.1:3001>. The Go backend runs on port `3000`; the Nuxt development server proxies `/api`, `/storage`, `/image`, and `/thumb` to it. The backend reads the root `.env` file when present. Leave it absent for the local-storage defaults, or copy `.env.example` and set the values needed for your setup. Set `MEMORA_BACKEND_ORIGIN` before starting the frontend to proxy to a different backend address.
+
+To test the production-shaped static frontend instead of hot reload:
+
+```bash
 pnpm --dir web generate
 go run ./cmd/memora
 ```
 
-Open <http://127.0.0.1:3000>. The Go process serves `web/.output/public` and the API on the same port. Install FFmpeg and ExifTool, or set `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and `EXIFTOOL_PATH` to their executable paths.
+Open <http://127.0.0.1:3000>. The Go process serves `web/.output/public` and the API on the same port. Set `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and `EXIFTOOL_PATH` when the media tools are not on `PATH`.
+
+Before committing, run:
+
+```bash
+go test ./...
+pnpm --dir web generate
+```
 
 ## Project Layout
 

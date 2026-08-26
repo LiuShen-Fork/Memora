@@ -11,6 +11,7 @@ node-compile-cache
 web/.output
 web/.nuxt
 web/node_modules
+web/3001
 
 .vscode/
 .agents/
