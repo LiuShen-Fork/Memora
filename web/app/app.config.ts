@@ -11,7 +11,7 @@ export default defineAppConfig({
     },
     button: {
       slots: {
-        base: 'cursor-pointer',
+        base: 'cursor-pointer leading-none',
       },
     },
     popover: {
