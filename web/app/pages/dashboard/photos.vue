@@ -1215,13 +1215,16 @@ const validateFile = (
     'image/heic',
     'image/heif',
     'video/quicktime', // MOV 文件
+    'video/mp4',
   ]
 
   const isValidImageType = allowedTypes.includes(file.type)
   const isValidImageExtension = ['.heic', '.heif'].some((ext) =>
     file.name.toLowerCase().endsWith(ext),
   )
-  const isValidVideoExtension = file.name.toLowerCase().endsWith('.mov')
+  const isValidVideoExtension = ['.mov', '.mp4'].some((ext) =>
+    file.name.toLowerCase().endsWith(ext),
+  )
 
   if (!isValidImageType && !isValidImageExtension && !isValidVideoExtension) {
     return {
@@ -2303,7 +2306,7 @@ onUnmounted(() => {
                 icon="tabler:cloud-upload"
                 layout="list"
                 size="xl"
-                accept="image/jpeg,image/png,image/heic,image/heif,video/quicktime,.mov"
+                  accept="image/jpeg,image/png,image/heic,image/heif,video/quicktime,video/mp4,.mov,.mp4"
                 multiple
                 highlight
                 dropzone
