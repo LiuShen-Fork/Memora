@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { motion } from 'motion-v'
 import { isMapboxMap, type MapInstance } from '~~/shared/types/map'
+import { transformCoordinate } from '~/utils/coordinate-transform'
 
 const props = defineProps<{
   photo: Photo
@@ -19,7 +20,15 @@ let animationTimer: ReturnType<typeof setTimeout> | null = null
 
 const onMapLoad = (map: MapInstance) => {
   mapInstance.value = map
-  map.setCenter([props.longitude, props.latitude])
+  const anyMap: any = map
+  const center = config.public.map.provider === 'amap'
+    ? transformCoordinate(props.longitude, props.latitude, 'amap')
+    : [props.longitude, props.latitude]
+  if (typeof anyMap.setZoomAndCenter === 'function') {
+    anyMap.setZoomAndCenter(12, center, false, 0)
+  } else {
+    anyMap.setCenter?.(center)
+  }
   setTimeout(() => {
     loaded.value = true
   }, 100)
@@ -36,12 +45,23 @@ const moveMapTo = (newLat: number, newLng: number) => {
     }
 
     isAnimating.value = true
-    mapInstance.value.flyTo({
-      duration: DURATION,
-      center: [newLng, newLat],
-      zoom: 12,
-      essential: true,
-    })
+    const map: any = mapInstance.value
+    const center = config.public.map.provider === 'amap'
+      ? transformCoordinate(newLng, newLat, 'amap')
+      : [newLng, newLat]
+    if (typeof map.flyTo === 'function') {
+      map.flyTo({
+        duration: DURATION,
+        center,
+        zoom: 12,
+        essential: true,
+      })
+    } else if (typeof map.setZoomAndCenter === 'function') {
+      map.setZoomAndCenter(12, center, true, DURATION)
+    } else {
+      map.setCenter?.(center)
+      map.setZoom?.(12)
+    }
 
     // 设置新的计时器，动画结束后显示指示点
     animationTimer = setTimeout(() => {
