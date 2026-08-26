@@ -186,6 +186,37 @@ func TestMediaReadsHonorConfiguredLimit(t *testing.T) {
 	}
 }
 
+func TestPhotoDateTakenPreservedWhenReprocessingHasNoExifDate(t *testing.T) {
+	app := newTestApp(t)
+	const originalDate = "2024-05-06T07:08:09Z"
+	if _, err := app.db.Exec(`INSERT INTO photos(id,date_taken,title) VALUES('date-photo',?,?)`, originalDate, "Before"); err != nil {
+		t.Fatal(err)
+	}
+
+	// This is the same update rule used by EXIF reindexing: a missing date
+	// must not erase the date already known for the photo.
+	if _, err := app.db.Exec(`UPDATE photos SET date_taken=COALESCE(?,date_taken) WHERE id=?`, nil, "date-photo"); err != nil {
+		t.Fatal(err)
+	}
+	var date string
+	if err := app.db.QueryRow(`SELECT date_taken FROM photos WHERE id='date-photo'`).Scan(&date); err != nil {
+		t.Fatal(err)
+	}
+	if date != originalDate {
+		t.Fatalf("date_taken was cleared during reprocessing: got %q, want %q", date, originalDate)
+	}
+
+	if _, err := app.db.Exec(`INSERT INTO photos(id,date_taken) VALUES('date-photo',?) ON CONFLICT(id) DO UPDATE SET date_taken=COALESCE(excluded.date_taken,photos.date_taken)`, "2025-06-07T08:09:10Z"); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.db.QueryRow(`SELECT date_taken FROM photos WHERE id='date-photo'`).Scan(&date); err != nil {
+		t.Fatal(err)
+	}
+	if date != "2025-06-07T08:09:10Z" {
+		t.Fatalf("valid reprocessed date was not applied: got %q", date)
+	}
+}
+
 func TestQueueResponseContracts(t *testing.T) {
 	app := newTestApp(t)
 	if _, err := app.db.Exec(`INSERT INTO pipeline_queue(payload,status,created_at) VALUES('{"type":"photo"}','failed',unixepoch())`); err != nil {

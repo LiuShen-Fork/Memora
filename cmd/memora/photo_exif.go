@@ -117,7 +117,7 @@ func (a *App) reindexOneExif(ctx context.Context, id string) error {
 	title := strings.TrimSuffix(filepath.Base(key), filepath.Ext(key))
 	tags := exifTags(exif)
 	thumbKey := storageKey(a.storage.Prefix(), "thumbnails/"+id+".webp")
-	_, err = a.db.Exec(`UPDATE photos SET exif=?,title=?,tags=?,date_taken=?,last_modified=?,thumbnail_key=? WHERE id=?`, jsonValue(exif), title, jsonValue(tags), nullableString(dateTaken), time.Now().UTC().Format(time.RFC3339), thumbKey, id)
+	_, err = a.db.Exec(`UPDATE photos SET exif=?,title=?,tags=?,date_taken=COALESCE(?,date_taken),last_modified=?,thumbnail_key=? WHERE id=?`, jsonValue(exif), title, jsonValue(tags), nullableString(dateTaken), time.Now().UTC().Format(time.RFC3339), thumbKey, id)
 	return err
 }
 
