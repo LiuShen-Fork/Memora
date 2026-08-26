@@ -56,6 +56,9 @@
       "home": {
         "tooltip": "ホームに戻る"
       },
+      "back": {
+        "tooltip": "戻る"
+      },
       "share": {
         "tooltip": "写真を共有",
         "title": "写真を共有",

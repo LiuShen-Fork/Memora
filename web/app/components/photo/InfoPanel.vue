@@ -442,7 +442,10 @@ const formatedExifData = computed<Record<string, KVData[]>>(() => {
 const isMobile = useMediaQuery('(max-width: 768px)')
 
 const onMinimapClick = (photoId: string) => {
-  window.open(`/globe?photoId=${photoId}`)
+  router.push({
+    path: '/globe',
+    query: { photoId },
+  })
 }
 
 const onTagClick = (tag: string) => {

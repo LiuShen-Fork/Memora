@@ -160,6 +160,7 @@ provide(
       </NuxtLayout>
       <ClientOnly>
         <PhotoViewer
+          v-if="route.path !== '/globe'"
           :photos="viewerPhotos"
           :current-index="currentPhotoIndex"
           :is-open="isViewerOpen"

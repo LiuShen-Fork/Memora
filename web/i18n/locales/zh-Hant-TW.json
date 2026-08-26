@@ -68,6 +68,9 @@
       "home": {
         "tooltip": "返回首頁"
       },
+      "back": {
+        "tooltip": "返回"
+      },
       "share": {
         "tooltip": "分享相片",
         "title": "分享相片",

@@ -523,6 +523,8 @@ defineShortcuts({
 
 // 清理定时器
 onUnmounted(() => {
+  document.body.style.overflow = ''
+
   if (zoomLevelTimer.value) {
     clearTimeout(zoomLevelTimer.value)
     zoomLevelTimer.value = null

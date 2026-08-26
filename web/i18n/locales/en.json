@@ -56,6 +56,9 @@
       "home": {
         "tooltip": "Back to Home"
       },
+      "back": {
+        "tooltip": "Back"
+      },
       "share": {
         "tooltip": "Share Photo",
         "title": "Share Photo",
