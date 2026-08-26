@@ -11,7 +11,7 @@ const props = withDefaults(
   }>(),
   {
     modelValue: null,
-    zoom: 5,
+    zoom: 4,
     class: undefined,
   },
 )

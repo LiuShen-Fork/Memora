@@ -580,10 +580,6 @@ const resetMap = () => {
   })
 }
 
-const goHome = () => {
-  router.push('/')
-}
-
 const generateRandomKey = () => {
   return Math.random().toString(36).substring(2, 15)
 }
@@ -605,11 +601,14 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="w-full h-svh relative overflow-hidden">
-    <GlassButton
-      class="absolute top-4 left-4 z-10"
-      icon="tabler:home"
-      @click.stop="goHome"
-    />
+    <a
+      href="/"
+      class="pointer-events-auto absolute top-4 left-4 z-[1000] flex h-12 min-w-12 items-center justify-center rounded-xl border border-neutral-100 bg-white/30 px-2 text-neutral-700 shadow-md shadow-neutral-300/20 backdrop-blur-md touch-manipulation dark:border-white/10 dark:bg-neutral-700/30 dark:text-white/80 dark:shadow-black/20"
+      :aria-label="$t('header.home.tooltip')"
+      :title="$t('header.home.tooltip')"
+    >
+      <Icon name="tabler:home" class="text-xl" />
+    </a>
 
     <div class="absolute top-4 right-4 z-10 flex flex-col items-end">
       <div class="relative">
