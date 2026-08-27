@@ -30,6 +30,12 @@ func TestOpenListCreateReaderUsesRawFilePath(t *testing.T) {
 	}
 }
 
+func TestOpenListPathEscapesSegments(t *testing.T) {
+	if got := openListPath("/photos/folder/a%2Fb c.jpg"); got != "/photos/folder/a%252Fb%20c.jpg" {
+		t.Fatalf("openListPath() = %q", got)
+	}
+}
+
 func TestOpenListOpenFallsBackToRawURL(t *testing.T) {
 	const token = "token"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

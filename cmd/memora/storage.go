@@ -246,6 +246,13 @@ func (s *OpenListStorage) pathFieldName() string {
 func (s *OpenListStorage) full(k string) string {
 	return "/" + strings.Trim(storageKey(s.root, k), "/")
 }
+func openListPath(path string) string {
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		parts[i] = url.PathEscape(part)
+	}
+	return strings.Join(parts, "/")
+}
 func (s *OpenListStorage) request(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(s.baseURL, "/")+path, body)
 	if err != nil {
@@ -270,9 +277,9 @@ func (s *OpenListStorage) CreateReader(ctx context.Context, k string, reader io.
 		return Object{}, err
 	}
 	req.Header.Set("Authorization", s.token)
-	// OpenList expects a Unix-style path in File-Path; escaping the complete
-	// path turns separators into data and can make the uploaded object unreadable.
-	req.Header.Set("File-Path", s.full(k))
+	// OpenList unescapes this header once. Encode each segment so separators
+	// remain path separators while reserved characters in filenames survive.
+	req.Header.Set("File-Path", openListPath(s.full(k)))
 	req.Header.Set("Content-Type", ct)
 	if size >= 0 {
 		req.ContentLength = size
