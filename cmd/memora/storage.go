@@ -297,6 +297,9 @@ func (s *OpenListStorage) CreateReader(ctx context.Context, k string, reader io.
 	if resp.StatusCode >= 300 {
 		return Object{}, s.responseError("upload", s.full(k), resp)
 	}
+	if err := s.validateResponse("upload", s.full(k), resp.Body); err != nil {
+		return Object{}, err
+	}
 	return Object{Key: storageKey(s.root, k), Size: size, ModTime: time.Now()}, nil
 }
 func (s *OpenListStorage) Open(ctx context.Context, k string) (io.ReadCloser, Object, error) {
@@ -369,12 +372,17 @@ func (s *OpenListStorage) rawURL(ctx context.Context, k string) (string, error) 
 		return "", s.responseError("meta", s.full(k), resp)
 	}
 	var body struct {
-		Data struct {
+		Code    *int   `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
 			RawURL string `json:"raw_url"`
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return "", fmt.Errorf("openlist meta decode: %w", err)
+	}
+	if err := s.responsePayloadError("meta", s.full(k), body.Code, body.Message); err != nil {
+		return "", err
 	}
 	if strings.TrimSpace(body.Data.RawURL) == "" {
 		return "", errors.New("openlist meta: response did not include raw_url")
@@ -406,6 +414,40 @@ func (s *OpenListStorage) responseError(operation, path string, resp *http.Respo
 	}
 	return fmt.Errorf("openlist %s: %s: %s", operation, resp.Status, message)
 }
+
+// validateResponse catches OpenList's common HTTP-200 business errors. Some
+// storage drivers report failures in a JSON {code,message} envelope rather
+// than through the HTTP status, so treating every 2xx response as a completed
+// upload would enqueue processing for an object that was never created.
+func (s *OpenListStorage) validateResponse(operation, path string, reader io.Reader) error {
+	data, err := io.ReadAll(io.LimitReader(reader, 4096))
+	if err != nil || len(bytes.TrimSpace(data)) == 0 {
+		return err
+	}
+	var payload struct {
+		Code    *int   `json:"code"`
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(data, &payload) != nil {
+		// Compatible OpenList variants may reply with an empty/plain success
+		// body. Only a valid JSON envelope is authoritative here.
+		return nil
+	}
+	return s.responsePayloadError(operation, path, payload.Code, payload.Message)
+}
+
+func (s *OpenListStorage) responsePayloadError(operation, path string, code *int, message string) error {
+	if code == nil || (*code >= 200 && *code < 300) {
+		return nil
+	}
+	message = strings.TrimSpace(message)
+	if message == "" {
+		message = "no provider error message"
+	}
+	err := fmt.Errorf("openlist %s: provider code %d: %s", operation, *code, message)
+	log.Printf("[storage/openlist] %s %s failed: %v", operation, path, err)
+	return err
+}
 func (s *OpenListStorage) Get(ctx context.Context, k string) ([]byte, error) {
 	reader, _, err := s.Open(ctx, k)
 	if err != nil {
@@ -434,7 +476,7 @@ func (s *OpenListStorage) Delete(ctx context.Context, k string) error {
 	if resp.StatusCode >= 300 {
 		return s.responseError("delete", s.full(k), resp)
 	}
-	return nil
+	return s.validateResponse("delete", s.full(k), resp.Body)
 }
 func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
 	endpoint := s.meta
@@ -451,7 +493,9 @@ func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
 		return Object{}, s.responseError("meta", s.full(k), resp)
 	}
 	var body struct {
-		Data struct {
+		Code    *int   `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
 			Size     int64  `json:"size"`
 			Modified string `json:"modified"`
 			RawURL   string `json:"raw_url"`
@@ -459,6 +503,9 @@ func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return Object{}, fmt.Errorf("openlist meta decode: %w", err)
+	}
+	if err := s.responsePayloadError("meta", s.full(k), body.Code, body.Message); err != nil {
+		return Object{}, err
 	}
 	return Object{Key: storageKey(s.root, k), Size: body.Data.Size, ModTime: parseTime(body.Data.Modified)}, nil
 }

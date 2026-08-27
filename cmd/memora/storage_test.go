@@ -31,6 +31,19 @@ func TestOpenListCreateReaderUsesRawFilePath(t *testing.T) {
 	}
 }
 
+func TestOpenListCreateReaderRejectsBusinessError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"code":500,"message":"failed get storage"}`)
+	}))
+	defer server.Close()
+
+	storage := &OpenListStorage{baseURL: server.URL, root: "photos", token: "token"}
+	if _, err := storage.CreateReader(context.Background(), "photo.jpg", strings.NewReader("data"), 4, "image/jpeg"); err == nil || !strings.Contains(err.Error(), "provider code 500") {
+		t.Fatalf("CreateReader() error = %v, want provider business error", err)
+	}
+}
+
 func TestOpenListPathEscapesSegments(t *testing.T) {
 	if got := openListPath("/photos/folder/a%2Fb c.jpg"); got != "/photos/folder/a%252Fb%20c.jpg" {
 		t.Fatalf("openListPath() = %q", got)
