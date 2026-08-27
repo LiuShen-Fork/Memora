@@ -18,7 +18,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -271,7 +270,8 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 	// Prefer an already-uploaded paired video. Reprocessing the image must not
 	// overwrite a valid remote MP4 with a newly extracted (or malformed) blob.
 	motionVideoKey := ""
-	if hasMotionMetadata := motionPhotoMetadata(exif, raw); hasMotionMetadata {
+	hasMotionMetadata := motionPhotoMetadata(exif, raw)
+	if hasMotionMetadata {
 		motionVideoKey = a.pairedLiveVideo(ctx, key)
 		if motionVideoKey == "" {
 			var motionErr error
@@ -281,7 +281,7 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 			}
 		}
 	}
-	if motionVideoKey == "" {
+	if hasMotionMetadata && motionVideoKey == "" {
 		a.removeInvalidGeneratedVideo(ctx, id)
 	}
 	var liveVideoURL any
@@ -507,16 +507,9 @@ func ffmpegThumbnail(ffmpeg string, data []byte) ([]byte, error) {
 // pipeline while avoiding needless upscaling of already-small images.
 const thumbnailMinDimension = 600
 
-func thumbnailQuality(size int) int {
-	if size <= 5*1024*1024 {
-		return 100
-	}
-	return 85
-}
-
 func ffmpegThumbnailContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
 	filter := fmt.Sprintf("scale='if(gt(iw,ih),-2,min(%d,iw))':'if(gt(iw,ih),min(%d,ih),-2)'", thumbnailMinDimension, thumbnailMinDimension)
-	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-quality", strconv.Itoa(thumbnailQuality(len(data))), "-f", "webp", "pipe:1")
+	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-lossless", "1", "-compression_level", "6", "-f", "webp", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
 	return runCommandOutput(ctx, cmd, maxToolOutputBytes)
 }
