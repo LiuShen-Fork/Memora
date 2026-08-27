@@ -39,7 +39,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		_ = rows.Close()
 		results := []map[string]any{}
 		for _, id := range photoIDs {
-			success, key, err := a.detectLivePhoto(r, id)
+			success, key, err := a.detectLivePhoto(r, id, false)
 			result := map[string]any{"photoId": id, "success": success, "videoKey": key}
 			if err != nil {
 				result["error"] = err.Error()
@@ -71,7 +71,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusBadRequest, "photoId is required for update-photo action")
 			return
 		}
-		success, key, err := a.detectLivePhoto(r, body.PhotoID)
+		success, key, err := a.detectLivePhoto(r, body.PhotoID, true)
 		if err != nil {
 			errorJSON(w, http.StatusNotFound, err.Error())
 			return
@@ -86,7 +86,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		}
 		results := make([]map[string]any, 0, len(body.PhotoIDs))
 		for _, id := range uniqueStrings(body.PhotoIDs) {
-			success, key, err := a.detectLivePhoto(r, id)
+			success, key, err := a.detectLivePhoto(r, id, false)
 			result := map[string]any{"photoId": id, "success": success, "videoKey": key}
 			if err != nil {
 				result["error"] = err.Error()
@@ -131,15 +131,29 @@ func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string
 	return err == nil, err
 }
 
-func (a *App) detectLivePhoto(r *http.Request, photoID string) (bool, string, error) {
+func (a *App) detectLivePhoto(r *http.Request, photoID string, allowLegacyPairing bool) (bool, string, error) {
 	if photoID == "" {
 		return false, "", errPhotoIDRequired
 	}
 	var imageKey string
-	if err := a.db.QueryRow(`SELECT storage_key FROM photos WHERE id=?`, photoID).Scan(&imageKey); err != nil {
+	var isLive int
+	if err := a.db.QueryRow(`SELECT storage_key,is_live_photo FROM photos WHERE id=?`, photoID).Scan(&imageKey, &isLive); err != nil {
 		return false, "", errPhotoNotFound
 	}
-	candidate := a.pairedLiveVideo(r.Context(), imageKey)
+	// A full scan must not probe an MP4 beside every ordinary image. Existing
+	// Live Photo records are allowed through for validation; new detections
+	// require Motion Photo metadata in the image itself.
+	if isLive == 0 && !allowLegacyPairing {
+		data, err := a.readStorageBytes(r.Context(), imageKey)
+		if err != nil {
+			return false, "", err
+		}
+		exif, _ := extractExifContext(r.Context(), a.cfg.ExifTool, data, filepath.Ext(imageKey))
+		if !motionPhotoMetadata(exif, data) {
+			return false, "", nil
+		}
+	}
+	candidate := a.pairedLiveVideo(r.Context(), imageKey, allowLegacyPairing)
 	if candidate != "" {
 		url := a.storage.PublicURL(candidate)
 		if url == "" {
