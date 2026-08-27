@@ -25,18 +25,12 @@ The documentation is still being written; some sections may be incomplete.
 
 ### Pull Image
 
-Use the published image on GitHub Container Registry and Docker Hub. Choose the source that works best for your network:
+Use the published image on GitHub Container Registry:
 
 #### [GitHub Container Registry (GHCR)](https://github.com/LiuShen-Fork/Memora/pkgs/container/memora)
 
 ```bash
 docker pull ghcr.io/liu-shen-fork/memora:latest
-```
-
-#### [Docker Hub](https://hub.docker.com/r/liu-shen-fork/memora)
-
-```bash
-docker pull liu-shen-fork/memora:latest
 ```
 
 ### Create `.env`

@@ -31,7 +31,7 @@ The maintained repository is [LiuShen-Fork/Memora](https://github.com/LiuShen-Fo
 ```bash
 docker run -d --name memora -p 3000:3000 \
   -v $(pwd)/data:/app/data --env-file .env \
-  ghcr.io/liu-shen-fork/memora:latest
+  ghcr.io/liushen-fork/memora:latest
 ```
 
 Keep the existing `./data:/app/data` mount when migrating from ChronoFrame. Storage and application settings can be changed from the dashboard, so most deployments need no extra environment variables.

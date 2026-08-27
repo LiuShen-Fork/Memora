@@ -25,18 +25,12 @@
 
 ### 拉取镜像
 
-我们推荐使用预构建的 Docker 镜像进行部署，镜像托管在 GHCR 和 Docker Hub，您可以根据网络情况选择合适的源。
+我们推荐使用托管在 GHCR 的预构建 Docker 镜像进行部署：
 
 #### [GitHub Container Registry (GHCR)](https://github.com/LiuShen-Fork/Memora/pkgs/container/memora)
 
 ```bash
 docker pull ghcr.io/liu-shen-fork/memora:latest
-```
-
-#### [Docker Hub](https://hub.docker.com/r/liu-shen-fork/memora)
-
-```bash
-docker pull liu-shen-fork/memora:latest
 ```
 
 ### 创建配置文件
