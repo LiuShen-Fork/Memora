@@ -14,7 +14,11 @@ func (a *App) cleanupInvalidGeneratedVideos() {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 
-	rows, err := a.db.QueryContext(ctx, `SELECT id,COALESCE(live_photo_video_key,''),is_live_photo FROM photos`)
+	// Do not probe a generated .mp4 for every photo. A paired video is only
+	// relevant when the photo is already marked as Live Photo or has a stored
+	// video reference. This keeps remote providers from receiving one failed
+	// request per ordinary image on every startup.
+	rows, err := a.db.QueryContext(ctx, `SELECT id,COALESCE(live_photo_video_key,''),is_live_photo FROM photos WHERE is_live_photo=1 OR COALESCE(live_photo_video_key,'')<>''`)
 	if err != nil {
 		a.logs.Add("queue", fmt.Sprintf("live video cleanup query failed: %v", err))
 		return
