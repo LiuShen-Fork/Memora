@@ -142,7 +142,7 @@ export const useLivePhotoProcessor = () => {
       updateProgress(85)
 
       // 更快的格式验证：只检查元数据
-      const videoUrl = URL.createObjectURL(mp4Blob)
+      const blobUrl = URL.createObjectURL(mp4Blob)
       const video = document.createElement('video')
 
       await new Promise<void>((resolve, reject) => {
@@ -167,11 +167,11 @@ export const useLivePhotoProcessor = () => {
           clearTimeout(timeout)
           reject(new Error('Video format not supported'))
         }
-        video.src = videoUrl
+        video.src = blobUrl
         video.load()
       })
 
-      URL.revokeObjectURL(videoUrl)
+      URL.revokeObjectURL(blobUrl)
       updateProgress(95)
 
       // 成功完成
