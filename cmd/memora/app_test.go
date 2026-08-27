@@ -301,6 +301,26 @@ func TestUploadValidationAndDuplicateContract(t *testing.T) {
 	}
 }
 
+func TestUploadReturnsRemoteStorageError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "driver rejected file", http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	app := newTestApp(t)
+	app.storage = &OpenListStorage{baseURL: server.URL, root: "photos", token: "token"}
+	response := httptest.NewRecorder()
+	request := adminRequest(t, app, http.MethodPut, "/api/photos/upload?key=photos/upload.jpg", []byte("payload"))
+	request.Header.Set("Content-Type", "image/jpeg")
+	app.ServeHTTP(response, request)
+	if response.Code != http.StatusInternalServerError || !strings.Contains(response.Body.String(), "driver rejected file") {
+		t.Fatalf("remote storage error was hidden: %d %s", response.Code, response.Body.String())
+	}
+	if lines := app.logs.Snapshot(); len(lines) == 0 || !strings.Contains(lines[len(lines)-1], "driver rejected file") {
+		t.Fatalf("remote storage error was not logged: %v", lines)
+	}
+}
+
 func TestEnvironmentSettingsMigrationPreservesStoredValues(t *testing.T) {
 	app := newTestApp(t)
 	t.Setenv("NUXT_PUBLIC_APP_TITLE", "From Environment")

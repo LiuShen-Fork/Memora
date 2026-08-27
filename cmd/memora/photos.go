@@ -230,7 +230,11 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusRequestEntityTooLarge, "Upload too large")
 			return
 		}
-		errorJSON(w, 500, "Upload failed")
+		// Keep the provider response visible to the caller and the system log.
+		// This is especially useful for remote providers such as OpenList,
+		// whose status code alone does not identify a driver or path problem.
+		a.logs.Add("storage", err.Error())
+		errorJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]any{"ok": true, "key": key})
