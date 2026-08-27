@@ -148,22 +148,17 @@ func gpsCoordinates(exif map[string]any) (latitude, longitude float64, ok bool) 
 }
 
 func (a *App) pairedLiveVideo(ctx context.Context, imageKey string) string {
-	base := strings.TrimSuffix(imageKey, filepath.Ext(imageKey))
-	name := strings.TrimSuffix(filepath.Base(imageKey), filepath.Ext(imageKey))
-	extensions := []string{".mp4", ".MP4"}
-	candidates := []string{}
-	// Memora generates Live Photo media as MP4. Keep case-insensitive MP4
-	// matching for existing providers without probing unrelated media.
-	for _, ext := range extensions {
-		candidates = append(candidates, base+ext, name+ext)
-		if prefix := strings.Trim(a.storage.Prefix(), "/"); prefix != "" {
-			candidates = append(candidates, prefix+"/"+name+ext)
-		}
+	// Generated Live Photo media always uses one canonical, lower-case MP4
+	// sibling path. Avoid probing alternate prefixes/casing on every photo.
+	normalized := strings.TrimLeft(strings.ReplaceAll(imageKey, "\\", "/"), "/")
+	dir := filepath.ToSlash(filepath.Dir(normalized))
+	name := strings.TrimSuffix(filepath.Base(normalized), filepath.Ext(normalized))
+	candidate := name + ".mp4"
+	if dir != "." && dir != "" {
+		candidate = strings.Trim(dir, "/") + "/" + candidate
 	}
-	for _, candidate := range uniqueStrings(candidates) {
-		if _, err := a.storage.Meta(ctx, candidate); err == nil && a.validStoredVideo(ctx, candidate) {
-			return candidate
-		}
+	if _, err := a.storage.Meta(ctx, candidate); err == nil && a.validStoredVideo(ctx, candidate) {
+		return candidate
 	}
 	return ""
 }

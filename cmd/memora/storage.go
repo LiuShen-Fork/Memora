@@ -444,6 +444,12 @@ func (s *OpenListStorage) responsePayloadError(operation, path string, code *int
 	if message == "" {
 		message = "no provider error message"
 	}
+	lowerMessage := strings.ToLower(message)
+	if strings.Contains(lowerMessage, "filenotfound") ||
+		strings.Contains(lowerMessage, "object not found") ||
+		strings.Contains(lowerMessage, "file is notfound") {
+		return fmt.Errorf("%w: openlist %s: provider code %d: %s", ErrStorageNotFound, operation, *code, message)
+	}
 	err := fmt.Errorf("openlist %s: provider code %d: %s", operation, *code, message)
 	log.Printf("[storage/openlist] %s %s failed: %v", operation, path, err)
 	return err

@@ -267,12 +267,19 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 		hasGPS = false
 	}
 	a.setStage(t.ID, "motion-photo")
-	// Prefer an already-uploaded paired video. Reprocessing the image must not
-	// overwrite a valid remote MP4 with a newly extracted (or malformed) blob.
+	// Preserve an existing Live Photo reference while reprocessing metadata.
+	// A transient EXIF/provider issue must not turn a valid MP4 into a static
+	// photo. Missing objects are cleared below and can be regenerated later.
+	var existingVideoKey string
+	_ = a.db.QueryRow(`SELECT COALESCE(live_photo_video_key,'') FROM photos WHERE id=?`, id).Scan(&existingVideoKey)
 	motionVideoKey := ""
+	if existingVideoKey != "" {
+		if _, metaErr := a.storage.Meta(ctx, existingVideoKey); metaErr == nil || !errors.Is(metaErr, ErrStorageNotFound) {
+			motionVideoKey = existingVideoKey
+		}
+	}
 	hasMotionMetadata := motionPhotoMetadata(exif, raw)
 	if hasMotionMetadata {
-		motionVideoKey = a.pairedLiveVideo(ctx, key)
 		if motionVideoKey == "" {
 			var motionErr error
 			motionVideoKey, motionErr = a.extractMotionPhoto(ctx, id, key, raw, exif)

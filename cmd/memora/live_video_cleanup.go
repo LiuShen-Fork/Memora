@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func (a *App) cleanupInvalidGeneratedVideos() {
 
 		// Check the database reference first. This also handles legacy records
 		// whose generated file was stored with a provider prefix.
-		if videoKey != "" && !a.validStoredVideo(ctx, a.relativeStorageKey(videoKey)) {
+		if videoKey != "" && a.clearInvalidVideoReference(ctx, a.relativeStorageKey(videoKey)) {
 			if a.deleteStorageObject(ctx, videoKey) {
 				removed++
 			}
@@ -47,7 +48,7 @@ func (a *App) cleanupInvalidGeneratedVideos() {
 		// Motion Photo. Remove only malformed files with that exact generated
 		// name; valid files are left for normal pairing/detection.
 		generatedKey := id + ".mp4"
-		if _, err := a.storage.Meta(ctx, generatedKey); err == nil && !a.validStoredVideo(ctx, generatedKey) {
+		if a.invalidStoredVideo(ctx, generatedKey) {
 			if a.deleteStorageObject(ctx, generatedKey) {
 				removed++
 			}
@@ -62,6 +63,28 @@ func (a *App) cleanupInvalidGeneratedVideos() {
 	if removed > 0 {
 		a.logs.Add("queue", fmt.Sprintf("removed %d invalid generated Live Photo videos", removed))
 	}
+}
+
+// invalidStoredVideo only reports a confirmed invalid object. Missing objects
+// are safe to clear, while provider/read failures and oversized videos remain
+// untouched because they cannot be validated reliably.
+func (a *App) invalidStoredVideo(ctx context.Context, key string) bool {
+	object, err := a.storage.Meta(ctx, key)
+	if err != nil || object.Size > a.mediaLimit() {
+		return false
+	}
+	return !a.validStoredVideo(ctx, key)
+}
+
+func (a *App) clearInvalidVideoReference(ctx context.Context, key string) bool {
+	object, err := a.storage.Meta(ctx, key)
+	if errors.Is(err, ErrStorageNotFound) {
+		return true
+	}
+	if err != nil || object.Size > a.mediaLimit() {
+		return false
+	}
+	return !a.validStoredVideo(ctx, key)
 }
 
 func (a *App) relativeStorageKey(key string) string {

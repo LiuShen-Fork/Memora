@@ -41,9 +41,8 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 	if !ok {
 		return "", errors.New("motion photo metadata found but embedded MP4 was not located")
 	}
-	if existing, err := a.storage.Meta(ctx, photoID+".mp4"); err == nil && a.validStoredVideo(ctx, photoID+".mp4") {
-		return existing.Key, nil
-	}
+	// The generated MP4 is deterministic. Reprocessing is allowed to replace
+	// an incomplete or stale copy, so do not probe the remote provider first.
 	object, err := a.storage.Create(ctx, photoID+".mp4", video, "video/mp4")
 	if err != nil {
 		return "", err
