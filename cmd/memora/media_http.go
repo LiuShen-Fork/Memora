@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -60,6 +61,9 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	if streamStorage, ok := a.storage.(ReaderStorage); ok {
 		reader, object, resolvedKey, err := a.openMedia(streamStorage, mediaCtx, key)
 		if err != nil {
+			if errors.Is(err, ErrStorageNotFound) {
+				a.removeMissingPhotoReference(key)
+			}
 			errorJSON(w, http.StatusNotFound, "Photo not found")
 			return
 		}
@@ -89,6 +93,9 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := a.readStorageBytes(mediaCtx, key)
 	if err != nil {
+		if errors.Is(err, ErrStorageNotFound) {
+			a.removeMissingPhotoReference(key)
+		}
 		errorJSON(w, 404, "Photo not found")
 		return
 	}
@@ -124,6 +131,9 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 		key := strings.TrimPrefix(strings.TrimPrefix(target, "/storage/"), "/image/")
 		data, err := a.readStorageBytes(r.Context(), key)
 		if err != nil {
+			if errors.Is(err, ErrStorageNotFound) {
+				a.removeMissingPhotoReference(key)
+			}
 			errorJSON(w, 404, "Photo not found")
 			return
 		}
@@ -159,6 +169,9 @@ func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := a.readStorageBytes(r.Context(), target)
 	if err != nil {
+		if errors.Is(err, ErrStorageNotFound) {
+			a.removeMissingPhotoReference(target)
+		}
 		errorJSON(w, 404, "Photo not found")
 		return
 	}
@@ -184,6 +197,61 @@ func (a *App) writeThumbnail(w http.ResponseWriter, r *http.Request, data []byte
 	_, _ = w.Write(data)
 }
 func urlPathUnescape(v string) (string, error) { return url.PathUnescape(v) }
+
+// removeMissingPhotoReference keeps the gallery database in sync when a
+// remote provider confirms that an object was deleted outside Memora.
+func (a *App) removeMissingPhotoReference(key string) {
+	key = strings.TrimLeft(strings.ReplaceAll(key, "\\", "/"), "/")
+	if key == "" || a.db == nil {
+		return
+	}
+	candidates := []string{key}
+	if prefix := strings.Trim(a.storage.Prefix(), "/"); prefix != "" && !strings.HasPrefix(key, prefix+"/") {
+		candidates = append(candidates, prefix+"/"+key)
+	}
+	placeholders := strings.Repeat("?,", len(candidates)-1) + "?"
+	args := make([]any, len(candidates))
+	for i, candidate := range candidates {
+		args[i] = candidate
+	}
+	rows, err := a.db.Query(`SELECT id,storage_key,thumbnail_key,live_photo_video_key FROM photos WHERE storage_key IN (`+placeholders+`) OR thumbnail_key IN (`+placeholders+`) OR live_photo_video_key IN (`+placeholders+`)`, append(append(append([]any{}, args...), args...), args...)...)
+	if err != nil {
+		return
+	}
+	type staleReference struct{ id, original, thumbnail, liveVideo string }
+	stale := []staleReference{}
+	for rows.Next() {
+		var id, original, thumbnail, liveVideo string
+		if rows.Scan(&id, &original, &thumbnail, &liveVideo) != nil {
+			continue
+		}
+		stale = append(stale, staleReference{id: id, original: original, thumbnail: thumbnail, liveVideo: liveVideo})
+	}
+	_ = rows.Close()
+	for _, record := range stale {
+		id, original, thumbnail, liveVideo := record.id, record.original, record.thumbnail, record.liveVideo
+		matches := func(value string) bool {
+			value = strings.TrimLeft(strings.ReplaceAll(value, "\\", "/"), "/")
+			for _, candidate := range candidates {
+				if value == candidate {
+					return true
+				}
+			}
+			return false
+		}
+		switch {
+		case matches(original):
+			if _, err := a.db.Exec(`DELETE FROM photos WHERE id=?`, id); err == nil {
+				a.logs.Add("storage", "removed stale photo reference "+id)
+			}
+		case matches(thumbnail):
+			_, _ = a.db.Exec(`UPDATE photos SET thumbnail_key=NULL,thumbnail_url=NULL WHERE id=?`, id)
+		case matches(liveVideo):
+			_, _ = a.db.Exec(`UPDATE photos SET is_live_photo=0,live_photo_video_key=NULL,live_photo_video_url=NULL WHERE id=?`, id)
+		}
+	}
+}
+
 func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 	webDir := a.cfg.WebDir
 	// Older deployments may still copy the generated bundle to ./web. When

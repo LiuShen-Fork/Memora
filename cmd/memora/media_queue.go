@@ -55,7 +55,14 @@ func (a *App) worker(id int) {
 			continue
 		}
 		if err := a.processTask(task); err != nil {
-			a.failTask(task.ID, err.Error())
+			// A provider-confirmed missing object cannot become available by
+			// retrying. Keep the task visible as failed, but avoid hammering
+			// remote storage three times for the same deleted file.
+			if errors.Is(err, ErrStorageNotFound) {
+				a.failTaskPermanent(task.ID, err.Error())
+			} else {
+				a.failTask(task.ID, err.Error())
+			}
 		} else {
 			a.completeTask(task.ID)
 		}
@@ -128,6 +135,10 @@ func (a *App) failTask(id int64, message string) {
 	} else {
 		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='failed', attempts=?, error_message=? WHERE id=?`, attempts, message, id)
 	}
+}
+
+func (a *App) failTaskPermanent(id int64, message string) {
+	_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='failed', attempts=max_attempts, error_message=? WHERE id=?`, message, id)
 }
 func min(a, b int) int {
 	if a < b {

@@ -27,6 +27,11 @@ type Object struct {
 var storageHTTPClient = &http.Client{Timeout: 2 * time.Minute}
 var externalHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
+// ErrStorageNotFound identifies a provider response that definitively says
+// the object no longer exists. Callers can clean stale database references
+// without treating transient provider failures as missing media.
+var ErrStorageNotFound = errors.New("storage object not found")
+
 type Storage interface {
 	Create(context.Context, string, []byte, string) (Object, error)
 	Get(context.Context, string) ([]byte, error)
@@ -308,7 +313,7 @@ func (s *OpenListStorage) Open(ctx context.Context, k string) (io.ReadCloser, Ob
 	if resp.StatusCode >= 300 {
 		err := s.responseError("get", s.full(k), resp)
 		_ = resp.Body.Close()
-		if s.download == "" {
+		if s.download == "" && !errors.Is(err, ErrStorageNotFound) {
 			rawURL, rawErr := s.rawURL(ctx, k)
 			if rawErr != nil {
 				err = fmt.Errorf("%w; raw_url lookup: %v", err, rawErr)
@@ -395,6 +400,10 @@ func (s *OpenListStorage) responseError(operation, path string, resp *http.Respo
 		message = "no response body"
 	}
 	log.Printf("[storage/openlist] %s %s failed: %s (%s)", operation, path, resp.Status, message)
+	lowerMessage := strings.ToLower(message)
+	if resp.StatusCode == http.StatusNotFound || strings.Contains(lowerMessage, "filenotfound") || strings.Contains(lowerMessage, "object not found") || strings.Contains(lowerMessage, "file is notfound") {
+		return fmt.Errorf("%w: openlist %s: %s: %s", ErrStorageNotFound, operation, resp.Status, message)
+	}
 	return fmt.Errorf("openlist %s: %s: %s", operation, resp.Status, message)
 }
 func (s *OpenListStorage) Get(ctx context.Context, k string) ([]byte, error) {

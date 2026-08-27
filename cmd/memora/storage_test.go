@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -69,6 +70,52 @@ func TestOpenListOpenFallsBackToRawURL(t *testing.T) {
 	}
 	if string(data) != "image-data" || object.Key != "photos/photo.jpg" {
 		t.Fatalf("fallback result = %q, key %q", data, object.Key)
+	}
+}
+
+func TestOpenListMissingObjectSkipsRawURLFallback(t *testing.T) {
+	var getCalls, metaCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/d/"):
+			getCalls++
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, `<error><code>FileNotFound</code><message>file is notfound or is delete!</message></error>`)
+		case r.Method == http.MethodPost && r.URL.Path == "/api/fs/get":
+			metaCalls++
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	storage := &OpenListStorage{baseURL: server.URL, root: "photos", token: "token"}
+	_, _, err := storage.Open(context.Background(), "missing.jpg")
+	if !errors.Is(err, ErrStorageNotFound) {
+		t.Fatalf("Open() error = %v, want ErrStorageNotFound", err)
+	}
+	if getCalls != 1 || metaCalls != 0 {
+		t.Fatalf("missing object requests = GET %d, meta %d; want GET 1, meta 0", getCalls, metaCalls)
+	}
+}
+
+func TestOpenListMissingObjectIsNotRetryable(t *testing.T) {
+	app := newTestApp(t)
+	result, err := app.db.Exec(`INSERT INTO pipeline_queue(payload,max_attempts,status) VALUES('{}',3,'in-stages')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, _ := result.LastInsertId()
+	app.failTaskPermanent(id, ErrStorageNotFound.Error())
+
+	var status string
+	var attempts int
+	if err := app.db.QueryRow(`SELECT status,attempts FROM pipeline_queue WHERE id=?`, id).Scan(&status, &attempts); err != nil {
+		t.Fatal(err)
+	}
+	if status != "failed" || attempts != 3 {
+		t.Fatalf("permanent failure = status %q attempts %d, want failed/3", status, attempts)
 	}
 }
 
