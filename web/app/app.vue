@@ -46,12 +46,19 @@ useHead({
 const route = useRoute()
 const shouldLoadPhotos = computed(() => {
   const path = route.path
+  // Photo IDs are not limited to the legacy 32-character hash format
+  // (uploads may use names such as MVIMG_20260827_194303). Keep the global
+  // collection mounted for every single-segment photo detail route so
+  // returning home does not trigger a second full collection fetch.
+  const isPhotoDetailRoute =
+    /^\/[^/]+$/.test(path) &&
+    !['/signin', '/onboarding', '/dashboard'].includes(path)
   return (
     path === '/' ||
     path === '/albums' ||
     path === '/globe' ||
     path === '/dashboard/photos' ||
-    /^\/[a-f0-9]{32}$/i.test(path)
+    isPhotoDetailRoute
   )
 })
 const apiEndpoint = computed(() => {
