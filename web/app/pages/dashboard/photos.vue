@@ -1402,11 +1402,12 @@ const handleUploadBatch = async () => {
   }
 
   // 开始处理队列
-  await processQueue()
+  void processQueue().then(() => {
 
   if (errors.length > 0) {
     console.error('批量上传错误详情:', errors)
   }
+  })
 
   // 清空选中的文件
   selectedFiles.value = []
