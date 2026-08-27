@@ -181,6 +181,13 @@ func TestMediaReadsHonorConfiguredLimit(t *testing.T) {
 	if _, err := app.storage.Create(context.Background(), key, []byte("12345"), "application/octet-stream"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := app.readStorageBytes(context.Background(), key); err != nil {
+		t.Fatalf("small legacy MB value should allow a small file: %v", err)
+	}
+	app.cfg.MediaMaxBytes = 4 << 20
+	if _, err := app.storage.Create(context.Background(), key, bytes.Repeat([]byte{'x'}, 5<<20), "application/octet-stream"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := app.readStorageBytes(context.Background(), key); err == nil {
 		t.Fatal("expected media size limit error")
 	}

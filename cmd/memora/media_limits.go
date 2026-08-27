@@ -17,11 +17,18 @@ const (
 )
 
 func (a *App) mediaLimit() int64 {
+	configuredProcessLimit := a.cfg.MediaMaxBytes
+	// MediaMaxBytes is stored in bytes internally, but older deployments may
+	// have populated it directly from the documented *_MB value. Treat small
+	// values as megabytes so `32` can never accidentally mean 32 bytes.
+	if configuredProcessLimit > 0 && configuredProcessLimit < 1<<20 {
+		configuredProcessLimit *= 1024 * 1024
+	}
 	// An explicit environment/config value remains authoritative for existing
 	// deployments and tests. The default value can be overridden at runtime
 	// through the system.upload.maxFileSize setting below.
-	if a.cfg.MediaMaxBytes > 0 && a.cfg.MediaMaxBytes != defaultMediaMaxBytes {
-		return a.cfg.MediaMaxBytes
+	if configuredProcessLimit > 0 && configuredProcessLimit != defaultMediaMaxBytes {
+		return configuredProcessLimit
 	}
 	var configured any
 	if a.readSetting("system", "upload.maxFileSize", &configured) {
@@ -38,8 +45,8 @@ func (a *App) mediaLimit() int64 {
 			return megabytes * 1024 * 1024
 		}
 	}
-	if a.cfg.MediaMaxBytes > 0 {
-		return a.cfg.MediaMaxBytes
+	if configuredProcessLimit > 0 {
+		return configuredProcessLimit
 	}
 	return defaultMediaMaxBytes
 }
