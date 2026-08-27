@@ -502,8 +502,13 @@ func ffmpegThumbnail(ffmpeg string, data []byte) ([]byte, error) {
 	return ffmpegThumbnailContext(context.Background(), ffmpeg, data)
 }
 
+// Keep the shortest edge at up to 600px, matching the previous Sharp
+// pipeline while avoiding needless upscaling of already-small images.
+const thumbnailMinDimension = 600
+
 func ffmpegThumbnailContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", "scale='min(600,iw)':-2", "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
+	filter := fmt.Sprintf("scale='if(gt(iw,ih),-2,min(%d,iw))':'if(gt(iw,ih),min(%d,ih),-2)'", thumbnailMinDimension, thumbnailMinDimension)
+	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
 	return runCommandOutput(ctx, cmd, maxToolOutputBytes)
 }
