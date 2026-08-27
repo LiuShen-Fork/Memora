@@ -269,12 +269,15 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 	a.setStage(t.ID, "motion-photo")
 	// Prefer an already-uploaded paired video. Reprocessing the image must not
 	// overwrite a valid remote MP4 with a newly extracted (or malformed) blob.
-	motionVideoKey := a.pairedLiveVideo(ctx, key)
-	if motionVideoKey == "" {
-		var motionErr error
-		motionVideoKey, motionErr = a.extractMotionPhoto(ctx, id, key, raw, exif)
-		if motionErr != nil {
-			a.logs.Add("queue", motionError(key, motionErr).Error())
+	motionVideoKey := ""
+	if hasMotionMetadata := motionPhotoMetadata(exif, raw); hasMotionMetadata {
+		motionVideoKey = a.pairedLiveVideo(ctx, key)
+		if motionVideoKey == "" {
+			var motionErr error
+			motionVideoKey, motionErr = a.extractMotionPhoto(ctx, id, key, raw, exif)
+			if motionErr != nil {
+				a.logs.Add("queue", motionError(key, motionErr).Error())
+			}
 		}
 	}
 	if motionVideoKey == "" {

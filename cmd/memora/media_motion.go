@@ -14,7 +14,7 @@ import (
 const motionScanLimit = 512 * 1024
 
 func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string, data []byte, exif map[string]any) (string, error) {
-	motion := motionBool(exif["MotionPhoto"]) || motionBool(exif["MicroVideo"])
+	motion := motionPhotoMetadata(exif, data)
 	offsets := []int{}
 	for _, key := range []string{"MicroVideoOffset", "GCamera:MicroVideoOffset"} {
 		if value, ok := motionNumber(exif[key]); ok && value > 0 {
@@ -49,6 +49,22 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 		return "", err
 	}
 	return object.Key, nil
+}
+
+// motionPhotoMetadata reports whether the image declares a Motion Photo. It
+// is intentionally cheap and is used to avoid probing .mov/.mp4 siblings for
+// every ordinary photograph.
+func motionPhotoMetadata(exif map[string]any, data []byte) bool {
+	if motionBool(exif["MotionPhoto"]) || motionBool(exif["MicroVideo"]) {
+		return true
+	}
+	for _, key := range []string{"MicroVideoOffset", "GCamera:MicroVideoOffset"} {
+		if value, ok := motionNumber(exif[key]); ok && value > 0 {
+			return true
+		}
+	}
+	xmp := strings.ToLower(string(data[:min(len(data), motionScanLimit)]))
+	return strings.Contains(xmp, "motionphoto") || strings.Contains(xmp, "microvideo")
 }
 
 // validStoredVideo rejects mislabeled image containers and zero-duration
