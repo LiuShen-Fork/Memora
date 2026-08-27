@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -506,9 +507,16 @@ func ffmpegThumbnail(ffmpeg string, data []byte) ([]byte, error) {
 // pipeline while avoiding needless upscaling of already-small images.
 const thumbnailMinDimension = 600
 
+func thumbnailQuality(size int) int {
+	if size <= 5*1024*1024 {
+		return 100
+	}
+	return 85
+}
+
 func ffmpegThumbnailContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
 	filter := fmt.Sprintf("scale='if(gt(iw,ih),-2,min(%d,iw))':'if(gt(iw,ih),min(%d,ih),-2)'", thumbnailMinDimension, thumbnailMinDimension)
-	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-quality", "85", "-f", "webp", "pipe:1")
+	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-quality", strconv.Itoa(thumbnailQuality(len(data))), "-f", "webp", "pipe:1")
 	cmd.Stdin = bytes.NewReader(data)
 	return runCommandOutput(ctx, cmd, maxToolOutputBytes)
 }
