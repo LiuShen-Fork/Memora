@@ -1402,12 +1402,18 @@ const handleUploadBatch = async () => {
   }
 
   // 开始处理队列
-  void processQueue().then(() => {
-
-  if (errors.length > 0) {
-    console.error('批量上传错误详情:', errors)
+  const startQueue = () => {
+    void processQueue().then(() => {
+      if (errors.length > 0) {
+        console.error('批量上传错误详情:', errors)
+      }
+    })
   }
-  })
+  if (typeof window !== 'undefined') {
+    window.setTimeout(startQueue, 0)
+  } else {
+    startQueue()
+  }
 
   // 清空选中的文件
   selectedFiles.value = []
