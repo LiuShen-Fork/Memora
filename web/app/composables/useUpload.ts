@@ -32,6 +32,28 @@ export interface UseUploadOptions {
   retryDelay?: number // 重试延迟（毫秒）
 }
 
+function responseErrorMessage(xhr: XMLHttpRequest, fallback: string): string {
+  const responseText = xhr.responseText?.trim()
+  if (!responseText) return fallback
+  try {
+    const response = JSON.parse(responseText) as {
+      message?: unknown
+      statusMessage?: unknown
+      data?: { message?: unknown; title?: unknown }
+    }
+    const message =
+      response.message ??
+      response.statusMessage ??
+      response.data?.message ??
+      response.data?.title
+    return typeof message === 'string' && message.trim()
+      ? message.trim()
+      : fallback
+  } catch {
+    return responseText
+  }
+}
+
 export function useUpload(options: UseUploadOptions = {}) {
   // useUpload() is invoked from within an async upload handler (outside the
   // synchronous setup context), so useI18n() would throw "Must be called at
@@ -178,6 +200,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
       // 成功处理
       xhr.addEventListener('load', () => {
+        if (xhr.status < 200 || xhr.status >= 300) return
         const endTime = Date.now()
         updateStatus({ status: 'success', endTime })
         callbacks.onStatusChange?.('success')
@@ -330,10 +353,8 @@ export function useUpload(options: UseUploadOptions = {}) {
               const responseText = xhr.responseText
               if (responseText) {
                 try {
-                  const responseData = JSON.parse(responseText)
-                  if (responseData.data?.message) {
-                    errorMessage = responseData.data.title || errorMessage
-                  }
+                  JSON.parse(responseText)
+                  errorMessage = responseErrorMessage(xhr, errorMessage)
                 } catch {
                   // 如果不是 JSON，使用原始文本
                   errorMessage += ` - ${responseText}`
@@ -346,6 +367,7 @@ export function useUpload(options: UseUploadOptions = {}) {
             updateStatus({ status: 'error', error: errorMessage, endTime })
             callbacks.onStatusChange?.('error')
             callbacks.onError?.(errorMessage, xhr)
+            reject(new Error(errorMessage))
           }
         }
       })
