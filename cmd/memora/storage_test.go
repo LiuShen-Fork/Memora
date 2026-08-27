@@ -31,6 +31,7 @@ func TestOpenListCreateReaderUsesRawFilePath(t *testing.T) {
 }
 
 func TestOpenListOpenFallsBackToRawURL(t *testing.T) {
+	const token = "token"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/d/"):
@@ -39,6 +40,10 @@ func TestOpenListOpenFallsBackToRawURL(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = io.WriteString(w, "{\"data\":{\"raw_url\":\"/raw/photo.jpg\"}}")
 		case r.Method == http.MethodGet && r.URL.Path == "/raw/photo.jpg":
+			if r.Header.Get("Authorization") != token {
+				http.Error(w, "missing authorization", http.StatusUnauthorized)
+				return
+			}
 			_, _ = io.WriteString(w, "image-data")
 		default:
 			http.NotFound(w, r)
@@ -46,7 +51,7 @@ func TestOpenListOpenFallsBackToRawURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	storage := &OpenListStorage{baseURL: server.URL, root: "photos", token: "token", pathField: "path"}
+	storage := &OpenListStorage{baseURL: server.URL, root: "photos", token: token, pathField: "path"}
 	reader, object, err := storage.Open(context.Background(), "photo.jpg")
 	if err != nil {
 		t.Fatalf("Open() error = %v", err)

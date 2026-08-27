@@ -321,6 +321,15 @@ func (s *OpenListStorage) openRawURL(ctx context.Context, rawURL string) (io.Rea
 	if err != nil {
 		return nil, nil, err
 	}
+	// OpenList may return an authenticated API URL instead of a public link.
+	// Only forward the token to the configured OpenList host, never to a
+	// third-party URL returned by a storage driver.
+	if target, targetErr := url.Parse(rawURL); targetErr == nil {
+		if base, baseErr := url.Parse(strings.TrimRight(s.baseURL, "/")); baseErr == nil &&
+			strings.EqualFold(target.Scheme, base.Scheme) && strings.EqualFold(target.Host, base.Host) {
+			req.Header.Set("Authorization", s.token)
+		}
+	}
 	resp, err := storageHTTPClient.Do(req)
 	if err != nil {
 		return nil, nil, err
