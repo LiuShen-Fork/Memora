@@ -9,6 +9,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -236,6 +237,12 @@ func (s *S3Storage) SignedURL(ctx context.Context, k, ct string) (string, error)
 type OpenListStorage struct{ baseURL, root, token, upload, download, list, delete, meta, pathField, cdn string }
 
 func (s *OpenListStorage) Prefix() string { return strings.Trim(s.root, "/") }
+func (s *OpenListStorage) pathFieldName() string {
+	if name := strings.TrimSpace(s.pathField); name != "" {
+		return name
+	}
+	return "path"
+}
 func (s *OpenListStorage) full(k string) string {
 	return "/" + strings.Trim(storageKey(s.root, k), "/")
 }
@@ -263,7 +270,9 @@ func (s *OpenListStorage) CreateReader(ctx context.Context, k string, reader io.
 		return Object{}, err
 	}
 	req.Header.Set("Authorization", s.token)
-	req.Header.Set("File-Path", url.PathEscape(s.full(k)))
+	// OpenList expects a Unix-style path in File-Path; escaping the complete
+	// path turns separators into data and can make the uploaded object unreadable.
+	req.Header.Set("File-Path", s.full(k))
 	req.Header.Set("Content-Type", ct)
 	if size >= 0 {
 		req.ContentLength = size
@@ -274,7 +283,7 @@ func (s *OpenListStorage) CreateReader(ctx context.Context, k string, reader io.
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		return Object{}, fmt.Errorf("openlist upload: %s", resp.Status)
+		return Object{}, s.responseError("upload", s.full(k), resp)
 	}
 	return Object{Key: storageKey(s.root, k), Size: size, ModTime: time.Now()}, nil
 }
@@ -283,17 +292,94 @@ func (s *OpenListStorage) Open(ctx context.Context, k string) (io.ReadCloser, Ob
 	if endpoint == "" {
 		endpoint = "/d" + s.full(k)
 	} else {
-		endpoint += "?" + url.QueryEscape(s.pathField) + "=" + url.PathEscape(s.full(k))
+		endpoint += "?" + url.QueryEscape(s.pathFieldName()) + "=" + url.QueryEscape(s.full(k))
 	}
 	resp, err := s.request(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, Object{}, err
 	}
 	if resp.StatusCode >= 300 {
-		resp.Body.Close()
-		return nil, Object{}, fmt.Errorf("openlist get: %s", resp.Status)
+		err := s.responseError("get", s.full(k), resp)
+		_ = resp.Body.Close()
+		if s.download == "" {
+			rawURL, rawErr := s.rawURL(ctx, k)
+			if rawErr != nil {
+				err = fmt.Errorf("%w; raw_url lookup: %v", err, rawErr)
+			} else if rawReader, rawResp, fetchErr := s.openRawURL(ctx, rawURL); fetchErr == nil {
+				return rawReader, Object{Key: storageKey(s.root, k), Size: rawResp.ContentLength, ModTime: time.Time{}}, nil
+			} else {
+				err = fmt.Errorf("%w; raw_url fallback: %v", err, fetchErr)
+			}
+		}
+		return nil, Object{}, err
 	}
 	return resp.Body, Object{Key: storageKey(s.root, k), Size: resp.ContentLength, ModTime: time.Time{}}, nil
+}
+
+func (s *OpenListStorage) openRawURL(ctx context.Context, rawURL string) (io.ReadCloser, *http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := storageHTTPClient.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	if resp.StatusCode >= 300 {
+		err := s.responseError("raw_url", rawURL, resp)
+		_ = resp.Body.Close()
+		return nil, nil, err
+	}
+	return resp.Body, resp, nil
+}
+
+func (s *OpenListStorage) rawURL(ctx context.Context, k string) (string, error) {
+	endpoint := s.meta
+	if endpoint == "" {
+		endpoint = "/api/fs/get"
+	}
+	payload, _ := json.Marshal(map[string]any{s.pathFieldName(): s.full(k), "password": "", "page": 1, "per_page": 0, "refresh": false})
+	resp, err := s.request(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return "", s.responseError("meta", s.full(k), resp)
+	}
+	var body struct {
+		Data struct {
+			RawURL string `json:"raw_url"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return "", fmt.Errorf("openlist meta decode: %w", err)
+	}
+	if strings.TrimSpace(body.Data.RawURL) == "" {
+		return "", errors.New("openlist meta: response did not include raw_url")
+	}
+	rawURL, err := url.Parse(body.Data.RawURL)
+	if err != nil {
+		return "", fmt.Errorf("openlist meta raw_url: %w", err)
+	}
+	if !rawURL.IsAbs() {
+		base, err := url.Parse(strings.TrimRight(s.baseURL, "/"))
+		if err != nil {
+			return "", fmt.Errorf("openlist base URL: %w", err)
+		}
+		rawURL = base.ResolveReference(rawURL)
+	}
+	return rawURL.String(), nil
+}
+
+func (s *OpenListStorage) responseError(operation, path string, resp *http.Response) error {
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	message := strings.TrimSpace(string(body))
+	if message == "" {
+		message = "no response body"
+	}
+	log.Printf("[storage/openlist] %s %s failed: %s (%s)", operation, path, resp.Status, message)
+	return fmt.Errorf("openlist %s: %s: %s", operation, resp.Status, message)
 }
 func (s *OpenListStorage) Get(ctx context.Context, k string) ([]byte, error) {
 	reader, _, err := s.Open(ctx, k)
@@ -321,7 +407,7 @@ func (s *OpenListStorage) Delete(ctx context.Context, k string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("openlist delete: %s", resp.Status)
+		return s.responseError("delete", s.full(k), resp)
 	}
 	return nil
 }
@@ -330,14 +416,14 @@ func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
 	if endpoint == "" {
 		endpoint = "/api/fs/get"
 	}
-	payload, _ := json.Marshal(map[string]any{s.pathField: s.full(k), "password": "", "page": 1, "per_page": 0, "refresh": false})
+	payload, _ := json.Marshal(map[string]any{s.pathFieldName(): s.full(k), "password": "", "page": 1, "per_page": 0, "refresh": false})
 	resp, err := s.request(ctx, "POST", endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return Object{}, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		return Object{}, fmt.Errorf("openlist meta: %s", resp.Status)
+		return Object{}, s.responseError("meta", s.full(k), resp)
 	}
 	var body struct {
 		Data struct {
@@ -346,12 +432,21 @@ func (s *OpenListStorage) Meta(ctx context.Context, k string) (Object, error) {
 			RawURL   string `json:"raw_url"`
 		} `json:"data"`
 	}
-	_ = json.NewDecoder(resp.Body).Decode(&body)
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return Object{}, fmt.Errorf("openlist meta decode: %w", err)
+	}
 	return Object{Key: storageKey(s.root, k), Size: body.Data.Size, ModTime: parseTime(body.Data.Modified)}, nil
 }
 func parseTime(value string) time.Time {
-	if t, err := time.Parse(time.RFC3339, value); err == nil {
-		return t
+	value = strings.ReplaceAll(strings.TrimSpace(value), "\u202f", " ")
+	for _, layout := range []string{
+		time.RFC3339,
+		"Jan 2, 2006, 3:04:05 PM -07",
+		"Jan 2, 2006, 3:04:05 PM MST",
+	} {
+		if t, err := time.Parse(layout, value); err == nil {
+			return t
+		}
 	}
 	return time.Time{}
 }
