@@ -103,26 +103,15 @@ func (a *App) serveImage(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, filepath.Base(key), time.Time{}, bytes.NewReader(data))
 }
 
-// openMedia tolerates legacy records whose video extension does not match the
-// object that was actually uploaded. The requested key remains the public URL;
-// only the storage lookup and response metadata use the resolved key.
+// openMedia reads the exact key stored in the database. Generated Live Photo
+// videos use MP4 consistently, so silently probing alternate extensions would
+// turn missing-media requests into unnecessary remote calls.
 func (a *App) openMedia(storage ReaderStorage, ctx context.Context, key string) (io.ReadCloser, Object, string, error) {
-	keys := []string{key}
-	switch strings.ToLower(filepath.Ext(key)) {
-	case ".mov":
-		keys = append(keys, strings.TrimSuffix(key, filepath.Ext(key))+".mp4")
-	case ".mp4":
-		keys = append(keys, strings.TrimSuffix(key, filepath.Ext(key))+".mov")
+	reader, object, err := storage.Open(ctx, key)
+	if err != nil {
+		return nil, Object{}, "", err
 	}
-	var lastErr error
-	for _, candidate := range keys {
-		reader, object, err := storage.Open(ctx, candidate)
-		if err == nil {
-			return reader, object, candidate, nil
-		}
-		lastErr = err
-	}
-	return nil, Object{}, "", lastErr
+	return reader, object, key, nil
 }
 func (a *App) serveThumb(w http.ResponseWriter, r *http.Request) {
 	target := strings.TrimPrefix(r.URL.Path, "/thumb/")

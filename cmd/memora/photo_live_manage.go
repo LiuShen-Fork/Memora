@@ -39,7 +39,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		_ = rows.Close()
 		results := []map[string]any{}
 		for _, id := range photoIDs {
-			success, key, err := a.detectLivePhoto(r, id, false)
+			success, key, err := a.detectLivePhoto(r, id)
 			result := map[string]any{"photoId": id, "success": success, "videoKey": key}
 			if err != nil {
 				result["error"] = err.Error()
@@ -71,7 +71,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 			errorJSON(w, http.StatusBadRequest, "photoId is required for update-photo action")
 			return
 		}
-		success, key, err := a.detectLivePhoto(r, body.PhotoID, true)
+		success, key, err := a.detectLivePhoto(r, body.PhotoID)
 		if err != nil {
 			errorJSON(w, http.StatusNotFound, err.Error())
 			return
@@ -86,7 +86,7 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 		}
 		results := make([]map[string]any, 0, len(body.PhotoIDs))
 		for _, id := range uniqueStrings(body.PhotoIDs) {
-			success, key, err := a.detectLivePhoto(r, id, false)
+			success, key, err := a.detectLivePhoto(r, id)
 			result := map[string]any{"photoId": id, "success": success, "videoKey": key}
 			if err != nil {
 				result["error"] = err.Error()
@@ -99,8 +99,8 @@ func (a *App) manageLivePhoto(w http.ResponseWriter, r *http.Request) {
 	errorJSON(w, http.StatusBadRequest, "Supported actions are scan, detect, process, and update-photo")
 }
 
-// processSpecificLivePhotoVideo mirrors the Nuxt management action: only
-// small MOV files are treated as Live Photos and the matching image record is
+// processSpecificLivePhotoVideo mirrors the management action: only
+// small MP4 files are treated as Live Photos and the matching image record is
 // updated with the video's public URL and storage key.
 func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string) (bool, error) {
 	object, err := a.storage.Meta(ctx, videoKey)
@@ -116,7 +116,7 @@ func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string
 		size = int64(len(data))
 	}
 	ext := strings.ToLower(filepath.Ext(videoKey))
-	if (ext != ".mov" && ext != ".mp4") || size > 12*1024*1024 {
+	if ext != ".mp4" || size > 12*1024*1024 {
 		return false, nil
 	}
 	photoID, _ := a.findPairedPhoto(videoKey)
@@ -131,7 +131,7 @@ func (a *App) processSpecificLivePhotoVideo(ctx context.Context, videoKey string
 	return err == nil, err
 }
 
-func (a *App) detectLivePhoto(r *http.Request, photoID string, allowLegacyPairing bool) (bool, string, error) {
+func (a *App) detectLivePhoto(r *http.Request, photoID string) (bool, string, error) {
 	if photoID == "" {
 		return false, "", errPhotoIDRequired
 	}
@@ -143,7 +143,7 @@ func (a *App) detectLivePhoto(r *http.Request, photoID string, allowLegacyPairin
 	// A full scan must not probe an MP4 beside every ordinary image. Existing
 	// Live Photo records are allowed through for validation; new detections
 	// require Motion Photo metadata in the image itself.
-	if isLive == 0 && !allowLegacyPairing {
+	if isLive == 0 {
 		data, err := a.readStorageBytes(r.Context(), imageKey)
 		if err != nil {
 			return false, "", err
@@ -153,7 +153,7 @@ func (a *App) detectLivePhoto(r *http.Request, photoID string, allowLegacyPairin
 			return false, "", nil
 		}
 	}
-	candidate := a.pairedLiveVideo(r.Context(), imageKey, allowLegacyPairing)
+	candidate := a.pairedLiveVideo(r.Context(), imageKey)
 	if candidate != "" {
 		url := a.storage.PublicURL(candidate)
 		if url == "" {

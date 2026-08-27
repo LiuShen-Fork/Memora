@@ -136,6 +136,7 @@ interface UploadingFile {
 }
 
 const uploadingFiles = ref<Map<string, UploadingFile>>(new Map())
+const isSubmittingUpload = ref(false)
 
 interface EditFormState {
   title: string
@@ -399,20 +400,18 @@ const uploadImage = async (
         uploadingFiles.value = new Map(uploadingFiles.value)
 
         try {
-          // 检查是否为MOV视频文件（通过MIME类型或文件扩展名）
-          const isMovFile =
-            file.type === 'video/quicktime' ||
-            file.type === 'video/mp4' ||
-            file.name.toLowerCase().endsWith('.mov')
+          // MP4 is the only supported Live Photo video format.
+          const isLiveVideo =
+            file.type === 'video/mp4' || file.name.toLowerCase().endsWith('.mp4')
 
           const resp = await $fetch('/api/queue/add-task', {
             method: 'POST',
             body: {
               payload: {
-                type: isMovFile ? 'live-photo-video' : 'photo',
+                type: isLiveVideo ? 'live-photo-video' : 'photo',
                 storageKey: signedUrlResponse.fileKey,
-                ...(albumId && !isMovFile ? { albumId } : {}),
-                ...(isMovFile
+                ...(albumId && !isLiveVideo ? { albumId } : {}),
+                ...(isLiveVideo
                   ? {}
                   : {
                       eraseLocation:
@@ -420,7 +419,7 @@ const uploadImage = async (
                         systemUploadEraseLocationDefault.value,
                     }),
               },
-              priority: isMovFile ? 0 : 1, // Live Photo 视频优先级更低，确保图片优先处理
+              priority: isLiveVideo ? 0 : 1, // Live Photo 视频优先级更低，确保图片优先处理
               maxAttempts: 3,
             },
           })
@@ -746,13 +745,22 @@ const filteredData = computed(() => {
 // 监听过滤后的照片变化，自动获取表态数据
 watch(
   () => filteredData.value,
-  async (photos) => {
+  (photos) => {
     if (photos && photos.length > 0) {
       const photoIds = photos.map((p: Photo) => p.id)
-      await fetchReactions(photoIds)
+      // Let the table paint first. Reaction counts are secondary metadata and
+      // should not compete with the initial gallery render.
+      const schedule =
+        typeof window !== 'undefined' && 'requestIdleCallback' in window
+          ? (callback: () => void) =>
+              window.requestIdleCallback(callback, { timeout: 250 })
+          : (callback: () => void) => window.setTimeout(callback, 0)
+      schedule(() => {
+        void fetchReactions(photoIds)
+      })
     }
   },
-  { immediate: true },
+  { immediate: true, flush: 'post' },
 )
 
 // 状态检查间隔 Map，每个任务对应一个定时器
@@ -1214,7 +1222,6 @@ const validateFile = (
     'image/png',
     'image/heic',
     'image/heif',
-    'video/quicktime', // MOV 文件
     'video/mp4',
   ]
 
@@ -1222,7 +1229,7 @@ const validateFile = (
   const isValidImageExtension = ['.heic', '.heif'].some((ext) =>
     file.name.toLowerCase().endsWith(ext),
   )
-  const isValidVideoExtension = ['.mov', '.mp4'].some((ext) =>
+  const isValidVideoExtension = ['.mp4'].some((ext) =>
     file.name.toLowerCase().endsWith(ext),
   )
 
@@ -1251,7 +1258,15 @@ const validateFile = (
   return { valid: true }
 }
 
-const handleUpload = async () => {
+const handleUpload = () => {
+  if (isSubmittingUpload.value || selectedFiles.value.length === 0) return
+  isSubmittingUpload.value = true
+  void handleUploadBatch().finally(() => {
+    isSubmittingUpload.value = false
+  })
+}
+
+const handleUploadBatch = async () => {
   const fileList = selectedFiles.value
 
   if (fileList.length === 0) {
@@ -2306,7 +2321,7 @@ onUnmounted(() => {
                 icon="tabler:cloud-upload"
                 layout="list"
                 size="xl"
-                  accept="image/jpeg,image/png,image/heic,image/heif,video/quicktime,video/mp4,.mov,.mp4"
+                  accept="image/jpeg,image/png,image/heic,image/heif,video/mp4,.mp4"
                 multiple
                 highlight
                 dropzone
@@ -2393,7 +2408,7 @@ onUnmounted(() => {
                   variant="soft"
                   color="neutral"
                   class="w-full sm:w-auto"
-                  :disabled="!hasSelectedFiles"
+                  :disabled="isSubmittingUpload || !hasSelectedFiles"
                   @click="clearSelectedFiles"
                 >
                   {{ $t('dashboard.photos.slideover.buttons.clear') }}
@@ -2403,7 +2418,8 @@ onUnmounted(() => {
                   size="lg"
                   class="w-full sm:w-auto"
                   icon="tabler:upload"
-                  :disabled="!hasSelectedFiles"
+                  :disabled="isSubmittingUpload || !hasSelectedFiles"
+                  :loading="isSubmittingUpload"
                   @click="handleUpload"
                 >
                   {{

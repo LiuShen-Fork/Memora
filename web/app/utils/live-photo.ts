@@ -2,7 +2,7 @@ import type { Photo } from '~~/shared/types/domain'
 
 /**
  * Use the Go media route when a storage key is available. This keeps video
- * loading same-origin, which is required by the client-side MOV preparation
+ * loading same-origin, which is required by client-side MP4 validation
  * step when a CDN does not expose CORS headers.
  */
 export function livePhotoVideoSource(photo: Photo): string | null {

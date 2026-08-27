@@ -15,13 +15,9 @@ const processedLivePhotos = ref<Map<string, LivePhotoProcessingState>>(
 )
 
 export const useLivePhotoProcessor = () => {
-  /**
-   * 将 MOV 文件转换为 MP4 blob
-   * @param movUrl MOV 文件的 URL
-   * @param photoId 照片 ID
-   */
-  const convertMovToMp4 = async (
-    movUrl: string,
+  /** Load and validate the generated MP4 for a Live Photo. */
+  const loadMp4 = async (
+    videoUrl: string,
     photoId: string,
   ): Promise<Blob | null> => {
     // 检查缓存状态
@@ -84,13 +80,13 @@ export const useLivePhotoProcessor = () => {
         processedLivePhotos.value.set(photoId, { ...state })
       }
 
-      // 下载 MOV 文件，支持断点续传
+      // Download the generated MP4 through the same-origin media route.
       updateProgress(10)
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
 
-      const response = await fetch(movUrl, {
+      const response = await fetch(videoUrl, {
         signal: controller.signal,
         headers: {
           'Cache-Control': 'max-age=3600', // 缓存1小时
@@ -135,16 +131,14 @@ export const useLivePhotoProcessor = () => {
         }
       }
 
-      const movBlob = new Blob(chunks)
-      if (movBlob.size === 0) {
+      const mp4Blob = new Blob(chunks, { type: 'video/mp4' })
+      if (mp4Blob.size === 0) {
         throw Object.assign(new Error('LivePhoto video is empty'), {
           retryable: false,
         })
       }
       updateProgress(70)
 
-      // 优化的视频处理：先检查格式兼容性
-      const mp4Blob = new Blob([movBlob], { type: 'video/mp4' })
       updateProgress(85)
 
       // 更快的格式验证：只检查元数据
@@ -211,7 +205,7 @@ export const useLivePhotoProcessor = () => {
         const retryDelay = Math.min(1000 * Math.pow(2, currentRetry), 5000)
         await new Promise((resolve) => setTimeout(resolve, retryDelay))
 
-        return convertMovToMp4(movUrl, photoId) // 递归重试
+        return loadMp4(videoUrl, photoId) // retry
       }
 
       // 最终失败
@@ -220,7 +214,7 @@ export const useLivePhotoProcessor = () => {
       state.lastProcessed = Date.now()
       processedLivePhotos.value.set(photoId, { ...state })
       console.error(
-        `Failed to convert MOV to MP4 after ${maxRetries} attempts:`,
+        `Failed to load MP4 after ${maxRetries} attempts:`,
         error,
       )
       return null
@@ -289,7 +283,7 @@ export const useLivePhotoProcessor = () => {
       const batch = photos.slice(i, i + maxConcurrent)
       await Promise.allSettled(
         batch.map((photo) =>
-          convertMovToMp4(photo.livePhotoVideoUrl, photo.id),
+          loadMp4(photo.livePhotoVideoUrl, photo.id),
         ),
       )
 
@@ -410,7 +404,7 @@ export const useLivePhotoProcessor = () => {
   }
 
   return {
-    convertMovToMp4,
+    loadMp4,
     getProcessingState,
     batchProcessLivePhotos,
     preloadLivePhotosInViewport,

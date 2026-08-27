@@ -44,6 +44,16 @@ useHead({
 // 根据用户登录状态和当前路由决定使用哪个 API
 // 登录用户或后台管理页面显示所有照片，未登录用户在前端页面只显示可见照片
 const route = useRoute()
+const shouldLoadPhotos = computed(() => {
+  const path = route.path
+  return (
+    path === '/' ||
+    path === '/albums' ||
+    path === '/globe' ||
+    path === '/dashboard/photos' ||
+    /^\/[a-f0-9]{32}$/i.test(path)
+  )
+})
 const apiEndpoint = computed(() => {
   // 后台管理页面始终显示所有照片
   if (route.path.startsWith('/dashboard')) {
@@ -55,10 +65,21 @@ const apiEndpoint = computed(() => {
 // Keep the shell and route visible while the photo collection is loading.
 // The collection can be large, and album pages fetch their own focused data.
 const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
-  watch: [apiEndpoint],
+  immediate: false,
+  watch: false,
   lazy: true,
   default: () => [],
 })
+watch(
+  [apiEndpoint, shouldLoadPhotos],
+  ([endpoint, needed], previous) => {
+    if (!needed || !endpoint) return
+    if (!previous || endpoint !== previous[0] || needed !== previous[1]) {
+      void refresh()
+    }
+  },
+  { immediate: true },
+)
 
 // Keep theme application deterministic even when settings arrive after the
 // first gallery response.

@@ -45,7 +45,7 @@ func TestDetectLivePhotoSkipsOrdinaryPhotoVideoProbe(t *testing.T) {
 	counting := &countingStorage{Storage: app.storage}
 	app.storage = counting
 
-	success, videoKey, err := app.detectLivePhoto(httptest.NewRequest(http.MethodPost, "/", nil), "ordinary", false)
+	success, videoKey, err := app.detectLivePhoto(httptest.NewRequest(http.MethodPost, "/", nil), "ordinary")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -147,17 +147,13 @@ func gpsCoordinates(exif map[string]any) (latitude, longitude float64, ok bool) 
 	return latitude, longitude, true
 }
 
-func (a *App) pairedLiveVideo(ctx context.Context, imageKey string, legacyMOV ...bool) string {
+func (a *App) pairedLiveVideo(ctx context.Context, imageKey string) string {
 	base := strings.TrimSuffix(imageKey, filepath.Ext(imageKey))
 	name := strings.TrimSuffix(filepath.Base(imageKey), filepath.Ext(imageKey))
 	extensions := []string{".mp4", ".MP4"}
-	if len(legacyMOV) > 0 && legacyMOV[0] {
-		extensions = append(extensions, ".mov", ".MOV")
-	}
 	candidates := []string{}
 	// Memora generates Live Photo media as MP4. Keep case-insensitive MP4
-	// matching for existing providers, but do not probe legacy MOV siblings
-	// during ordinary photo processing.
+	// matching for existing providers without probing unrelated media.
 	for _, ext := range extensions {
 		candidates = append(candidates, base+ext, name+ext)
 		if prefix := strings.Trim(a.storage.Prefix(), "/"); prefix != "" {

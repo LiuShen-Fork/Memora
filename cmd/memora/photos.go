@@ -176,7 +176,7 @@ func isVideoUpload(fileName, contentType string) bool {
 		return true
 	}
 	switch strings.ToLower(filepath.Ext(fileName)) {
-	case ".mov", ".mp4":
+	case ".mp4":
 		return true
 	default:
 		return false

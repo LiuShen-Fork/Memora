@@ -29,7 +29,7 @@ const isVideoPlaying = ref(false)
 const isVideoLoaded = ref(false)
 const videoBlob = ref<Blob | null>(null)
 const videoBlobUrl = ref<string | null>(null)
-const { convertMovToMp4, getProcessingState } = useLivePhotoProcessor()
+const { loadMp4, getProcessingState } = useLivePhotoProcessor()
 
 const isTouching = ref(false)
 const touchCount = ref(0)
@@ -312,7 +312,7 @@ const processLivePhotoWhenVisible = async () => {
 
   try {
     // 使用优化的转换函数，支持重试和缓存
-    const blob = await convertMovToMp4(videoSource, props.photo.id)
+    const blob = await loadMp4(videoSource, props.photo.id)
 
     if (!blob) return
 
@@ -329,7 +329,7 @@ const processLivePhotoWhenVisible = async () => {
         videoRef.value.load()
       }
 
-      // The first hover can arrive while the MOV is being prepared. Continue
+      // The first hover can arrive while the MP4 is being prepared. Continue
       // playback once the video element has been mounted, as long as the
       // pointer is still over this photo.
       if (isHovering.value) {

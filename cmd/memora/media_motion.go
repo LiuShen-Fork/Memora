@@ -52,7 +52,7 @@ func (a *App) extractMotionPhoto(ctx context.Context, photoID, storageKey string
 }
 
 // motionPhotoMetadata reports whether the image declares a Motion Photo. It
-// is intentionally cheap and is used to avoid probing .mov/.mp4 siblings for
+// is intentionally cheap and is used to avoid probing MP4 siblings for
 // every ordinary photograph.
 func motionPhotoMetadata(exif map[string]any, data []byte) bool {
 	if motionBool(exif["MotionPhoto"]) || motionBool(exif["MicroVideo"]) {

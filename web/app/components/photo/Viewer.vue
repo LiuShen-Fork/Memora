@@ -88,7 +88,7 @@ const livePhotoVideoRef = useDomRef()
 const longPressTimer = ref<NodeJS.Timeout | null>(null)
 
 // Import LivePhoto processor
-const { convertMovToMp4, getProcessingState } = useLivePhotoProcessor()
+const { loadMp4, getProcessingState } = useLivePhotoProcessor()
 
 // Computed
 const currentPhoto = computed(() => props.photos[props.currentIndex])
@@ -255,7 +255,7 @@ const processCurrentLivePhoto = async () => {
   if (!photo || !photo.isLivePhoto || !videoSource) return
 
   try {
-    const blob = await convertMovToMp4(videoSource, photo.id)
+    const blob = await loadMp4(videoSource, photo.id)
     if (blob) {
       livePhotoVideoBlob.value = blob
       // Clean up previous blob URL
