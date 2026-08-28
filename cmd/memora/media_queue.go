@@ -500,9 +500,31 @@ const thumbnailMinDimension = 600
 
 func ffmpegThumbnailContext(ctx context.Context, ffmpeg string, data []byte) ([]byte, error) {
 	filter := fmt.Sprintf("scale='if(gt(iw,ih),-2,min(%d,iw))':'if(gt(iw,ih),min(%d,ih),-2)'", thumbnailMinDimension, thumbnailMinDimension)
-	cmd := exec.CommandContext(ctx, ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-lossless", "1", "-compression_level", "6", "-f", "webp", "pipe:1")
+	output, err := os.CreateTemp("", "memora-thumbnail-*.webp")
+	if err != nil {
+		return nil, err
+	}
+	outputPath := output.Name()
+	if err := output.Close(); err != nil {
+		_ = os.Remove(outputPath)
+		return nil, err
+	}
+	defer os.Remove(outputPath)
+	// A seekable output lets FFmpeg write the final RIFF container size. Piping
+	// WebP to stdout prevents older FFmpeg builds from updating that header.
+	cmd := exec.CommandContext(ctx, ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-frames:v", "1", "-vf", filter, "-c:v", "libwebp", "-lossless", "1", "-compression_level", "6", "-f", "webp", outputPath)
 	cmd.Stdin = bytes.NewReader(data)
-	return runCommandOutput(ctx, cmd, maxToolOutputBytes)
+	if _, err := runCommandOutput(ctx, cmd, 64*1024); err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > int64(maxToolOutputBytes) {
+		return nil, fmt.Errorf("command output exceeds limit of %d bytes", maxToolOutputBytes)
+	}
+	return os.ReadFile(outputPath)
 }
 
 func extractExif(tool string, data []byte, ext string) (map[string]any, string) {
