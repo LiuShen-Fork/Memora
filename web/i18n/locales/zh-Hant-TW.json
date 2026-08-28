@@ -942,6 +942,7 @@
         "failed": "失敗"
       },
       "types": {
+        "photo-metadata-update": "照片中繼資料更新",
         "photo": "照片處理",
         "live-photo-video": "LivePhoto影片",
         "photo-reverse-geocoding": "照片逆地理編碼",

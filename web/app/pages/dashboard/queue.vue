@@ -25,6 +25,7 @@ const { data: queueData, refresh: refreshQueue } = await useFetch(
   '/api/queue/task/list',
   {
     query: computed(() => ({
+      limit: 200,
       ...(statusFilter.value !== 'all' && { status: statusFilter.value }),
       ...(typeFilter.value !== 'all' && { type: typeFilter.value }),
     })),
@@ -35,6 +36,15 @@ const { data: queueData, refresh: refreshQueue } = await useFetch(
 const queueStats = computed(() => {
   if (!queueData.value?.data)
     return { pending: 0, processing: 0, completed: 0, failed: 0 }
+
+  if (queueData.value.stats) {
+    return {
+      pending: queueData.value.stats.pending || 0,
+      processing: queueData.value.stats['in-stages'] || 0,
+      completed: queueData.value.stats.completed || 0,
+      failed: queueData.value.stats.failed || 0,
+    }
+  }
 
   const stats = { pending: 0, processing: 0, completed: 0, failed: 0 }
   queueData.value.data.forEach((task) => {
@@ -194,6 +204,10 @@ const statusOptions = computed(() => [
 const typeOptions = computed(() => [
   { label: $t('dashboard.queue.filters.all'), value: 'all' },
   { label: $t('dashboard.queue.types.photo'), value: 'photo' },
+  {
+    label: $t('dashboard.queue.types.photo-metadata-update'),
+    value: 'photo-metadata-update',
+  },
   {
     label: $t('dashboard.queue.types.live-photo-video'),
     value: 'live-photo-video',
@@ -492,7 +506,7 @@ onBeforeUnmount(() => {
                           {{ $t('dashboard.queue.table.type') }}
                         </p>
                         <p class="text-sm capitalize">
-                          {{ row.original.payload.type }}
+                          {{ $t(`dashboard.queue.types.${row.original.payload.type}`) }}
                         </p>
                       </div>
                     </div>

@@ -117,7 +117,7 @@ func (a *App) serve(server *http.Server) error {
 }
 
 func openDatabase(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_pragma=temp_store(MEMORY)&_pragma=cache_size(-20000)")
+	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(30000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_pragma=temp_store(MEMORY)&_pragma=cache_size(-20000)&_pragma=wal_autocheckpoint(1000)")
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +142,7 @@ func (a *App) ensureSchema() error {
 		`CREATE INDEX IF NOT EXISTS photos_last_modified_idx ON photos(last_modified DESC)`,
 		`CREATE INDEX IF NOT EXISTS album_photos_photo_idx ON album_photos(photo_id,album_id)`,
 		`CREATE INDEX IF NOT EXISTS pipeline_queue_pending_idx ON pipeline_queue(status,priority DESC,created_at ASC,id ASC)`,
+		`CREATE INDEX IF NOT EXISTS pipeline_queue_type_idx ON pipeline_queue(json_extract(payload,'$.type'))`,
 	}
 	for _, statement := range statements {
 		if _, err := a.db.Exec(statement); err != nil {

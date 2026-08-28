@@ -38,11 +38,12 @@ const menuItems = computed(() =>
         variant="soft"
         color="neutral"
         icon="tabler:language"
+        :square="compact"
         :size="compact ? 'xs' : 'sm'"
         :aria-label="$t('common.languageSwitcher.label')"
         :class="[
           'cursor-pointer',
-          compact ? 'size-9 rounded-lg' : 'rounded-full',
+          compact ? 'size-9 rounded-lg p-0 inline-flex items-center justify-center' : 'rounded-full',
           block ? 'w-full justify-center' : '',
         ]"
       />

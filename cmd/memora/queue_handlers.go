@@ -279,6 +279,15 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	}
 	statusFilter := r.URL.Query().Get("status")
 	typeFilter := r.URL.Query().Get("type")
+	// Queue history can grow indefinitely. Keep the dashboard response bounded;
+	// completed history remains durable and can still be cleared explicitly.
+	limit := 200
+	if value, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && value > 0 {
+		limit = value
+	}
+	if limit > 500 {
+		limit = 500
+	}
 	query := `SELECT id,payload,priority,attempts,max_attempts,status,status_stage,error_message,created_at,completed_at FROM pipeline_queue`
 	conditions := []string{}
 	args := []any{}
@@ -293,13 +302,31 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
-	query += " ORDER BY created_at DESC"
-	rows, err := a.db.Query(query, args...)
+	stats := map[string]int{"pending": 0, "in-stages": 0, "completed": 0, "failed": 0}
+	statsQuery := `SELECT status,count(*) FROM pipeline_queue`
+	if len(conditions) > 0 {
+		statsQuery += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	statsQuery += " GROUP BY status"
+	statsRows, statsErr := a.db.Query(statsQuery, args...)
+	if statsErr == nil {
+		for statsRows.Next() {
+			var status string
+			var count int
+			if statsRows.Scan(&status, &count) == nil {
+				stats[status] = count
+			}
+		}
+		_ = statsRows.Close()
+	}
+	query += " ORDER BY created_at DESC LIMIT ?"
+	queryArgs := append(append([]any(nil), args...), limit)
+	rows, err := a.db.Query(query, queryArgs...)
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
 		return
 	}
-	out := []map[string]any{}
+	out := make([]map[string]any, 0, limit)
 	for rows != nil && rows.Next() {
 		var id, priority, attempts, max int
 		var p, status, stage, errMsg string
@@ -323,7 +350,7 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"success": true, "data": out})
+	writeJSON(w, 200, map[string]any{"success": true, "data": out, "limit": limit, "stats": stats})
 }
 func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {

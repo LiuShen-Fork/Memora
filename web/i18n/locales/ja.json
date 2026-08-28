@@ -942,6 +942,7 @@
         "failed": "失敗"
       },
       "types": {
+        "photo-metadata-update": "写真メタデータ更新",
         "photo": "写真処理",
         "live-photo-video": "LivePhoto動画",
         "photo-reverse-geocoding": "写真の逆ジオコーディング",

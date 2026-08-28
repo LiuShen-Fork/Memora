@@ -1015,6 +1015,7 @@
         "failed": "Ошибка"
       },
       "types": {
+        "photo-metadata-update": "Обновление метаданных фотографии",
         "photo": "Обработка фотографии",
         "live-photo-video": "Обработка видео Live Photo",
         "photo-reverse-geocoding": "Обратное геокодирование фотографии",
