@@ -34,7 +34,7 @@ const menuItems = computed(() =>
   <UPopover
     v-model:open="isOpen"
     :content="{
-      align: 'end',
+      align: 'center',
       sideOffset: 6,
       collisionPadding: 8,
     }"
