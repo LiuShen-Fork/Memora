@@ -118,6 +118,8 @@ const dateRangeText = computed(() => {
   return `${range.start} - ${range.end}`
 })
 
+const headerDateRangeText = computed(() => dateRange.value || dateRangeText.value)
+
 const handleVisibilityChange = ({
   index,
   isVisible,
@@ -337,7 +339,7 @@ watch(currentPhotoIndex, (newIndex) => {
         >
           <MasonryItemHeader
             :stats="photoStats"
-            :date-range-text
+            :date-range-text="headerDateRangeText"
             :locations="visibleCities"
             :is-scrolled="showFloatingActions"
           />
