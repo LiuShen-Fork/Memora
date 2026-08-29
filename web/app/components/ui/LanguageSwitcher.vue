@@ -41,7 +41,10 @@ const menuItems = computed(() =>
       collisionPadding: 8,
     }"
   >
-    <UTooltip v-if="tooltip" :text="$t('common.languageSwitcher.label')">
+    <UTooltip
+      :text="$t('common.languageSwitcher.label')"
+      :disabled="!tooltip"
+    >
       <UButton
         variant="ghost"
         color="neutral"
@@ -56,20 +59,6 @@ const menuItems = computed(() =>
         ]"
       />
     </UTooltip>
-    <UButton
-      v-else
-      variant="ghost"
-      color="neutral"
-      icon="tabler:language"
-      :square="compact && !buttonClass"
-      :size="buttonClass ? 'sm' : compact ? 'xs' : 'sm'"
-      :aria-label="$t('common.languageSwitcher.label')"
-      :class="[
-        compact && !buttonClass ? 'size-7 p-0 inline-flex items-center justify-center' : '',
-        block ? 'w-full justify-center' : '',
-        buttonClass,
-      ]"
-    />
     <template #content>
       <UCard
         variant="glassmorphism"

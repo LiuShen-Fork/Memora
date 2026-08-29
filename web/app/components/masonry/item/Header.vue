@@ -17,6 +17,23 @@ withDefaults(defineProps<Props>(), {
 const router = useRouter();
 const route = useRoute();
 const colorMode = useColorMode();
+const { locale } = useI18n();
+
+const photoCountLabel = computed(() => {
+  switch (locale.value) {
+    case 'zh-Hant-TW':
+    case 'zh-Hant-HK':
+      return '張作品';
+    case 'en':
+      return ' works';
+    case 'ja':
+      return '作品';
+    case 'ru':
+      return ' работ';
+    default:
+      return '张作品';
+  }
+});
 
 const isDark = computed({
   get: () => colorMode.value === "dark",
@@ -60,8 +77,13 @@ const openLogin = () => router.push("/signin");
             {{ getSetting("app:title") }}
           </h1>
           <p class="truncate text-[11px] text-neutral-500 dark:text-white/55">
-            {{ stats.total }} {{ $t("title.photos") }}
-            <span v-if="getSetting('app:author')"> · @{{ getSetting("app:author") }} </span>
+            {{ stats.total }}{{ photoCountLabel }}
+            <span
+              v-if="getSetting('app:author')"
+              class="masonry-topbar__author"
+            >
+              · @{{ getSetting("app:author") }}
+            </span>
           </p>
         </div>
       </div>
@@ -469,9 +491,6 @@ const openLogin = () => router.push("/signin");
 
   .masonry-topbar__inner {
     min-height: 2.4rem;
-  }
-
-  .masonry-topbar__inner {
     align-items: flex-start;
     gap: 0.4rem;
   }
@@ -518,6 +537,10 @@ const openLogin = () => router.push("/signin");
 }
 
 @media (max-width: 640px) {
+  .masonry-topbar__author {
+    display: none;
+  }
+
   .masonry-topbar__functional-group {
     display: none;
   }
