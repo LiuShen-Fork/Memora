@@ -100,7 +100,7 @@ const openLogin = () => router.push("/signin");
               <MasonryItemTopbarFilterMenu />
             </div>
 
-            <UPopover class="masonry-topbar__compact-functions">
+            <UPopover class="masonry-topbar__compact-functions masonry-topbar__group">
               <UTooltip :text="$t('ui.action.filter.tooltip')">
                 <UButton
                   variant="ghost"
@@ -387,15 +387,28 @@ const openLogin = () => router.push("/signin");
   );
 }
 
-.masonry-topbar__button {
+:deep(.masonry-topbar__button) {
   width: 1.8rem;
   height: 1.8rem;
   flex: 0 0 auto;
   cursor: pointer;
   justify-content: center;
   border-radius: 0.4rem;
-  background: transparent;
-  padding: 0;
+  background: transparent !important;
+  padding: 0 !important;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+:deep(.masonry-topbar__button:hover),
+:deep(.masonry-topbar__button:focus-visible),
+:deep(.masonry-topbar__button[data-state='open']) {
+  background: rgb(0 0 0 / 8%) !important;
+}
+
+.dark :deep(.masonry-topbar__button:hover),
+.dark :deep(.masonry-topbar__button:focus-visible),
+.dark :deep(.masonry-topbar__button[data-state='open']) {
+  background: rgb(255 255 255 / 12%) !important;
 }
 
 .masonry-topbar__compact-functions {
@@ -445,11 +458,15 @@ const openLogin = () => router.push("/signin");
 
 @media (max-width: 768px) {
   .masonry-topbar {
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem 0.5rem;
   }
 
   .masonry-topbar::before {
-    height: 3rem;
+    height: 2.8rem;
+  }
+
+  .masonry-topbar__inner {
+    min-height: 2.4rem;
   }
 
   .masonry-topbar__inner {
@@ -487,7 +504,7 @@ const openLogin = () => router.push("/signin");
     border-radius: 0.5rem;
   }
 
-  .masonry-topbar__button {
+  :deep(.masonry-topbar__button) {
     width: 1.65rem;
     height: 1.65rem;
   }

@@ -384,7 +384,7 @@ watch(currentPhotoIndex, (newIndex) => {
 
 @media (max-width: 768px) {
   .masonry-header-wrapper {
-    height: 3rem;
+    height: 2.8rem;
   }
 }
 </style>

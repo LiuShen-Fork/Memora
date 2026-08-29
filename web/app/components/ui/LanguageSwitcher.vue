@@ -45,16 +45,11 @@ const menuItems = computed(() =>
         variant="ghost"
         color="neutral"
         icon="tabler:language"
-        :square="compact"
-        :size="compact ? 'xs' : 'sm'"
+        :square="compact && !buttonClass"
+        :size="buttonClass ? 'sm' : compact ? 'xs' : 'sm'"
         :aria-label="$t('common.languageSwitcher.label')"
         :class="[
-          'cursor-pointer',
-          compact
-            ? buttonClass
-              ? 'p-0 inline-flex items-center justify-center'
-              : 'size-7 p-0 inline-flex items-center justify-center'
-            : '',
+          compact && !buttonClass ? 'size-7 p-0 inline-flex items-center justify-center' : '',
           block ? 'w-full justify-center' : '',
           buttonClass,
         ]"
