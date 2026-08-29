@@ -84,21 +84,31 @@ const openLogin = () => router.push('/signin')
       </div>
 
       <div class="masonry-topbar__status" :class="{ 'is-scrolled': isScrolled }">
-        <template v-if="isScrolled">
-          <span class="masonry-topbar__date">{{ dateRangeText }}</span>
-          <span
-            v-if="locations"
-            class="masonry-topbar__location"
-          >
-            {{ locations }}
-          </span>
-        </template>
-        <span
-          v-else-if="getSetting('app:slogan')"
-          class="masonry-topbar__slogan"
+        <Transition
+          name="topbar-status"
+          mode="out-in"
         >
-          {{ getSetting('app:slogan') }}
-        </span>
+          <div
+            v-if="isScrolled"
+            key="context"
+            class="masonry-topbar__context"
+          >
+            <span class="masonry-topbar__date">{{ dateRangeText }}</span>
+            <span
+              v-if="locations"
+              class="masonry-topbar__location"
+            >
+              {{ locations }}
+            </span>
+          </div>
+          <span
+            v-else-if="getSetting('app:slogan')"
+            key="slogan"
+            class="masonry-topbar__slogan"
+          >
+            {{ getSetting('app:slogan') }}
+          </span>
+        </Transition>
       </div>
 
       <AuthState>
@@ -283,7 +293,7 @@ const openLogin = () => router.push('/signin')
   inset: 0 0 auto;
   z-index: 40;
   pointer-events: none;
-  padding: 0.75rem 1rem 1.5rem;
+  padding: 0.5rem 1rem 1rem;
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
@@ -300,7 +310,7 @@ const openLogin = () => router.push('/signin')
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  min-height: 3.5rem;
+  min-height: 3rem;
   max-width: 100%;
 }
 
@@ -315,11 +325,11 @@ const openLogin = () => router.push('/signin')
 
 .masonry-topbar__status {
   position: absolute;
-  top: 1rem;
+  top: 1.75rem;
   left: 50%;
   display: flex;
   max-width: 28%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -327,11 +337,32 @@ const openLogin = () => router.push('/signin')
   overflow: hidden;
   text-align: center;
   pointer-events: none;
-  transition: opacity 180ms ease, transform 220ms ease;
 }
 
 .masonry-topbar__status.is-scrolled {
-  top: 0.75rem;
+  top: 1.75rem;
+}
+
+.masonry-topbar__context {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.topbar-status-enter-active,
+.topbar-status-leave-active {
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.topbar-status-enter-from {
+  opacity: 0;
+  transform: translateY(0.3rem);
+}
+
+.topbar-status-leave-to {
+  opacity: 0;
+  transform: translateY(-0.3rem);
 }
 
 .masonry-topbar__slogan {
@@ -416,7 +447,7 @@ const openLogin = () => router.push('/signin')
 
 .masonry-topbar__footer {
   position: fixed;
-  right: 0.75rem;
+  left: 0.75rem;
   bottom: 0.75rem;
   display: inline-flex;
   align-items: center;
@@ -443,7 +474,7 @@ const openLogin = () => router.push('/signin')
 
 @media (max-width: 768px) {
   .masonry-topbar {
-    padding: 0.5rem 0.5rem 1.25rem;
+    padding: 0.35rem 0.5rem 0.9rem;
   }
 
   .masonry-topbar__inner {
@@ -461,7 +492,7 @@ const openLogin = () => router.push('/signin')
   }
 
   .masonry-topbar__status {
-    top: 0.6rem;
+    top: 1.45rem;
     max-width: 26%;
   }
 
@@ -491,7 +522,7 @@ const openLogin = () => router.push('/signin')
   }
 
   .masonry-topbar__footer {
-    right: 0.5rem;
+    left: 0.5rem;
     bottom: 0.5rem;
   }
 }
