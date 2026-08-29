@@ -274,17 +274,17 @@ const openLogin = () => router.push('/signin')
       </AuthState>
     </div>
 
-    <a
-      v-if="route.path === '/'"
-      :href="footerLinkUrl"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="masonry-topbar__footer"
-    >
-      <Icon name="tabler:brand-github" class="size-3.5" />
-      <span class="max-w-36 truncate">{{ footerLinkText }}</span>
-    </a>
   </header>
+  <a
+    v-if="route.path === '/'"
+    :href="footerLinkUrl"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="masonry-page-footer"
+  >
+    <Icon name="tabler:brand-github" class="size-3.5" />
+    <span class="max-w-36 truncate">{{ footerLinkText }}</span>
+  </a>
 </template>
 
 <style scoped>
@@ -445,8 +445,9 @@ const openLogin = () => router.push('/signin')
   padding: 0;
 }
 
-.masonry-topbar__footer {
+.masonry-page-footer {
   position: fixed;
+  z-index: 35;
   left: 0.75rem;
   bottom: 0.75rem;
   display: inline-flex;
@@ -466,7 +467,7 @@ const openLogin = () => router.push('/signin')
   backdrop-filter: blur(14px);
 }
 
-.dark .masonry-topbar__footer {
+.dark .masonry-page-footer {
   border-color: rgb(255 255 255 / 10%);
   background: rgb(24 24 27 / 58%);
   color: rgb(228 228 231 / 72%);
@@ -521,7 +522,7 @@ const openLogin = () => router.push('/signin')
     height: 1.75rem;
   }
 
-  .masonry-topbar__footer {
+  .masonry-page-footer {
     left: 0.5rem;
     bottom: 0.5rem;
   }
