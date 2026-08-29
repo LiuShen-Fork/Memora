@@ -36,7 +36,7 @@ const menuItems = computed(() =>
     v-model:open="isOpen"
     :content="{
       align: 'center',
-      sideOffset: 6,
+      sideOffset: 8,
       collisionPadding: 8,
     }"
   >
