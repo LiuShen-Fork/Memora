@@ -8,7 +8,10 @@ const totalSelectedFilters = computed(() =>
 
 <template>
   <UPopover>
-    <UTooltip :text="$t('ui.action.filter.tooltip')">
+    <UTooltip
+      :text="$t('ui.action.filter.tooltip')"
+      ignore-non-keyboard-focus
+    >
       <UChip inset size="sm" color="info" :show="totalSelectedFilters > 0">
         <UButton
           variant="ghost"

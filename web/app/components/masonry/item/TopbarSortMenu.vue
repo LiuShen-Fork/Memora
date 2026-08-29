@@ -10,7 +10,10 @@ const {
 
 <template>
   <UPopover>
-    <UTooltip :text="$t('ui.action.sort.tooltip')">
+    <UTooltip
+      :text="$t('ui.action.sort.tooltip')"
+      ignore-non-keyboard-focus
+    >
       <UButton
         variant="ghost"
         :color="currentSortOption?.key === 'dateTaken-desc' ? 'neutral' : 'info'"

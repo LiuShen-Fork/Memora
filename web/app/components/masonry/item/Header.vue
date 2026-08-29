@@ -106,7 +106,10 @@ const openLogin = () => router.push("/signin");
         <template #default="{ loggedIn, clear }">
           <div class="masonry-topbar__actions">
             <div class="masonry-topbar__group masonry-topbar__functional-group">
-              <UTooltip :text="$t('ui.action.theme.tooltip')">
+              <UTooltip
+                :text="$t('ui.action.theme.tooltip')"
+                ignore-non-keyboard-focus
+              >
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -139,16 +142,21 @@ const openLogin = () => router.push("/signin");
                   :ui="{ body: 'p-1 sm:p-1' }"
                 >
                   <div class="masonry-topbar__compact-function-row">
-                    <UButton
-                      variant="ghost"
-                      color="neutral"
-                      class="masonry-topbar__button"
-                      :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
-                      size="sm"
-                      :aria-label="$t('ui.action.theme.tooltip')"
-                      @click="isDark = !isDark"
-                    />
-                    <LanguageSwitcher compact button-class="masonry-topbar__button" :tooltip="false" />
+                    <UTooltip
+                      :text="$t('ui.action.theme.tooltip')"
+                      ignore-non-keyboard-focus
+                    >
+                      <UButton
+                        variant="ghost"
+                        color="neutral"
+                        class="masonry-topbar__button"
+                        :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                        size="sm"
+                        :aria-label="$t('ui.action.theme.tooltip')"
+                        @click="isDark = !isDark"
+                      />
+                    </UTooltip>
+                    <LanguageSwitcher compact button-class="masonry-topbar__button" />
                     <MasonryItemTopbarSortMenu />
                     <MasonryItemTopbarFilterMenu />
                   </div>
@@ -158,7 +166,10 @@ const openLogin = () => router.push("/signin");
             </div>
 
             <div class="masonry-topbar__group masonry-topbar__types">
-              <UTooltip :text="$t('ui.action.globe.tooltip')">
+              <UTooltip
+                :text="$t('ui.action.globe.tooltip')"
+                ignore-non-keyboard-focus
+              >
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -169,7 +180,10 @@ const openLogin = () => router.push("/signin");
                   to="/globe"
                 />
               </UTooltip>
-              <UTooltip :text="$t('title.albums')">
+              <UTooltip
+                :text="$t('title.albums')"
+                ignore-non-keyboard-focus
+              >
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -184,7 +198,10 @@ const openLogin = () => router.push("/signin");
 
             <div class="masonry-topbar__group">
               <template v-if="loggedIn">
-                <UTooltip :text="$t('ui.action.dashboard.tooltip')">
+                <UTooltip
+                  :text="$t('ui.action.dashboard.tooltip')"
+                  ignore-non-keyboard-focus
+                >
                   <UButton
                     variant="ghost"
                     color="neutral"
@@ -195,7 +212,10 @@ const openLogin = () => router.push("/signin");
                     to="/dashboard"
                   />
                 </UTooltip>
-                <UTooltip :text="$t('ui.action.logout.tooltip')">
+                <UTooltip
+                  :text="$t('ui.action.logout.tooltip')"
+                  ignore-non-keyboard-focus
+                >
                   <UButton
                     variant="ghost"
                     color="neutral"
@@ -207,7 +227,11 @@ const openLogin = () => router.push("/signin");
                   />
                 </UTooltip>
               </template>
-              <UTooltip v-else :text="$t('auth.form.signin.title')">
+              <UTooltip
+                v-else
+                :text="$t('auth.form.signin.title')"
+                ignore-non-keyboard-focus
+              >
                 <UButton
                   variant="ghost"
                   color="neutral"

@@ -4,9 +4,8 @@ withDefaults(
     compact?: boolean
     block?: boolean
     buttonClass?: string
-    tooltip?: boolean
   }>(),
-  { compact: false, block: false, buttonClass: '', tooltip: true },
+  { compact: false, block: false, buttonClass: '' },
 )
 
 const { locale } = useI18n()
@@ -43,7 +42,7 @@ const menuItems = computed(() =>
   >
     <UTooltip
       :text="$t('common.languageSwitcher.label')"
-      :disabled="!tooltip"
+      ignore-non-keyboard-focus
     >
       <UButton
         variant="ghost"
