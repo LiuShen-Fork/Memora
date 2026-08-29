@@ -67,6 +67,8 @@
 html {
   scrollbar-width: thin;
   scrollbar-color: var(--ui-color-neutral-300) transparent;
+  /* Keep the gallery width stable while the photo viewer locks body scroll. */
+  scrollbar-gutter: stable;
 }
 
 html::-webkit-scrollbar,
