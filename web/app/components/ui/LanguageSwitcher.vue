@@ -35,7 +35,7 @@ const menuItems = computed(() =>
   >
     <UTooltip :text="$t('common.languageSwitcher.label')">
       <UButton
-        variant="soft"
+        variant="ghost"
         color="neutral"
         icon="tabler:language"
         :square="compact"
@@ -44,6 +44,7 @@ const menuItems = computed(() =>
         :class="[
           'cursor-pointer',
           compact ? 'size-9 rounded-lg p-0 inline-flex items-center justify-center' : 'rounded-full',
+          'bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-700',
           block ? 'w-full justify-center' : '',
         ]"
       />

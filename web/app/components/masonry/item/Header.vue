@@ -235,9 +235,9 @@ const footerLinkUrl = computed(() => {
             >
               <UButton
                 size="sm"
-                color="info"
+                color="neutral"
                 variant="soft"
-                class="bg-transparent rounded-full cursor-pointer"
+                class="size-8 bg-transparent rounded-full cursor-pointer p-0 justify-center"
                 icon="tabler:dashboard"
                 to="/dashboard"
               />
@@ -248,9 +248,9 @@ const footerLinkUrl = computed(() => {
             >
               <UButton
                 size="sm"
-                color="error"
+                color="neutral"
                 variant="soft"
-                class="bg-transparent rounded-full cursor-pointer"
+                class="size-8 bg-transparent rounded-full cursor-pointer p-0 justify-center"
                 icon="tabler:logout"
                 @click="clear"
             /></UTooltip>
