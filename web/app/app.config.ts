@@ -20,12 +20,6 @@ export default defineAppConfig({
           'bg-white/70 dark:bg-neutral-900/50 backdrop-blur-3xl ring-0 shadow-lg border border-neutral-300/50 dark:border-neutral-500/50 rounded-lg',
       },
     },
-    dropdownMenu: {
-      slots: {
-        content:
-          'bg-white/70 dark:bg-neutral-900/50 backdrop-blur-3xl ring-0 shadow-lg border border-neutral-300/50 dark:border-neutral-500/50 rounded-lg',
-      },
-    },
     card: {
       slots: {
         header: 'font-semibold',

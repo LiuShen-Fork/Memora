@@ -8,6 +8,7 @@ withDefaults(
 )
 
 const { locale } = useI18n()
+const isOpen = ref(false)
 
 const languageOptions = [
   { label: '简体中文', value: 'zh-Hans' },
@@ -23,22 +24,19 @@ const menuItems = computed(() =>
     ...option,
     onSelect: () => {
       locale.value = option.value
+      isOpen.value = false
     },
   })),
 )
 </script>
 
 <template>
-  <UDropdownMenu
-    :items="menuItems"
-    :modal="false"
+  <UPopover
+    v-model:open="isOpen"
     :content="{
       align: 'end',
       sideOffset: 6,
       collisionPadding: 8,
-    }"
-    :ui="{
-      content: 'w-40 max-w-[calc(100vw-1rem)]',
     }"
   >
     <UTooltip :text="$t('common.languageSwitcher.label')">
@@ -57,5 +55,27 @@ const menuItems = computed(() =>
         ]"
       />
     </UTooltip>
-  </UDropdownMenu>
+    <template #content>
+      <UCard
+        variant="glassmorphism"
+        class="w-40 max-w-[calc(100vw-1rem)]"
+      >
+        <div class="space-y-1">
+          <UButton
+            v-for="option in menuItems"
+            :key="option.value"
+            :variant="locale === option.value ? 'soft' : 'ghost'"
+            :color="locale === option.value ? 'info' : 'neutral'"
+            icon="tabler:language"
+            size="sm"
+            block
+            class="justify-start"
+            @click="option.onSelect"
+          >
+            {{ option.label }}
+          </UButton>
+        </div>
+      </UCard>
+    </template>
+  </UPopover>
 </template>
