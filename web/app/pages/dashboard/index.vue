@@ -486,17 +486,17 @@ const onShareSite = () => {
 }
 
 .heatmap-container::-webkit-scrollbar {
-  height: 4px;
+  height: 2px;
 }
 
 .heatmap-container::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.05);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .heatmap-container::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .heatmap-container::-webkit-scrollbar-thumb:hover {

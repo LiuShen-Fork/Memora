@@ -209,17 +209,17 @@ watch(isMobile, scrollToActiveThumbnail)
 
 /* 备用滚动条样式（如需要显示时使用） */
 .gallery-scroll-area::-webkit-scrollbar {
-  height: 6px;
+  height: 2px;
 }
 
 .gallery-scroll-area::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 .gallery-scroll-area::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
+  border-radius: 0;
   transition: background-color 0.2s ease;
 }
 

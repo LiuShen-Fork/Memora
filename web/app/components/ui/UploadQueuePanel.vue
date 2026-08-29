@@ -353,7 +353,7 @@ const clearAllFiles = () => {
 <style scoped>
 /* 滚动条样式 */
 .filelist-container::-webkit-scrollbar {
-  width: 4px;
+  width: 2px;
 }
 
 .filelist-container::-webkit-scrollbar-track {
@@ -362,7 +362,7 @@ const clearAllFiles = () => {
 
 .filelist-container::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .dark .filelist-container::-webkit-scrollbar-thumb {

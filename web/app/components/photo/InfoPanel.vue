@@ -641,17 +641,17 @@ const onAlbumClick = (albumId: number) => {
 <style scoped>
 /* 自定义滚动条样式 */
 .overflow-y-auto::-webkit-scrollbar {
-  width: 4px;
+  width: 2px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {

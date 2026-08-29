@@ -8,7 +8,9 @@ const backendOrigin = process.env.MEMORA_BACKEND_ORIGIN || 'http://127.0.0.1:300
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
-  devtools: { enabled: true },
+  // DevTools is useful while developing but adds work to every build and is
+  // not needed by the generated static frontend.
+  devtools: { enabled: false },
 
   modules: [
     'reka-ui/nuxt',
@@ -23,6 +25,13 @@ export default defineNuxtConfig({
     'nuxt-maplibre',
     'nuxt-gtag',
   ],
+
+  // Nuxt UI enables @nuxt/fonts by default. The app uses system/fallback
+  // fonts, so disable the module to avoid remote Google Fonts lookups during
+  // every build.
+  ui: {
+    fonts: false,
+  },
 
   css: ['~/assets/css/tailwind.css'],
 

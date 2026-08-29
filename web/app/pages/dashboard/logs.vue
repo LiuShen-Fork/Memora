@@ -690,7 +690,7 @@ onUnmounted(() => {
 <style scoped>
 /* 自定义滚动条样式 */
 .overflow-y-auto::-webkit-scrollbar {
-  width: 8px;
+  width: 2px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
@@ -699,7 +699,7 @@ onUnmounted(() => {
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
   background: color-mix(in oklab, var(--ui-color-neutral-400) 50%, transparent);
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
