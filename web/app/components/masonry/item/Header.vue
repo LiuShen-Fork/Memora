@@ -21,17 +21,17 @@ const { locale } = useI18n();
 
 const photoCountLabel = computed(() => {
   switch (locale.value) {
-    case 'zh-Hant-TW':
-    case 'zh-Hant-HK':
-      return '張作品';
-    case 'en':
-      return ' works';
-    case 'ja':
-      return '作品';
-    case 'ru':
-      return ' работ';
+    case "zh-Hant-TW":
+    case "zh-Hant-HK":
+      return "張作品";
+    case "en":
+      return " works";
+    case "ja":
+      return "作品";
+    case "ru":
+      return " работ";
     default:
-      return '张作品';
+      return "张作品";
   }
 });
 
@@ -78,10 +78,7 @@ const openLogin = () => router.push("/signin");
           </h1>
           <p class="truncate text-[11px] text-neutral-500 dark:text-white/55">
             {{ stats.total }}{{ photoCountLabel }}
-            <span
-              v-if="getSetting('app:author')"
-              class="masonry-topbar__author"
-            >
+            <span v-if="getSetting('app:author')" class="masonry-topbar__author">
               · @{{ getSetting("app:author") }}
             </span>
           </p>
@@ -106,10 +103,7 @@ const openLogin = () => router.push("/signin");
         <template #default="{ loggedIn, clear }">
           <div class="masonry-topbar__actions">
             <div class="masonry-topbar__group masonry-topbar__functional-group">
-              <UTooltip
-                :text="$t('ui.action.theme.tooltip')"
-                ignore-non-keyboard-focus
-              >
+              <UTooltip :text="$t('ui.action.theme.tooltip')" ignore-non-keyboard-focus>
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -127,49 +121,43 @@ const openLogin = () => router.push("/signin");
 
             <div class="masonry-topbar__compact-functions masonry-topbar__group">
               <UPopover>
-              <UButton
-                variant="ghost"
-                color="neutral"
-                class="masonry-topbar__button"
-                icon="tabler:dots-vertical"
-                size="sm"
-                aria-label="More actions"
-              />
-              <template #content>
-                <UCard
-                  variant="glassmorphism"
-                  class="max-w-[calc(100vw-1rem)]"
-                  :ui="{ body: 'p-1 sm:p-1' }"
-                >
-                  <div class="masonry-topbar__compact-function-row">
-                    <UTooltip
-                      :text="$t('ui.action.theme.tooltip')"
-                      ignore-non-keyboard-focus
-                    >
-                      <UButton
-                        variant="ghost"
-                        color="neutral"
-                        class="masonry-topbar__button"
-                        :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
-                        size="sm"
-                        :aria-label="$t('ui.action.theme.tooltip')"
-                        @click="isDark = !isDark"
-                      />
-                    </UTooltip>
-                    <LanguageSwitcher compact button-class="masonry-topbar__button" />
-                    <MasonryItemTopbarSortMenu />
-                    <MasonryItemTopbarFilterMenu />
-                  </div>
-                </UCard>
-              </template>
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  class="masonry-topbar__button"
+                  icon="tabler:dots-vertical"
+                  size="sm"
+                  aria-label="More actions"
+                />
+                <template #content>
+                  <UCard
+                    variant="glassmorphism"
+                    class="max-w-[calc(100vw-1rem)]"
+                    :ui="{ body: 'p-1 sm:p-1' }"
+                  >
+                    <div class="masonry-topbar__compact-function-row">
+                      <UTooltip :text="$t('ui.action.theme.tooltip')" ignore-non-keyboard-focus>
+                        <UButton
+                          variant="ghost"
+                          color="neutral"
+                          class="masonry-topbar__button"
+                          :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                          size="sm"
+                          :aria-label="$t('ui.action.theme.tooltip')"
+                          @click="isDark = !isDark"
+                        />
+                      </UTooltip>
+                      <LanguageSwitcher compact button-class="masonry-topbar__button" />
+                      <MasonryItemTopbarSortMenu />
+                      <MasonryItemTopbarFilterMenu />
+                    </div>
+                  </UCard>
+                </template>
               </UPopover>
             </div>
 
             <div class="masonry-topbar__group masonry-topbar__types">
-              <UTooltip
-                :text="$t('ui.action.globe.tooltip')"
-                ignore-non-keyboard-focus
-              >
+              <UTooltip :text="$t('ui.action.globe.tooltip')" ignore-non-keyboard-focus>
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -180,10 +168,7 @@ const openLogin = () => router.push("/signin");
                   to="/globe"
                 />
               </UTooltip>
-              <UTooltip
-                :text="$t('title.albums')"
-                ignore-non-keyboard-focus
-              >
+              <UTooltip :text="$t('title.albums')" ignore-non-keyboard-focus>
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -198,10 +183,7 @@ const openLogin = () => router.push("/signin");
 
             <div class="masonry-topbar__group">
               <template v-if="loggedIn">
-                <UTooltip
-                  :text="$t('ui.action.dashboard.tooltip')"
-                  ignore-non-keyboard-focus
-                >
+                <UTooltip :text="$t('ui.action.dashboard.tooltip')" ignore-non-keyboard-focus>
                   <UButton
                     variant="ghost"
                     color="neutral"
@@ -212,10 +194,7 @@ const openLogin = () => router.push("/signin");
                     to="/dashboard"
                   />
                 </UTooltip>
-                <UTooltip
-                  :text="$t('ui.action.logout.tooltip')"
-                  ignore-non-keyboard-focus
-                >
+                <UTooltip :text="$t('ui.action.logout.tooltip')" ignore-non-keyboard-focus>
                   <UButton
                     variant="ghost"
                     color="neutral"
@@ -227,11 +206,7 @@ const openLogin = () => router.push("/signin");
                   />
                 </UTooltip>
               </template>
-              <UTooltip
-                v-else
-                :text="$t('auth.form.signin.title')"
-                ignore-non-keyboard-focus
-              >
+              <UTooltip v-else :text="$t('auth.form.signin.title')" ignore-non-keyboard-focus>
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -444,18 +419,20 @@ const openLogin = () => router.push("/signin");
   border-radius: 0.4rem;
   background: transparent !important;
   padding: 0 !important;
-  transition: background-color 150ms ease, color 150ms ease;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 :deep(.masonry-topbar__button:hover),
 :deep(.masonry-topbar__button:focus-visible),
-:deep(.masonry-topbar__button[data-state='open']) {
+:deep(.masonry-topbar__button[data-state="open"]) {
   background: rgb(0 0 0 / 8%) !important;
 }
 
 .dark :deep(.masonry-topbar__button:hover),
 .dark :deep(.masonry-topbar__button:focus-visible),
-.dark :deep(.masonry-topbar__button[data-state='open']) {
+.dark :deep(.masonry-topbar__button[data-state="open"]) {
   background: rgb(255 255 255 / 12%) !important;
 }
 
@@ -506,7 +483,7 @@ const openLogin = () => router.push("/signin");
 
 @media (max-width: 768px) {
   .masonry-topbar {
-    padding: 0.2rem 0.5rem;
+    padding: 0.3rem 0.2rem 0.1rem 0.2rem;
   }
 
   .masonry-topbar::before {
@@ -533,7 +510,8 @@ const openLogin = () => router.push("/signin");
   }
 
   .masonry-topbar__actions {
-    max-width: 58%;
+    flex: 0 1 auto;
+    max-width: none;
     gap: 0.2rem;
     overflow-x: auto;
     padding-bottom: 1px;
@@ -573,8 +551,13 @@ const openLogin = () => router.push("/signin");
     display: inline-flex;
   }
 
+  .masonry-topbar__identity {
+    flex: 1 1 auto;
+  }
+
   .masonry-topbar__actions {
-    max-width: 62%;
+    flex: 0 1 auto;
+    max-width: none;
   }
 }
 </style>
