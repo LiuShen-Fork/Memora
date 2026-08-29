@@ -100,38 +100,40 @@ const openLogin = () => router.push("/signin");
               <MasonryItemTopbarFilterMenu />
             </div>
 
-            <UPopover class="masonry-topbar__compact-functions masonry-topbar__group">
-              <UTooltip :text="$t('ui.action.filter.tooltip')">
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  icon="tabler:dots-vertical"
-                  size="sm"
-                  :aria-label="$t('ui.action.filter.tooltip')"
-                />
-              </UTooltip>
+            <div class="masonry-topbar__compact-functions masonry-topbar__group">
+              <UPopover>
+              <UButton
+                variant="ghost"
+                color="neutral"
+                class="masonry-topbar__button"
+                icon="tabler:dots-vertical"
+                size="sm"
+                aria-label="More actions"
+              />
               <template #content>
-                <UCard variant="glassmorphism" class="max-w-[calc(100vw-1rem)]">
+                <UCard
+                  variant="glassmorphism"
+                  class="max-w-[calc(100vw-1rem)]"
+                  :ui="{ body: 'p-1 sm:p-1' }"
+                >
                   <div class="masonry-topbar__compact-function-row">
-                    <UTooltip :text="$t('ui.action.theme.tooltip')">
-                      <UButton
-                        variant="ghost"
-                        color="neutral"
-                        class="masonry-topbar__button"
-                        :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
-                        size="sm"
-                        :aria-label="$t('ui.action.theme.tooltip')"
-                        @click="isDark = !isDark"
-                      />
-                    </UTooltip>
-                    <LanguageSwitcher compact button-class="masonry-topbar__button" />
+                    <UButton
+                      variant="ghost"
+                      color="neutral"
+                      class="masonry-topbar__button"
+                      :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                      size="sm"
+                      :aria-label="$t('ui.action.theme.tooltip')"
+                      @click="isDark = !isDark"
+                    />
+                    <LanguageSwitcher compact button-class="masonry-topbar__button" :tooltip="false" />
                     <MasonryItemTopbarSortMenu />
                     <MasonryItemTopbarFilterMenu />
                   </div>
                 </UCard>
               </template>
-            </UPopover>
+              </UPopover>
+            </div>
 
             <div class="masonry-topbar__group masonry-topbar__types">
               <UTooltip :text="$t('ui.action.globe.tooltip')">

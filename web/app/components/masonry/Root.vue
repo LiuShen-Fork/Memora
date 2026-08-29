@@ -331,7 +331,6 @@ watch(currentPhotoIndex, (newIndex) => {
       <div
         ref="masonryWrapper"
         class="relative"
-        :class="{ 'pt-2': isMobile }"
       >
         <div
           class="masonry-header-wrapper"
