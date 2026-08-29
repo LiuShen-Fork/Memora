@@ -264,12 +264,12 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(path, "/_nuxt/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		} else {
-			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Cache-Control", "no-store")
 		}
 		http.ServeFile(w, r, file)
 		return
 	}
 	index := filepath.Join(webDir, "index.html")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, index)
 }

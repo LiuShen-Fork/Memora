@@ -127,7 +127,7 @@ const footerLinkUrl = computed(() => {
           <div class="flex items-center gap-0 p-1 rounded-full">
             <UTooltip :text="$t('ui.action.globe.tooltip')">
               <UButton
-                variant="soft"
+                variant="ghost"
                 color="neutral"
                 class="bg-transparent rounded-full cursor-pointer"
                 icon="tabler:map-pin-2"
@@ -137,7 +137,7 @@ const footerLinkUrl = computed(() => {
             </UTooltip>
             <UTooltip :text="$t('title.albums')">
               <UButton
-                variant="soft"
+                variant="ghost"
                 color="neutral"
                 class="bg-transparent rounded-full cursor-pointer"
                 icon="tabler:photo"
@@ -154,7 +154,7 @@ const footerLinkUrl = computed(() => {
                   :show="totalSelectedFilters > 0"
                 >
                   <UButton
-                    variant="soft"
+                    variant="ghost"
                     :color="hasActiveFilters ? 'info' : 'neutral'"
                     class="bg-transparent rounded-full cursor-pointer relative"
                     icon="tabler:filter"
@@ -172,7 +172,7 @@ const footerLinkUrl = computed(() => {
             <UPopover>
               <UTooltip :text="$t('ui.action.sort.tooltip')">
                 <UButton
-                  variant="soft"
+                  variant="ghost"
                   :color="
                     currentSortOption?.key === 'dateTaken-desc'
                       ? 'neutral'
@@ -219,7 +219,7 @@ const footerLinkUrl = computed(() => {
             </UPopover>
             <UTooltip :text="$t('ui.action.theme.tooltip')">
               <UButton
-                variant="soft"
+                variant="ghost"
                 color="neutral"
                 class="bg-transparent rounded-full cursor-pointer"
                 :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
@@ -234,7 +234,7 @@ const footerLinkUrl = computed(() => {
               <UButton
                 size="sm"
                 color="neutral"
-                variant="soft"
+                variant="ghost"
                 class="size-8 bg-transparent rounded-full cursor-pointer p-0 justify-center"
                 icon="tabler:dashboard"
                 to="/dashboard"
@@ -247,7 +247,7 @@ const footerLinkUrl = computed(() => {
               <UButton
                 size="sm"
                 color="neutral"
-                variant="soft"
+                variant="ghost"
                 class="size-8 bg-transparent rounded-full cursor-pointer p-0 justify-center"
                 icon="tabler:logout"
                 @click="clear"
