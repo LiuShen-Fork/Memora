@@ -3,8 +3,9 @@ withDefaults(
   defineProps<{
     compact?: boolean
     block?: boolean
+    buttonClass?: string
   }>(),
-  { compact: false, block: false },
+  { compact: false, block: false, buttonClass: '' },
 )
 
 const { locale } = useI18n()
@@ -49,9 +50,13 @@ const menuItems = computed(() =>
         :aria-label="$t('common.languageSwitcher.label')"
         :class="[
           'cursor-pointer',
-          compact ? 'size-7 rounded-full p-0 inline-flex items-center justify-center' : 'rounded-full',
-          'bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-700',
+          compact
+            ? buttonClass
+              ? 'p-0 inline-flex items-center justify-center'
+              : 'size-7 p-0 inline-flex items-center justify-center'
+            : '',
           block ? 'w-full justify-center' : '',
+          buttonClass,
         ]"
       />
     </UTooltip>

@@ -95,9 +95,9 @@ const openLogin = () => router.push("/signin");
                   @click="isDark = !isDark"
                 />
               </UTooltip>
-              <LanguageSwitcher compact />
-              <TopbarSortMenu />
-              <TopbarFilterMenu />
+              <LanguageSwitcher compact button-class="masonry-topbar__button" />
+              <MasonryItemTopbarSortMenu />
+              <MasonryItemTopbarFilterMenu />
             </div>
 
             <UPopover class="masonry-topbar__compact-functions">
@@ -125,9 +125,9 @@ const openLogin = () => router.push("/signin");
                         @click="isDark = !isDark"
                       />
                     </UTooltip>
-                    <LanguageSwitcher compact />
-                    <TopbarSortMenu />
-                    <TopbarFilterMenu />
+                    <LanguageSwitcher compact button-class="masonry-topbar__button" />
+                    <MasonryItemTopbarSortMenu />
+                    <MasonryItemTopbarFilterMenu />
                   </div>
                 </UCard>
               </template>
