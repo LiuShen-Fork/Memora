@@ -412,7 +412,7 @@ watch(currentPhotoIndex, (newIndex) => {
 
     <div
       class="lg:px-0 lg:pb-0"
-      :class="isMobile ? 'px-1 pb-1' : 'py-1'"
+      :class="isMobile ? 'pb-1' : 'py-1'"
     >
       <div
         ref="masonryWrapper"

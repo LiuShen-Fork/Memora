@@ -8,7 +8,7 @@ const { photos } = usePhotos()
 
 <template>
   <div class="relative h-screen">
-    <div class="h-svh px-1">
+    <div class="h-svh">
       <ClientOnly>
         <MasonryRoot
           :photos="photos"
