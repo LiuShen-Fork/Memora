@@ -17,9 +17,6 @@ withDefaults(defineProps<Props>(), {
 const router = useRouter();
 const route = useRoute();
 const colorMode = useColorMode();
-const { hasActiveFilters, selectedCounts } = usePhotoFilters();
-const { currentSortLabel, currentSortIcon, currentSortOption, availableSorts, setSortOption } =
-  usePhotoSort();
 
 const isDark = computed({
   get: () => colorMode.value === "dark",
@@ -27,10 +24,6 @@ const isDark = computed({
     colorMode.preference = value ? "dark" : "light";
   },
 });
-
-const totalSelectedFilters = computed(() =>
-  Object.values(selectedCounts.value).reduce((total, count) => total + count, 0),
-);
 
 const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
 const footerLinkText = computed(() => {
@@ -90,7 +83,57 @@ const openLogin = () => router.push("/signin");
       <AuthState>
         <template #default="{ loggedIn, clear }">
           <div class="masonry-topbar__actions">
-            <div class="masonry-topbar__group">
+            <div class="masonry-topbar__group masonry-topbar__functional-group">
+              <UTooltip :text="$t('ui.action.theme.tooltip')">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  class="masonry-topbar__button"
+                  :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                  size="sm"
+                  :aria-label="$t('ui.action.theme.tooltip')"
+                  @click="isDark = !isDark"
+                />
+              </UTooltip>
+              <LanguageSwitcher compact />
+              <TopbarSortMenu />
+              <TopbarFilterMenu />
+            </div>
+
+            <UPopover class="masonry-topbar__compact-functions">
+              <UTooltip :text="$t('ui.action.filter.tooltip')">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  class="masonry-topbar__button"
+                  icon="tabler:dots-vertical"
+                  size="sm"
+                  :aria-label="$t('ui.action.filter.tooltip')"
+                />
+              </UTooltip>
+              <template #content>
+                <UCard variant="glassmorphism" class="max-w-[calc(100vw-1rem)]">
+                  <div class="masonry-topbar__compact-function-row">
+                    <UTooltip :text="$t('ui.action.theme.tooltip')">
+                      <UButton
+                        variant="ghost"
+                        color="neutral"
+                        class="masonry-topbar__button"
+                        :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                        size="sm"
+                        :aria-label="$t('ui.action.theme.tooltip')"
+                        @click="isDark = !isDark"
+                      />
+                    </UTooltip>
+                    <LanguageSwitcher compact />
+                    <TopbarSortMenu />
+                    <TopbarFilterMenu />
+                  </div>
+                </UCard>
+              </template>
+            </UPopover>
+
+            <div class="masonry-topbar__group masonry-topbar__types">
               <UTooltip :text="$t('ui.action.globe.tooltip')">
                 <UButton
                   variant="ghost"
@@ -113,80 +156,6 @@ const openLogin = () => router.push("/signin");
                   to="/albums"
                 />
               </UTooltip>
-            </div>
-
-            <div class="masonry-topbar__group">
-              <UPopover>
-                <UTooltip :text="$t('ui.action.filter.tooltip')">
-                  <UChip inset size="sm" color="info" :show="totalSelectedFilters > 0">
-                    <UButton
-                      variant="ghost"
-                      :color="hasActiveFilters ? 'info' : 'neutral'"
-                      class="masonry-topbar__button"
-                      icon="tabler:filter"
-                      size="sm"
-                      :aria-label="$t('ui.action.filter.tooltip')"
-                    />
-                  </UChip>
-                </UTooltip>
-                <template #content>
-                  <UCard variant="glassmorphism">
-                    <OverlayFilterPanel />
-                  </UCard>
-                </template>
-              </UPopover>
-
-              <UPopover>
-                <UTooltip :text="$t('ui.action.sort.tooltip')">
-                  <UButton
-                    variant="ghost"
-                    :color="currentSortOption?.key === 'dateTaken-desc' ? 'neutral' : 'info'"
-                    class="masonry-topbar__button"
-                    :icon="currentSortIcon"
-                    size="sm"
-                    :aria-label="$t('ui.action.sort.tooltip')"
-                  />
-                </UTooltip>
-                <template #content>
-                  <UCard variant="glassmorphism" class="w-3xs">
-                    <template #header>
-                      <h3 class="p-1 text-sm font-bold">
-                        {{ $t("ui.action.sort.title") }}
-                      </h3>
-                    </template>
-                    <div class="space-y-1">
-                      <UButton
-                        v-for="sort in availableSorts"
-                        :key="sort.key"
-                        :variant="currentSortLabel === sort.labelI18n ? 'soft' : 'ghost'"
-                        :color="currentSortLabel === sort.labelI18n ? 'info' : 'neutral'"
-                        :icon="sort.icon"
-                        size="sm"
-                        block
-                        class="justify-start"
-                        @click="setSortOption(sort.key)"
-                      >
-                        {{ $t(sort.labelI18n) }}
-                      </UButton>
-                    </div>
-                  </UCard>
-                </template>
-              </UPopover>
-            </div>
-
-            <div class="masonry-topbar__group">
-              <UTooltip :text="$t('ui.action.theme.tooltip')">
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
-                  size="sm"
-                  :aria-label="$t('ui.action.theme.tooltip')"
-                  @click="isDark = !isDark"
-                />
-              </UTooltip>
-              <LanguageSwitcher compact />
             </div>
 
             <div class="masonry-topbar__group">
@@ -256,7 +225,7 @@ const openLogin = () => router.push("/signin");
   position: absolute;
   inset: 0 0 auto;
   z-index: 0;
-  height: 3.4rem;
+  height: 3.1rem;
   background: linear-gradient(
     to bottom,
     rgb(255 255 255 / 18%) 0%,
@@ -429,6 +398,17 @@ const openLogin = () => router.push("/signin");
   padding: 0;
 }
 
+.masonry-topbar__compact-functions {
+  display: none;
+}
+
+.masonry-topbar__compact-function-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  white-space: nowrap;
+}
+
 .masonry-page-footer {
   position: fixed;
   z-index: 35;
@@ -457,13 +437,19 @@ const openLogin = () => router.push("/signin");
   color: rgb(228 228 231 / 82%);
 }
 
+@media (max-width: 900px) {
+  .masonry-topbar__status {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .masonry-topbar {
     padding: 0.25rem 0.5rem;
   }
 
   .masonry-topbar::before {
-    height: 3.2rem;
+    height: 3rem;
   }
 
   .masonry-topbar__inner {
@@ -478,11 +464,6 @@ const openLogin = () => router.push("/signin");
   .masonry-topbar__identity img {
     width: 1.75rem;
     height: 1.75rem;
-  }
-
-  .masonry-topbar__status {
-    top: 1.3rem;
-    max-width: 26%;
   }
 
   .masonry-topbar__slogan {
@@ -514,6 +495,20 @@ const openLogin = () => router.push("/signin");
   .masonry-page-footer {
     left: 0.5rem;
     bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .masonry-topbar__functional-group {
+    display: none;
+  }
+
+  .masonry-topbar__compact-functions {
+    display: inline-flex;
+  }
+
+  .masonry-topbar__actions {
+    max-width: 62%;
   }
 }
 </style>
