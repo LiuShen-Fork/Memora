@@ -293,20 +293,29 @@ const openLogin = () => router.push('/signin')
   inset: 0 0 auto;
   z-index: 40;
   pointer-events: none;
-  padding: 0.3rem 0.75rem 0.65rem;
-  background: rgb(255 255 255 / 14%);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-  mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
-  -webkit-mask-image: linear-gradient(
+  padding: 0.3rem 0.75rem;
+}
+
+.masonry-topbar::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  height: 5rem;
+  background: linear-gradient(
     to bottom,
-    black 0%,
-    black 58%,
+    rgb(255 255 255 / 18%) 0%,
+    rgb(255 255 255 / 8%) 48%,
     transparent 100%
   );
+  content: '';
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
 
 .masonry-topbar__inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -436,7 +445,16 @@ const openLogin = () => router.push('/signin')
 }
 
 .dark .masonry-topbar {
-  background: rgb(9 9 11 / 8%);
+  background: transparent;
+}
+
+.dark .masonry-topbar::before {
+  background: linear-gradient(
+    to bottom,
+    rgb(9 9 11 / 14%) 0%,
+    rgb(9 9 11 / 6%) 48%,
+    transparent 100%
+  );
 }
 
 .masonry-topbar__button {
@@ -480,7 +498,7 @@ const openLogin = () => router.push('/signin')
 
 @media (max-width: 768px) {
   .masonry-topbar {
-    padding: 0.25rem 0.5rem 0.65rem;
+    padding: 0.25rem 0.5rem;
   }
 
   .masonry-topbar__inner {
