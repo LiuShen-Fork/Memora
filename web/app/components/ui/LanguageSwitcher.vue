@@ -31,6 +31,7 @@ const menuItems = computed(() =>
 <template>
   <UDropdownMenu
     :items="menuItems"
+    :modal="false"
     :content="{
       align: 'end',
       sideOffset: 6,
