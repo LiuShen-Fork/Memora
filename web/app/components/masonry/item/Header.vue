@@ -1,61 +1,56 @@
 <script lang="ts" setup>
 interface Props {
   stats?: {
-    total: number
-  }
-  dateRangeText: string
-  locations?: string
-  isScrolled?: boolean
+    total: number;
+  };
+  dateRangeText: string;
+  locations?: string;
+  isScrolled?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
   stats: () => ({ total: 0 }),
-  locations: '',
+  locations: "",
   isScrolled: false,
-})
+});
 
-const router = useRouter()
-const route = useRoute()
-const colorMode = useColorMode()
-const { hasActiveFilters, selectedCounts } = usePhotoFilters()
-const {
-  currentSortLabel,
-  currentSortIcon,
-  currentSortOption,
-  availableSorts,
-  setSortOption,
-} = usePhotoSort()
+const router = useRouter();
+const route = useRoute();
+const colorMode = useColorMode();
+const { hasActiveFilters, selectedCounts } = usePhotoFilters();
+const { currentSortLabel, currentSortIcon, currentSortOption, availableSorts, setSortOption } =
+  usePhotoSort();
 
 const isDark = computed({
-  get: () => colorMode.value === 'dark',
+  get: () => colorMode.value === "dark",
   set: (value) => {
-    colorMode.preference = value ? 'dark' : 'light'
+    colorMode.preference = value ? "dark" : "light";
   },
-})
+});
 
 const totalSelectedFilters = computed(() =>
   Object.values(selectedCounts.value).reduce((total, count) => total + count, 0),
-)
+);
 
-const defaultFooterLinkUrl = 'https://github.com/LiuShen-Fork/Memora'
+const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
 const footerLinkText = computed(() => {
-  const value = getSetting('app:footerLinkText')
-  return String(value || '').trim() || 'Memora'
-})
+  const value = getSetting("app:footerLinkText");
+  return String(value || "").trim() || "Memora";
+});
 const footerLinkUrl = computed(() => {
-  const value = String(getSetting('app:footerLinkUrl') || '').trim()
+  const value = String(getSetting("app:footerLinkUrl") || "").trim();
   try {
-    const parsed = new URL(value)
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.toString()
+    const parsed = new URL(value);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
     }
   } catch {
     // Invalid custom URLs use the project repository.
   }
-  return defaultFooterLinkUrl
-})
+  return defaultFooterLinkUrl;
+});
 
-const openLogin = () => router.push('/signin')
+const openLogin = () => router.push("/signin");
 </script>
 
 <template>
@@ -63,50 +58,31 @@ const openLogin = () => router.push('/signin')
     <div class="masonry-topbar__inner">
       <div class="masonry-topbar__identity">
         <img
-          :src="
-            (getSetting('app:avatarUrl') as string) ||
-            '/web-app-manifest-192x192.png'
-          "
+          :src="(getSetting('app:avatarUrl') as string) || '/web-app-manifest-192x192.png'"
           class="size-8 shrink-0 rounded-full object-cover ring-1 ring-black/10 dark:ring-white/15"
           :alt="$t('ui.photo.avatarAlt')"
         />
         <div class="min-w-0 leading-tight">
           <h1 class="truncate text-sm font-semibold text-neutral-900 dark:text-white">
-            {{ getSetting('app:title') }}
+            {{ getSetting("app:title") }}
           </h1>
           <p class="truncate text-[11px] text-neutral-500 dark:text-white/55">
-            {{ stats.total }} {{ $t('title.photos') }}
-            <span v-if="getSetting('app:author')">
-              · @{{ getSetting('app:author') }}
-            </span>
+            {{ stats.total }} {{ $t("title.photos") }}
+            <span v-if="getSetting('app:author')"> · @{{ getSetting("app:author") }} </span>
           </p>
         </div>
       </div>
 
       <div class="masonry-topbar__status" :class="{ 'is-scrolled': isScrolled }">
-        <Transition
-          name="topbar-status"
-          mode="out-in"
-        >
-          <div
-            v-if="isScrolled"
-            key="context"
-            class="masonry-topbar__context"
-          >
+        <Transition name="topbar-status" mode="out-in">
+          <div v-if="isScrolled" key="context" class="masonry-topbar__context">
             <span class="masonry-topbar__date">{{ dateRangeText }}</span>
-            <span
-              v-if="locations"
-              class="masonry-topbar__location"
-            >
+            <span v-if="locations" class="masonry-topbar__location">
               {{ locations }}
             </span>
           </div>
-          <span
-            v-else-if="getSetting('app:slogan')"
-            key="slogan"
-            class="masonry-topbar__slogan"
-          >
-            {{ getSetting('app:slogan') }}
+          <span v-else-if="getSetting('app:slogan')" key="slogan" class="masonry-topbar__slogan">
+            {{ getSetting("app:slogan") }}
           </span>
         </Transition>
       </div>
@@ -142,12 +118,7 @@ const openLogin = () => router.push('/signin')
             <div class="masonry-topbar__group">
               <UPopover>
                 <UTooltip :text="$t('ui.action.filter.tooltip')">
-                  <UChip
-                    inset
-                    size="sm"
-                    color="info"
-                    :show="totalSelectedFilters > 0"
-                  >
+                  <UChip inset size="sm" color="info" :show="totalSelectedFilters > 0">
                     <UButton
                       variant="ghost"
                       :color="hasActiveFilters ? 'info' : 'neutral'"
@@ -169,11 +140,7 @@ const openLogin = () => router.push('/signin')
                 <UTooltip :text="$t('ui.action.sort.tooltip')">
                   <UButton
                     variant="ghost"
-                    :color="
-                      currentSortOption?.key === 'dateTaken-desc'
-                        ? 'neutral'
-                        : 'info'
-                    "
+                    :color="currentSortOption?.key === 'dateTaken-desc' ? 'neutral' : 'info'"
                     class="masonry-topbar__button"
                     :icon="currentSortIcon"
                     size="sm"
@@ -181,25 +148,18 @@ const openLogin = () => router.push('/signin')
                   />
                 </UTooltip>
                 <template #content>
-                  <UCard
-                    variant="glassmorphism"
-                    class="w-3xs"
-                  >
+                  <UCard variant="glassmorphism" class="w-3xs">
                     <template #header>
                       <h3 class="p-1 text-sm font-bold">
-                        {{ $t('ui.action.sort.title') }}
+                        {{ $t("ui.action.sort.title") }}
                       </h3>
                     </template>
                     <div class="space-y-1">
                       <UButton
                         v-for="sort in availableSorts"
                         :key="sort.key"
-                        :variant="
-                          currentSortLabel === sort.labelI18n ? 'soft' : 'ghost'
-                        "
-                        :color="
-                          currentSortLabel === sort.labelI18n ? 'info' : 'neutral'
-                        "
+                        :variant="currentSortLabel === sort.labelI18n ? 'soft' : 'ghost'"
+                        :color="currentSortLabel === sort.labelI18n ? 'info' : 'neutral'"
                         :icon="sort.icon"
                         size="sm"
                         block
@@ -254,10 +214,7 @@ const openLogin = () => router.push('/signin')
                   />
                 </UTooltip>
               </template>
-              <UTooltip
-                v-else
-                :text="$t('auth.form.signin.title')"
-              >
+              <UTooltip v-else :text="$t('auth.form.signin.title')">
                 <UButton
                   variant="ghost"
                   color="neutral"
@@ -273,7 +230,6 @@ const openLogin = () => router.push('/signin')
         </template>
       </AuthState>
     </div>
-
   </header>
   <a
     v-if="route.path === '/'"
@@ -300,17 +256,19 @@ const openLogin = () => router.push('/signin')
   position: absolute;
   inset: 0 0 auto;
   z-index: 0;
-  height: 5rem;
+  height: 3.4rem;
   background: linear-gradient(
     to bottom,
     rgb(255 255 255 / 18%) 0%,
     rgb(255 255 255 / 8%) 48%,
     transparent 100%
   );
-  content: '';
+  content: "";
   pointer-events: none;
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
+  mask-image: linear-gradient(to bottom, black 0%, black 52%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 52%, transparent 100%);
 }
 
 .masonry-topbar__inner {
@@ -339,7 +297,7 @@ const openLogin = () => router.push('/signin')
   left: 50%;
   display: flex;
   max-width: 28%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -65%);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -351,6 +309,7 @@ const openLogin = () => router.push('/signin')
 
 .masonry-topbar__status.is-scrolled {
   top: 1.5rem;
+  transform: translate(-50%, -65%);
 }
 
 .masonry-topbar__context {
@@ -362,7 +321,9 @@ const openLogin = () => router.push('/signin')
 
 .topbar-status-enter-active,
 .topbar-status-leave-active {
-  transition: opacity 180ms ease, transform 220ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
 }
 
 .topbar-status-enter-from {
@@ -396,7 +357,7 @@ const openLogin = () => router.push('/signin')
 .masonry-topbar__location {
   max-width: 100%;
   overflow: hidden;
-  color: rgb(82 82 91 / 62%);
+  color: rgb(82 82 91 / 78%);
   font-size: 0.68rem;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -412,7 +373,7 @@ const openLogin = () => router.push('/signin')
 }
 
 .dark .masonry-topbar__location {
-  color: rgb(212 212 216 / 58%);
+  color: rgb(212 212 216 / 72%);
 }
 
 .masonry-topbar__actions {
@@ -499,6 +460,10 @@ const openLogin = () => router.push('/signin')
 @media (max-width: 768px) {
   .masonry-topbar {
     padding: 0.25rem 0.5rem;
+  }
+
+  .masonry-topbar::before {
+    height: 3.2rem;
   }
 
   .masonry-topbar__inner {
