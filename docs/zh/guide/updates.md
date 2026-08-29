@@ -27,6 +27,21 @@ Docker 挂载必须保持原样：
 
 升级过程中不要删除或重新创建 `data/app.sqlite3`。
 
+### 容器目录权限
+
+生产镜像会使用专用的非 root 用户和用户组 `memora` 运行。首次启动前，请将宿主机挂载
+目录授权给这个身份。不要直接假定固定的 UID/GID，应从实际镜像中读取：
+
+```bash
+docker run --rm --entrypoint id ghcr.io/liushen-fork/memora:1.1.2 memora
+# 示例输出：uid=100(memora) gid=101(memora)
+sudo chown -R 100:101 data
+sudo chmod -R u+rwX data
+```
+
+将命令中的 `100:101` 替换为镜像打印出的 UID/GID。从 ChronoFrame 迁移已有 `data/`
+目录后也要执行同样的授权，否则 SQLite、日志、缩略图和生成媒体可能因权限不足而失败。
+
 ## 从 ChronoFrame 迁移到 Memora
 
 ### 推荐路径
@@ -127,6 +142,16 @@ ghcr.io/liushen-fork/memora:1.1.2
 只修改镜像名称或标签，保留原有的 volumes、环境变量和 `./data:/app/data` 挂载。生产
 运行时不需要 Node.js、Nitro、Drizzle 或手动迁移命令；从源码重新生成前端时才需要
 Node.js 和 pnpm。
+
+## 发布版本与后台列表
+
+前端 package 版本固定为 `0.0.0-dev` 用于本地开发。发布时在 GitHub Actions
+中输入如 `1.1.2` 即可，脚本会自动创建 `v1.1.2` 标签，并通过
+`MEMORA_VERSION` 注入前端构建，无需手动修改 package 文件。同一 Action 会推送对应的 Docker
+标签，并在 GitHub Release 附上带 commit 链接的更新说明和多平台二进制程序。
+
+相册库和队列管理页面按页请求数据，而不是一次性加载整张表。接口支持 `page` 和 `pageSize`（最大 100），
+返回 `data`、`page`、`pageSize`、`total` 和 `totalPages`；省略分页参数时仍保留兼容旧调用的返回格式。
 
 ## 数据和生成文件
 

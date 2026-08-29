@@ -1,6 +1,6 @@
 {
   "name": "@memora/webgl-image",
-  "version": "1.1.2",
+  "version": "0.0.0-dev",
   "keywords": [
     "webgl",
     "image-viewer",

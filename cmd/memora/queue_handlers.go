@@ -281,12 +281,12 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	typeFilter := r.URL.Query().Get("type")
 	// Queue history can grow indefinitely. Keep the dashboard response bounded;
 	// completed history remains durable and can still be cleared explicitly.
-	limit := 200
-	if value, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && value > 0 {
-		limit = value
+	page, pageSize, _ := paginationParams(r)
+	if value, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && value > 0 && r.URL.Query().Get("pageSize") == "" {
+		pageSize = value
 	}
-	if limit > 500 {
-		limit = 500
+	if pageSize > 100 {
+		pageSize = 100
 	}
 	query := `SELECT id,payload,priority,attempts,max_attempts,status,status_stage,error_message,created_at,completed_at FROM pipeline_queue`
 	conditions := []string{}
@@ -319,14 +319,23 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = statsRows.Close()
 	}
-	query += " ORDER BY created_at DESC LIMIT ?"
-	queryArgs := append(append([]any(nil), args...), limit)
+	var total int
+	countQuery := `SELECT COUNT(*) FROM pipeline_queue`
+	if len(conditions) > 0 {
+		countQuery += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	if err := a.db.QueryRowContext(r.Context(), countQuery, args...).Scan(&total); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to count tasks")
+		return
+	}
+	query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	queryArgs := append(append([]any(nil), args...), pageSize, (page-1)*pageSize)
 	rows, err := a.db.Query(query, queryArgs...)
 	if err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
 		return
 	}
-	out := make([]map[string]any, 0, limit)
+	out := make([]map[string]any, 0, pageSize)
 	for rows != nil && rows.Next() {
 		var id, priority, attempts, max int
 		var p, status, stage, errMsg string
@@ -350,7 +359,7 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"success": true, "data": out, "limit": limit, "stats": stats})
+	writeJSON(w, 200, map[string]any{"success": true, "data": out, "page": page, "pageSize": pageSize, "total": total, "totalPages": (total + pageSize - 1) / pageSize, "stats": stats})
 }
 func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {

@@ -31,7 +31,7 @@ Memora 是对原 Nuxt 应用的大幅重构：
 ```bash
 docker run -d --name memora -p 3000:3000 \
   -v $(pwd)/data:/app/data --env-file .env \
-  ghcr.io/liu-shen-fork/memora:latest
+  ghcr.io/liushen-fork/memora:latest
 ```
 
 从 ChronoFrame 迁移时请保持原有的 `./data:/app/data` 挂载不变。大多数配置都可以在后台完成，无需填写大量环境变量。

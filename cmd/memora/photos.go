@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -83,6 +84,43 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
 	}
 	query += ` ORDER BY date_taken DESC`
+	page, pageSize, paginated := paginationParams(r)
+	if paginated {
+		var total int
+		countQuery := `SELECT COUNT(*) FROM photos`
+		if visible {
+			countQuery += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
+		}
+		if err := a.db.QueryRowContext(r.Context(), countQuery).Scan(&total); err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to count photos")
+			return
+		}
+		query += ` LIMIT ? OFFSET ?`
+		args := []any{pageSize, (page - 1) * pageSize}
+		rows, err := a.db.QueryContext(r.Context(), query, args...)
+		if err != nil {
+			errorJSON(w, 500, err.Error())
+			return
+		}
+		out := []Photo{}
+		for rows.Next() {
+			p, scanErr := scanPhoto(rows)
+			if scanErr != nil {
+				_ = rows.Close()
+				errorJSON(w, http.StatusInternalServerError, "Unable to read photos")
+				return
+			}
+			out = append(out, p)
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Unable to read photos")
+			return
+		}
+		_ = rows.Close()
+		writeJSON(w, 200, map[string]any{"data": out, "page": page, "pageSize": pageSize, "total": total, "totalPages": (total + pageSize - 1) / pageSize})
+		return
+	}
 	rows, err := a.db.QueryContext(r.Context(), query)
 	if err != nil {
 		errorJSON(w, 500, err.Error())
@@ -108,6 +146,25 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 		return
 	}
 	writeJSON(w, 200, out)
+}
+
+func paginationParams(r *http.Request) (page, pageSize int, enabled bool) {
+	page, pageSize = 1, 50
+	pageValue, pageErr := strconv.Atoi(r.URL.Query().Get("page"))
+	sizeValue, sizeErr := strconv.Atoi(r.URL.Query().Get("pageSize"))
+	if pageErr != nil && sizeErr != nil {
+		return page, pageSize, false
+	}
+	if pageValue > 0 {
+		page = pageValue
+	}
+	if sizeErr == nil && sizeValue > 0 {
+		pageSize = sizeValue
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return page, pageSize, true
 }
 
 func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {

@@ -69,6 +69,12 @@ const apiEndpoint = computed(() => {
   // 前端页面：登录用户显示所有照片，未登录用户只显示可见照片
   return loggedIn.value ? '/api/photos' : '/api/photos/visible'
 })
+const photoQuery = computed(() => {
+  if (route.path !== '/dashboard/photos') return undefined
+  const rawPage = Number(route.query.page)
+  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1
+  return { page, pageSize: 50 }
+})
 // Keep the shell and route visible while the photo collection is loading.
 // The collection can be large, and album pages fetch their own focused data.
 const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
@@ -76,12 +82,22 @@ const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
   watch: false,
   lazy: true,
   default: () => [],
+  query: photoQuery,
 })
 watch(
-  [apiEndpoint, shouldLoadPhotos],
-  ([endpoint, needed], previous) => {
+  [apiEndpoint, shouldLoadPhotos, photoQuery],
+  ([endpoint, needed, query], previous) => {
     if (!needed || !endpoint) return
-    if (!previous || endpoint !== previous[0] || needed !== previous[1]) {
+    const previousQuery = previous?.[2]
+    const queryChanged =
+      query?.page !== previousQuery?.page ||
+      query?.pageSize !== previousQuery?.pageSize
+    if (
+      !previous ||
+      endpoint !== previous[0] ||
+      needed !== previous[1] ||
+      queryChanged
+    ) {
       void refresh()
     }
   },
@@ -111,7 +127,14 @@ watch(
 )
 void settingsRequest
 
-const photos = computed(() => (data.value as Photo[]) || [])
+const photos = computed(() => {
+  const value = data.value as any
+  return (Array.isArray(value) ? value : value?.data) || []
+})
+const photoTotal = computed(() => {
+  const value = data.value as any
+  return typeof value?.total === 'number' ? value.total : photos.value.length
+})
 
 const { switchToIndex, closeViewer, clearReturnRoute } = useViewerState()
 const {
@@ -182,6 +205,7 @@ provide(
       :photos="photos"
       :refresh="refresh"
       :status="status"
+      :total-count="photoTotal"
     >
       <NuxtLayout>
         <NuxtPage />

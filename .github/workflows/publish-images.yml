@@ -123,6 +123,8 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            MEMORA_VERSION=${{ steps.release.outputs.version }}
           tags: ${{ steps.release.outputs.docker_tags }}
 
       - name: Create GitHub release

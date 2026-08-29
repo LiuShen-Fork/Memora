@@ -30,6 +30,25 @@ Keep the existing mount exactly as it is:
 
 Do not delete or recreate `data/app.sqlite3` during an upgrade.
 
+### Container permissions
+
+The production image runs as the dedicated unprivileged `memora` user and
+group. Before the first start, make the host-mounted directory writable by
+that identity. Resolve the numeric IDs from the image instead of assuming a
+fixed UID/GID:
+
+```bash
+docker run --rm --entrypoint id ghcr.io/liushen-fork/memora:1.1.2 memora
+# Example output: uid=100(memora) gid=101(memora)
+sudo chown -R 100:101 data
+sudo chmod -R u+rwX data
+```
+
+Replace `100:101` with the UID/GID printed by your image. Apply the same
+ownership to an existing `data/` directory after migrating from ChronoFrame;
+otherwise SQLite, logs, thumbnails, and generated media may fail with
+permission errors.
+
 ## ChronoFrame to Memora
 
 ### Recommended path
@@ -142,6 +161,20 @@ ghcr.io/liushen-fork/memora:1.1.2
 The Go server does not need Node.js, Nitro, Drizzle, or a manual migration
 command at runtime. Node.js and pnpm are only needed when rebuilding the
 frontend from source.
+
+## Release Version and Administration Lists
+
+The checked-in frontend package uses `0.0.0-dev` for local development. The
+release workflow accepts a version such as `1.1.2`, creates the `v1.1.2` tag,
+and passes it to the frontend build as `MEMORA_VERSION`; no package manifest
+edit is required. The same workflow publishes the matching Docker tag and
+attaches cross-linked commit notes and binaries to the GitHub release.
+
+The photo library and queue pages request bounded pages instead of loading the
+entire table. The API accepts `page` and `pageSize` (maximum `100`) and returns
+`data`, `page`, `pageSize`, `total`, and `totalPages`. Existing callers that omit
+these parameters continue to receive the legacy array/list shape where
+applicable.
 
 ## Data and Generated Files
 

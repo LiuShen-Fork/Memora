@@ -45,7 +45,14 @@ const systemUploadEraseLocationDefault = computed(() => {
 
 const dayjs = useDayjs()
 
-const { status, refresh } = usePhotos()
+const { status, refresh, totalCount } = usePhotos()
+const photoPage = computed(() => {
+  const value = Number(useRoute().query.page)
+  return Number.isInteger(value) && value > 0 ? value : 1
+})
+const setPhotoPage = (page: number) => {
+  void navigateTo({ query: { ...useRoute().query, page: page === 1 ? undefined : page } })
+}
 const { filteredPhotos, selectedCounts, hasActiveFilters } = usePhotoFilters()
 
 const totalSelectedFilters = computed(() => {
@@ -2671,6 +2678,15 @@ onUnmounted(() => {
               </div>
             </template>
           </UTable>
+          <div class="flex justify-center border-t border-neutral-200/80 dark:border-neutral-800/80 p-3">
+            <UPagination
+              :page="photoPage"
+              :total="totalCount"
+              :items-per-page="50"
+              show-edges
+              @update:page="setPhotoPage"
+            />
+          </div>
 
           <!-- 悬浮版批量操作菜单 -->
           <transition

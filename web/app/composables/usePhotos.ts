@@ -15,6 +15,7 @@ export function providePhotos(
   photos: Ref<Photo[]>,
   status: Ref<AsyncDataRequestStatus>,
   refresh: () => Promise<void>,
+  totalCount?: Ref<number | undefined> | ComputedRef<number | undefined>,
 ) {
   const context: PhotosContext = {
     photos,
@@ -26,7 +27,9 @@ export function providePhotos(
     filterPhotos: (predicate: (photo: Photo) => boolean) => {
       return photos.value.filter(predicate)
     },
-    totalCount: computed(() => photos.value.length),
+    totalCount: totalCount
+      ? computed(() => totalCount.value ?? photos.value.length)
+      : computed(() => photos.value.length),
   }
 
   provide(PhotosContextKey, context)

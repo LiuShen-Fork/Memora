@@ -30,7 +30,7 @@
 #### [GitHub Container Registry (GHCR)](https://github.com/LiuShen-Fork/Memora/pkgs/container/memora)
 
 ```bash
-docker pull ghcr.io/liu-shen-fork/memora:latest
+docker pull ghcr.io/liushen-fork/memora:latest
 ```
 
 ### 创建配置文件
@@ -100,7 +100,7 @@ NUXT_OAUTH_GITHUB_CLIENT_SECRET=
 #### 快速启动
 
 ```bash
-docker run -d --name memora -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env ghcr.io/liu-shen-fork/memora:latest
+docker run -d --name memora -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env ghcr.io/liushen-fork/memora:latest
 ```
 
 ### Docker Compose 部署
@@ -112,7 +112,7 @@ docker run -d --name memora -p 3000:3000 -v $(pwd)/data:/app/data --env-file .en
 ```yaml
 services:
   memora:
-    image: ghcr.io/liu-shen-fork/memora:latest
+    image: ghcr.io/liushen-fork/memora:latest
     container_name: memora
     restart: unless-stopped
     ports:
@@ -209,7 +209,7 @@ server {
 ```yaml
 services:
   memora:
-    image: ghcr.io/liu-shen-fork/memora:latest
+    image: ghcr.io/liushen-fork/memora:latest
     container_name: memora
     restart: unless-stopped
     volumes:

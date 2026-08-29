@@ -30,7 +30,7 @@ Use the published image on GitHub Container Registry:
 #### [GitHub Container Registry (GHCR)](https://github.com/LiuShen-Fork/Memora/pkgs/container/memora)
 
 ```bash
-docker pull ghcr.io/liu-shen-fork/memora:latest
+docker pull ghcr.io/liushen-fork/memora:latest
 ```
 
 ### Create `.env`
@@ -106,7 +106,7 @@ docker run -d \
   -p 3000:3000 \
   -v "$(pwd)/data:/app/data" \
   --env-file .env \
-  ghcr.io/liu-shen-fork/memora:latest
+  ghcr.io/liushen-fork/memora:latest
 ```
 
 ### Docker Compose
@@ -116,7 +116,7 @@ Create `docker-compose.yml`:
 ```yaml
 services:
   memora:
-    image: ghcr.io/liu-shen-fork/memora:latest
+    image: ghcr.io/liushen-fork/memora:latest
     container_name: memora
     restart: unless-stopped
     ports:
@@ -199,7 +199,7 @@ server {
 ```yaml
 services:
   memora:
-    image: ghcr.io/liu-shen-fork/memora:latest
+    image: ghcr.io/liushen-fork/memora:latest
     container_name: memora
     restart: unless-stopped
     volumes:

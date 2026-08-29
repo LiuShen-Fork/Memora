@@ -1,4 +1,6 @@
 FROM node:22.22.3-alpine AS web-build
+ARG MEMORA_VERSION=dev
+ENV MEMORA_VERSION=$MEMORA_VERSION
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable

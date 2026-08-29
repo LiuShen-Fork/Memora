@@ -19,13 +19,16 @@ const isLoading = ref(false)
 const selectedTasks = ref<number[]>([])
 const statusFilter = ref<string>('all')
 const typeFilter = ref<string>('all')
+const page = ref(1)
+const pageSize = 25
 
 // 数据获取
 const { data: queueData, refresh: refreshQueue } = await useFetch(
   '/api/queue/task/list',
   {
     query: computed(() => ({
-      limit: 200,
+      page: page.value,
+      pageSize,
       ...(statusFilter.value !== 'all' && { status: statusFilter.value }),
       ...(typeFilter.value !== 'all' && { type: typeFilter.value }),
     })),
@@ -66,6 +69,9 @@ const refreshData = async () => {
     isLoading.value = false
   }
 }
+watch([statusFilter, typeFilter], () => {
+  page.value = 1
+})
 
 // 清理非活跃任务
 const clearNonActiveTasks = async () => {
@@ -550,6 +556,14 @@ onBeforeUnmount(() => {
                 </div>
               </template>
             </UTable>
+            <div class="flex justify-center border-t border-neutral-200/80 dark:border-neutral-800/80 p-3">
+              <UPagination
+                v-model:page="page"
+                :total="queueData?.total || 0"
+                :items-per-page="pageSize"
+                show-edges
+              />
+            </div>
           </div>
         </UCard>
       </div>

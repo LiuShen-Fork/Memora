@@ -30,7 +30,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      VERSION: pkg.version,
+      // Release builds inject MEMORA_VERSION from GitHub Actions. Keep the
+      // package value only as a local-development fallback.
+      VERSION: process.env.MEMORA_VERSION || pkg.version,
       mapbox: {
         accessToken: '',
       },
