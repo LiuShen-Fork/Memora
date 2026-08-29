@@ -48,10 +48,6 @@ const isMobile = useMediaQuery('(max-width: 768px)')
 const { batchProcessLivePhotos } = useLivePhotoProcessor()
 
 const processedBatch = ref(new Set<string>())
-const headerRef = ref<HTMLElement>()
-const headerHeight = ref(0)
-const headerColumnWidth = ref(0)
-
 const columnWidth = computed(() => {
   if (props.columns === 'auto') {
     return isMobile.value ? 280 : 280
@@ -82,77 +78,6 @@ const masonryItems = computed(() => {
       originalIndex: index,
     })) ?? []
   )
-})
-useResizeObserver(headerRef, (entries) => {
-  const entry = entries[0]
-  if (entry) {
-    headerHeight.value = entry.contentRect.height
-  }
-})
-
-const updateHeaderWidth = () => {
-  if (isMobile.value) {
-    headerColumnWidth.value = 0
-    return
-  }
-
-  const columnElement = masonryWrapper.value?.querySelector<HTMLElement>(
-    '.masonry-wall .masonry-column',
-  )
-
-  if (columnElement) {
-    headerColumnWidth.value = columnElement.getBoundingClientRect().width
-    return
-  }
-
-  headerColumnWidth.value = columnWidth.value
-}
-
-useResizeObserver(masonryWrapper, () => {
-  updateHeaderWidth()
-})
-
-const headerOffset = computed(() => {
-  if (isMobile.value) {
-    return 0
-  }
-  return headerHeight.value + MASONRY_GAP
-})
-
-const headerStyle = computed(() => {
-  const styles: Record<string, string> = {}
-
-  if (isMobile.value) {
-    styles.width = '100%'
-    styles.marginBottom = `${MASONRY_GAP}px`
-    return styles
-  }
-
-  const width = headerColumnWidth.value || columnWidth.value
-  styles.width = `${width}px`
-
-  return styles
-})
-
-watch([columnWidth, maxColumns, minColumns], () => {
-  if (isMobile.value) {
-    return
-  }
-
-  nextTick(() => {
-    updateHeaderWidth()
-  })
-})
-
-watch(isMobile, (mobile) => {
-  if (mobile) {
-    headerColumnWidth.value = 0
-    return
-  }
-
-  nextTick(() => {
-    updateHeaderWidth()
-  })
 })
 
 const photoStats = computed(() => {
@@ -325,11 +250,8 @@ const scrollToTop = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
-  window.addEventListener('resize', updateHeaderWidth)
 
   nextTick(() => {
-    updateHeaderWidth()
-
     if (currentPhotoIndex.value) {
       scrollToPhoto(currentPhotoIndex.value)
     }
@@ -338,7 +260,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
-  window.removeEventListener('resize', updateHeaderWidth)
 })
 
 const handleOpenViewer = (index: number) => {
@@ -381,13 +302,6 @@ watch(currentPhotoIndex, (newIndex) => {
 
 <template>
   <div class="relative w-full">
-    <DateRangeIndicator
-      :date-range="dateRange"
-      :locations="visibleCities"
-      :is-visible="!!dateRange && showFloatingActions"
-      :is-mobile="isMobile"
-    />
-
     <!-- Back to Top Button -->
     <motion.div
       v-if="showFloatingActions"
@@ -418,17 +332,15 @@ watch(currentPhotoIndex, (newIndex) => {
         ref="masonryWrapper"
         class="relative"
         :class="{ 'pt-2': isMobile }"
-        :style="{ '--masonry-header-offset': `${headerOffset}px` }"
       >
         <div
-          ref="headerRef"
           class="masonry-header-wrapper"
-          :class="{ 'masonry-header-desktop': !isMobile }"
-          :style="headerStyle"
         >
           <MasonryItemHeader
             :stats="photoStats"
             :date-range-text
+            :locations="visibleCities"
+            :is-scrolled="showFloatingActions"
           />
         </div>
 
@@ -467,21 +379,12 @@ watch(currentPhotoIndex, (newIndex) => {
 
 <style scoped>
 .masonry-header-wrapper {
-  z-index: 1;
+  height: 5.5rem;
 }
 
-.masonry-header-desktop {
-  left: 0;
-  position: absolute;
-  top: 0;
-}
-
-.masonry-wall-with-header :deep(.masonry-column:first-child) {
-  padding-top: var(--masonry-header-offset, 0px);
-}
-
-.masonry-wall-with-header
-  :deep(.masonry-column:first-child .masonry-item:first-child) {
-  margin-top: 0;
+@media (max-width: 768px) {
+  .masonry-header-wrapper {
+    height: 4.5rem;
+  }
 }
 </style>
