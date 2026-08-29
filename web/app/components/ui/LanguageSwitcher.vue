@@ -31,7 +31,14 @@ const menuItems = computed(() =>
 <template>
   <UDropdownMenu
     :items="menuItems"
-    :content="{ align: compact ? 'start' : 'end' }"
+    :content="{
+      align: 'end',
+      sideOffset: 6,
+      collisionPadding: 8,
+    }"
+    :ui="{
+      content: 'w-40 max-w-[calc(100vw-1rem)]',
+    }"
   >
     <UTooltip :text="$t('common.languageSwitcher.label')">
       <UButton
