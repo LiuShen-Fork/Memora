@@ -317,8 +317,7 @@ onBeforeMount(() => {
                 :key="item.photo.id"
                 :photo="item.photo"
                 :index="item.originalIndex"
-                :has-animated="false"
-                :first-screen-items="50"
+                :animate="true"
                 @open-viewer="handleOpenViewer($event)"
               />
             </template>
