@@ -241,6 +241,31 @@ func TestQueueResponseContracts(t *testing.T) {
 	}
 }
 
+func TestPhotoListPagination(t *testing.T) {
+	app := newTestApp(t)
+	for i := 0; i < 25; i++ {
+		if _, err := app.db.Exec(`INSERT INTO photos(id,storage_key,date_taken) VALUES(?,?,?)`, strconv.Itoa(i), "photos/"+strconv.Itoa(i)+".jpg", time.Now().UTC().Format(time.RFC3339)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	response := httptest.NewRecorder()
+	app.ServeHTTP(response, adminRequest(t, app, http.MethodGet, "/api/photos?page=2&pageSize=20", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("photo list failed: %d %s", response.Code, response.Body.String())
+	}
+	var payload struct {
+		Data  []Photo `json:"data"`
+		Page  int     `json:"page"`
+		Total int     `json:"total"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Page != 2 || payload.Total != 25 || len(payload.Data) != 5 {
+		t.Fatalf("unexpected pagination payload: page=%d total=%d data=%d", payload.Page, payload.Total, len(payload.Data))
+	}
+}
+
 func TestExifReindexAndLivePhotoDetection(t *testing.T) {
 	app := newTestApp(t)
 	imageKey := "photos/sample.jpg"

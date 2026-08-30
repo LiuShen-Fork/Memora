@@ -149,7 +149,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 }
 
 func paginationParams(r *http.Request) (page, pageSize int, enabled bool) {
-	page, pageSize = 1, 50
+	page, pageSize = 1, 20
 	pageValue, pageErr := strconv.Atoi(r.URL.Query().Get("page"))
 	sizeValue, sizeErr := strconv.Atoi(r.URL.Query().Get("pageSize"))
 	if pageErr != nil && sizeErr != nil {
