@@ -1,7 +1,6 @@
 <script setup lang="ts">
 const {
   currentSortLabel,
-  currentSortIcon,
   currentSortOption,
   availableSorts,
   setSortOption,

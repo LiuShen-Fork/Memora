@@ -50,7 +50,7 @@ const aspectRatio = computed(() => {
 
   // Priority 2: Calculate from width and height if available
   if (props.photo.width && props.photo.height) {
-    return props.photo.height / props.photo.width
+    return props.photo.width / props.photo.height
   }
 
   // Fallback: Default aspect ratio
