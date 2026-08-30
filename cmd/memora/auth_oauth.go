@@ -66,7 +66,11 @@ func (a *App) oauthAuth(w http.ResponseWriter, r *http.Request) {
 			"scope":         {settings.Scope},
 			"state":         {a.githubState()},
 		}
-		http.Redirect(w, r, settings.AuthorizationURL+"?"+params.Encode(), http.StatusFound)
+		separator := "?"
+		if strings.Contains(settings.AuthorizationURL, "?") {
+			separator = "&"
+		}
+		http.Redirect(w, r, settings.AuthorizationURL+separator+params.Encode(), http.StatusFound)
 		return
 	}
 	if !a.verifyGithubState(r.URL.Query().Get("state")) {
