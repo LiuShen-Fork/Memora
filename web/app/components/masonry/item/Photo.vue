@@ -451,6 +451,16 @@ onMounted(() => {
 
 // Cleanup observers on unmount
 onUnmounted(() => {
+  // A card can be removed by the gallery's DOM virtualization before its
+  // observer gets a final non-intersecting callback.
+  if (isVisible.value) {
+    emit('visibility-change', {
+      index: props.index,
+      isVisible: false,
+      date: props.photo.dateTaken || new Date().toISOString(),
+    })
+  }
+
   if (resizeObserverRef.value) {
     resizeObserverRef.value.disconnect()
   }

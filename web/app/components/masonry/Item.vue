@@ -5,11 +5,12 @@ const props = withDefaults(
   defineProps<{
     photo: Photo
     index: number
-    hasAnimated: boolean
-    firstScreenItems?: number
+    animate?: boolean
+    animationDelay?: number
   }>(),
   {
-    firstScreenItems: 30,
+    animate: false,
+    animationDelay: undefined,
   },
 )
 
@@ -26,11 +27,11 @@ const itemKey = computed(() => {
 })
 
 const shouldAnimate = computed(() => {
-  return !props.hasAnimated && props.index < props.firstScreenItems
+  return props.animate
 })
 
 const animateDelay = computed(() => {
-  return props.index * 0.02
+  return props.animationDelay ?? props.index * 0.02
 })
 
 const itemVariants = {

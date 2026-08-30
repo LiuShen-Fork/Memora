@@ -35,15 +35,15 @@ const displayPhotos = computed(() => {
 
 const { currentPhotoIndex, isViewerOpen } = storeToRefs(useViewerState())
 
-const FIRST_SCREEN_ITEMS_COUNT = 50
 const GALLERY_PAGE_SIZE = 100
 const MASONRY_GAP = 4
 
 const masonryWrapper = ref<HTMLElement>()
-const hasAnimated = ref(false)
 const showFloatingActions = ref(false)
 const dateRange = ref<string>()
+const visibleCities = ref<string>()
 const visiblePhotos = ref(new Set<number>())
+const animatedPhotoIds = ref(new Set<string>())
 
 const isMobile = useMediaQuery('(max-width: 768px)')
 const { batchProcessLivePhotos } = useLivePhotoProcessor()
@@ -72,6 +72,7 @@ const minColumns = computed(() => {
 })
 
 const visiblePhotoCount = ref(GALLERY_PAGE_SIZE)
+const animationBatchStart = ref(0)
 
 // Prepare items for masonry-wall
 const masonryItems = computed(() => {
@@ -89,15 +90,37 @@ const hasMorePhotos = computed(
 )
 
 const loadMorePhotos = () => {
+  const previousCount = visiblePhotoCount.value
   visiblePhotoCount.value = Math.min(
     visiblePhotoCount.value + GALLERY_PAGE_SIZE,
     displayPhotos.value.length,
   )
+
+  // Start a short stagger for the newly appended batch. The item component
+  // keeps the completed IDs so scrolling back does not replay the animation.
+  animationBatchStart.value = previousCount
 }
 
 watch(displayPhotos, () => {
   visiblePhotoCount.value = GALLERY_PAGE_SIZE
+  animationBatchStart.value = 0
+  animatedPhotoIds.value = new Set()
+  visiblePhotos.value = new Set()
+  dateRange.value = undefined
+  visibleCities.value = undefined
 })
+
+const shouldAnimatePhoto = (photo: Photo) => !animatedPhotoIds.value.has(photo.id)
+
+const markPhotoAnimated = (photoId: string) => {
+  if (animatedPhotoIds.value.has(photoId)) return
+  animatedPhotoIds.value = new Set(animatedPhotoIds.value).add(photoId)
+}
+
+const animationDelayForIndex = (index: number) => {
+  const offset = Math.max(0, index - animationBatchStart.value)
+  return Math.min(offset, 40) * 0.012
+}
 
 const photoStats = computed(() => {
   const totalPhotos = displayPhotos.value?.length || 0
@@ -188,8 +211,6 @@ const processVisibleLivePhotos = async () => {
     })),
   )
 }
-
-const visibleCities = ref<string>()
 
 const updateDateRange = () => {
   if (visiblePhotos.value.size === 0) {
@@ -380,13 +401,14 @@ watch(currentPhotoIndex, (newIndex) => {
         >
           <template #default="{ item }">
             <!-- Photo Items -->
-            <MasonryItem
+            <MasonryLazyItem
               v-if="item.photo && typeof item.originalIndex === 'number'"
               :key="item.photo.id"
               :photo="item.photo"
               :index="item.originalIndex"
-              :has-animated
-              :first-screen-items="FIRST_SCREEN_ITEMS_COUNT"
+              :animate="shouldAnimatePhoto(item.photo)"
+              :animation-delay="animationDelayForIndex(item.originalIndex)"
+              @animation-complete="markPhotoAnimated(item.photo.id)"
               @visibility-change="handleVisibilityChange"
               @open-viewer="handleOpenViewer($event)"
             />
