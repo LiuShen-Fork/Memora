@@ -4,6 +4,10 @@ interface PhotosContext {
   photos: Ref<Photo[]>
   status: Ref<AsyncDataRequestStatus>
   refresh: () => Promise<void>
+  loadMore: () => Promise<void>
+  ensurePhoto: (id: string) => Promise<void>
+  hasMore: ComputedRef<boolean>
+  isLoadingMore: Ref<boolean>
   getPhotoById: (id: string) => Photo | undefined
   filterPhotos: (predicate: (photo: Photo) => boolean) => Photo[]
   totalCount: ComputedRef<number>
@@ -16,11 +20,21 @@ export function providePhotos(
   status: Ref<AsyncDataRequestStatus>,
   refresh: () => Promise<void>,
   totalCount?: Ref<number | undefined> | ComputedRef<number | undefined>,
+  paging?: {
+    loadMore: () => Promise<void>
+    ensurePhoto: (id: string) => Promise<void>
+    hasMore: ComputedRef<boolean>
+    isLoadingMore: Ref<boolean>
+  },
 ) {
   const context: PhotosContext = {
     photos,
     status,
     refresh,
+    loadMore: paging?.loadMore ?? (async () => {}),
+    ensurePhoto: paging?.ensurePhoto ?? (async () => {}),
+    hasMore: paging?.hasMore ?? computed(() => false),
+    isLoadingMore: paging?.isLoadingMore ?? ref(false),
     getPhotoById: (id: string) => {
       return photos.value.find((photo) => photo.id === id)
     },

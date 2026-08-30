@@ -83,9 +83,12 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 	if visible {
 		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
 	}
-	query += ` ORDER BY date_taken DESC`
+	query += ` ORDER BY date_taken DESC, photos.id DESC`
 	page, pageSize, paginated := paginationParams(r)
 	if paginated {
+		if pageSize > 50 {
+			pageSize = 50
+		}
 		var total int
 		countQuery := `SELECT COUNT(*) FROM photos`
 		if visible {
@@ -439,6 +442,10 @@ func (a *App) photoRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	id := parts[0]
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		a.getPhoto(w, r, id)
+		return
+	}
 	if len(parts) == 1 && r.Method == "PUT" {
 		a.updatePhoto(w, r, id)
 		return
@@ -464,6 +471,29 @@ func (a *App) photoRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	errorJSON(w, 404, "Not Found")
+}
+
+func (a *App) getPhoto(w http.ResponseWriter, r *http.Request, id string) {
+	query := photoSelect + ` WHERE photos.id=?`
+	if _, loggedIn := a.user(r); !loggedIn {
+		query += ` AND NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
+	}
+	rows, err := a.db.QueryContext(r.Context(), query, id)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to load photo")
+		return
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		errorJSON(w, http.StatusNotFound, "Photo not found")
+		return
+	}
+	photo, err := scanPhoto(rows)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read photo")
+		return
+	}
+	writeJSON(w, http.StatusOK, photo)
 }
 func (a *App) updatePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	if _, ok := a.require(r); !ok {

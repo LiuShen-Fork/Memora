@@ -35,6 +35,7 @@ void session.fetch()
 const { loggedIn } = session
 
 const appTitle = useSettingRef('app:title')
+const GALLERY_PAGE_SIZE = 50
 
 useHead({
   titleTemplate: (title) =>
@@ -69,11 +70,23 @@ const apiEndpoint = computed(() => {
   // 前端页面：登录用户显示所有照片，未登录用户只显示可见照片
   return loggedIn.value ? '/api/photos' : '/api/photos/visible'
 })
+const isGalleryPagedRoute = computed(() => {
+  const path = route.path
+  const isPhotoDetailRoute =
+    /^\/[^/]+$/.test(path) &&
+    !['/signin', '/onboarding', '/dashboard', '/albums', '/globe'].includes(path)
+  return path === '/' || isPhotoDetailRoute
+})
 const photoQuery = computed(() => {
-  if (route.path !== '/dashboard/photos') return undefined
-  const rawPage = Number(route.query.page)
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1
-  return { page, pageSize: 20 }
+  if (route.path === '/dashboard/photos') {
+    const rawPage = Number(route.query.page)
+    const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1
+    return { page, pageSize: 20 }
+  }
+  if (isGalleryPagedRoute.value) {
+    return { page: 1, pageSize: GALLERY_PAGE_SIZE }
+  }
+  return undefined
 })
 // Keep the shell and route visible while the photo collection is loading.
 // The collection can be large, and album pages fetch their own focused data.
@@ -84,6 +97,15 @@ const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
   default: () => [],
   query: photoQuery,
 })
+const additionalPhotos = ref<Photo[]>([])
+const isLoadingMorePhotos = ref(false)
+const nextGalleryPage = ref(2)
+
+const resetGalleryPages = () => {
+  additionalPhotos.value = []
+  nextGalleryPage.value = 2
+}
+
 watch(
   [apiEndpoint, shouldLoadPhotos, photoQuery],
   ([endpoint, needed, query], previous) => {
@@ -98,11 +120,54 @@ watch(
       needed !== previous[1] ||
       queryChanged
     ) {
+      resetGalleryPages()
       void refresh()
     }
   },
   { immediate: true },
 )
+
+const basePhotos = computed<Photo[]>(() => {
+  const value = data.value as any
+  return (Array.isArray(value) ? value : value?.data) || []
+})
+
+const refreshPhotos = async () => {
+  resetGalleryPages()
+  await refresh()
+}
+
+const loadMorePhotos = async () => {
+  if (!isGalleryPagedRoute.value || isLoadingMorePhotos.value) return
+  const value = data.value as any
+  const total = typeof value?.total === 'number' ? value.total : basePhotos.value.length
+  if (basePhotos.value.length + additionalPhotos.value.length >= total) return
+
+  const endpoint = apiEndpoint.value
+  const page = nextGalleryPage.value
+  isLoadingMorePhotos.value = true
+  try {
+    const response = await $fetch<{
+      data: Photo[]
+      page: number
+      total: number
+    }>(endpoint, {
+      query: { page, pageSize: GALLERY_PAGE_SIZE },
+    })
+    if (endpoint !== apiEndpoint.value || !isGalleryPagedRoute.value) return
+
+    const knownIds = new Set([
+      ...basePhotos.value.map((photo) => photo.id),
+      ...additionalPhotos.value.map((photo) => photo.id),
+    ])
+    additionalPhotos.value.push(
+      ...response.data.filter((photo) => !knownIds.has(photo.id)),
+    )
+    nextGalleryPage.value = page + 1
+  } finally {
+    isLoadingMorePhotos.value = false
+  }
+}
 
 // Keep theme application deterministic even when settings arrive after the
 // first gallery response.
@@ -126,14 +191,26 @@ watch(
 )
 void settingsRequest
 
-const photos = computed(() => {
-  const value = data.value as any
-  return (Array.isArray(value) ? value : value?.data) || []
-})
+const photos = computed(() =>
+  isGalleryPagedRoute.value
+    ? [...basePhotos.value, ...additionalPhotos.value]
+    : basePhotos.value,
+)
 const photoTotal = computed(() => {
   const value = data.value as any
   return typeof value?.total === 'number' ? value.total : photos.value.length
 })
+const hasMorePhotos = computed(
+  () => isGalleryPagedRoute.value && photos.value.length < photoTotal.value,
+)
+
+const ensurePhoto = async (id: string) => {
+  if (!isGalleryPagedRoute.value || photos.value.some((photo) => photo.id === id)) return
+  const photo = await $fetch<Photo>(`/api/photos/${encodeURIComponent(id)}`)
+  if (!photos.value.some((item) => item.id === photo.id)) {
+    additionalPhotos.value.push(photo)
+  }
+}
 
 const { switchToIndex, closeViewer, clearReturnRoute } = useViewerState()
 const {
@@ -202,7 +279,11 @@ provide(
     <NuxtLoadingIndicator />
     <PhotosProvider
       :photos="photos"
-      :refresh="refresh"
+      :refresh="refreshPhotos"
+      :load-more="loadMorePhotos"
+      :ensure-photo="ensurePhoto"
+      :has-more="hasMorePhotos"
+      :is-loading-more="isLoadingMorePhotos"
       :status="status"
       :total-count="photoTotal"
     >

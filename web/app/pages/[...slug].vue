@@ -11,12 +11,20 @@ const router = useRouter()
 const { switchToIndex, closeViewer, openViewer } = useViewerState()
 const { isViewerOpen, scopedPhotos } = storeToRefs(useViewerState())
 
-const { photos } = usePhotos()
+const { photos, ensurePhoto } = usePhotos()
 
 const slug = computed(() => (route.params.slug as string[]) || [])
 const photoId = computed(() => slug.value[0] || null)
 const currentPhoto = computed(() =>
   photos.value.find((photo) => photo.id === photoId.value),
+)
+
+watch(
+  photoId,
+  (id) => {
+    if (id && !currentPhoto.value) void ensurePhoto(id).catch(() => {})
+  },
+  { immediate: true },
 )
 
 // 处理标签查询参数

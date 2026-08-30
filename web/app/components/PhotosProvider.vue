@@ -4,6 +4,10 @@ import type { AsyncDataRequestStatus } from '#app'
 const props = defineProps<{
   photos: Photo[]
   refresh: () => Promise<void>
+  loadMore: () => Promise<void>
+  ensurePhoto: (id: string) => Promise<void>
+  hasMore: boolean
+  isLoadingMore: boolean
   status: AsyncDataRequestStatus
   totalCount?: number
 }>()
@@ -11,7 +15,12 @@ const props = defineProps<{
 const photosRef = toRef(props, 'photos')
 const status = toRef(props, 'status')
 const refresh = props.refresh
-providePhotos(photosRef, status, refresh, toRef(props, 'totalCount'))
+providePhotos(photosRef, status, refresh, toRef(props, 'totalCount'), {
+  loadMore: props.loadMore,
+  ensurePhoto: props.ensurePhoto,
+  hasMore: toRef(props, 'hasMore'),
+  isLoadingMore: toRef(props, 'isLoadingMore'),
+})
 </script>
 
 <template>

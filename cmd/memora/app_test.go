@@ -266,6 +266,56 @@ func TestPhotoListPagination(t *testing.T) {
 	}
 }
 
+func TestPhotoListPaginationCapsPageSizeAtFifty(t *testing.T) {
+	app := newTestApp(t)
+	for i := 0; i < 60; i++ {
+		if _, err := app.db.Exec(`INSERT INTO photos(id,storage_key,date_taken) VALUES(?,?,?)`, strconv.Itoa(i), "photos/"+strconv.Itoa(i)+".jpg", time.Now().UTC().Format(time.RFC3339)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	response := httptest.NewRecorder()
+	app.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/photos/visible?page=1&pageSize=100", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("photo list failed: %d %s", response.Code, response.Body.String())
+	}
+	var payload struct {
+		Data     []Photo `json:"data"`
+		PageSize int     `json:"pageSize"`
+		Total    int     `json:"total"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.PageSize != 50 || payload.Total != 60 || len(payload.Data) != 50 {
+		t.Fatalf("unexpected pagination cap: pageSize=%d total=%d data=%d", payload.PageSize, payload.Total, len(payload.Data))
+	}
+}
+
+func TestPhotoDetailRespectsHiddenAlbums(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.db.Exec(`INSERT INTO photos(id,storage_key) VALUES('hidden-photo','photos/hidden.jpg')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO albums(id,title,is_hidden) VALUES(1,'Hidden',1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO album_photos(album_id,photo_id) VALUES(1,'hidden-photo')`); err != nil {
+		t.Fatal(err)
+	}
+
+	anonymous := httptest.NewRecorder()
+	app.ServeHTTP(anonymous, httptest.NewRequest(http.MethodGet, "/api/photos/hidden-photo", nil))
+	if anonymous.Code != http.StatusNotFound {
+		t.Fatalf("anonymous hidden photo status = %d, body = %s", anonymous.Code, anonymous.Body.String())
+	}
+
+	admin := httptest.NewRecorder()
+	app.ServeHTTP(admin, adminRequest(t, app, http.MethodGet, "/api/photos/hidden-photo", nil))
+	if admin.Code != http.StatusOK || !strings.Contains(admin.Body.String(), `"id":"hidden-photo"`) {
+		t.Fatalf("admin photo detail failed: %d %s", admin.Code, admin.Body.String())
+	}
+}
+
 func TestExifReindexAndLivePhotoDetection(t *testing.T) {
 	app := newTestApp(t)
 	imageKey := "photos/sample.jpg"

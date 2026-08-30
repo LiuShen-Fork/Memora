@@ -35,7 +35,6 @@ const displayPhotos = computed(() => {
 
 const { currentPhotoIndex, isViewerOpen } = storeToRefs(useViewerState())
 
-const GALLERY_PAGE_SIZE = 100
 const MASONRY_GAP = 4
 
 const masonryWrapper = ref<HTMLElement>()
@@ -48,6 +47,12 @@ const animatedPhotoIds = ref(new Set<string>())
 const isMobile = useMediaQuery('(max-width: 768px)')
 const { batchProcessLivePhotos } = useLivePhotoProcessor()
 const { columns: layoutColumns } = useMasonryLayout()
+const {
+  loadMore,
+  hasMore: hasMorePhotos,
+  isLoadingMore: isLoadingMorePhotos,
+  totalCount,
+} = usePhotos()
 
 const processedBatch = ref(new Set<string>())
 const columnWidth = computed(() => {
@@ -71,13 +76,13 @@ const minColumns = computed(() => {
   return 2
 })
 
-const visiblePhotoCount = ref(GALLERY_PAGE_SIZE)
 const animationBatchStart = ref(0)
+const isWallAppending = ref(false)
 
 // Prepare items for masonry-wall
 const masonryItems = computed(() => {
   return (
-    displayPhotos.value?.slice(0, visiblePhotoCount.value).map((photo, index) => ({
+    displayPhotos.value?.map((photo, index) => ({
       id: photo.id,
       photo,
       originalIndex: index,
@@ -85,24 +90,25 @@ const masonryItems = computed(() => {
   )
 })
 
-const hasMorePhotos = computed(
-  () => visiblePhotoCount.value < displayPhotos.value.length,
-)
-
-const loadMorePhotos = () => {
-  const previousCount = visiblePhotoCount.value
-  visiblePhotoCount.value = Math.min(
-    visiblePhotoCount.value + GALLERY_PAGE_SIZE,
-    displayPhotos.value.length,
-  )
-
-  // Start a short stagger for the newly appended batch. The item component
-  // keeps the completed IDs so scrolling back does not replay the animation.
+const loadMorePhotos = async () => {
+  const previousCount = displayPhotos.value.length
   animationBatchStart.value = previousCount
+  isWallAppending.value = true
+  try {
+    await loadMore()
+    await nextTick()
+    if (displayPhotos.value.length === previousCount) isWallAppending.value = false
+  } catch (error) {
+    isWallAppending.value = false
+    console.error('[Gallery] Failed to load more photos:', error)
+  }
 }
 
-watch(displayPhotos, () => {
-  visiblePhotoCount.value = GALLERY_PAGE_SIZE
+watch(displayPhotos, (next, previous) => {
+  const appended =
+    next.length > previous.length &&
+    previous.every((photo, index) => photo.id === next[index]?.id)
+  if (appended) return
   animationBatchStart.value = 0
   animatedPhotoIds.value = new Set()
   visiblePhotos.value = new Set()
@@ -123,7 +129,9 @@ const animationDelayForIndex = (index: number) => {
 }
 
 const photoStats = computed(() => {
-  const totalPhotos = displayPhotos.value?.length || 0
+  const totalPhotos = hasActiveFilters.value
+    ? displayPhotos.value.length
+    : totalCount.value
   const photosWithDates =
     displayPhotos.value?.filter((p) => p.dateTaken).length || 0
   const photosWithTitles =
@@ -397,6 +405,7 @@ watch(currentPhotoIndex, (newIndex) => {
           :key-mapper="
             (item) => item.id
           "
+          @layout-complete="isWallAppending = false"
         >
           <template #default="{ item }">
             <!-- Photo Items -->
@@ -415,7 +424,7 @@ watch(currentPhotoIndex, (newIndex) => {
         </MasonryStableWall>
 
         <div
-          v-if="hasMorePhotos"
+          v-if="hasMorePhotos || isLoadingMorePhotos || isWallAppending"
           class="flex justify-center py-8"
         >
           <UButton
@@ -423,6 +432,8 @@ watch(currentPhotoIndex, (newIndex) => {
             variant="soft"
             icon="tabler:chevron-down"
             :label="$t('ui.action.loadMore')"
+            :loading="isLoadingMorePhotos || isWallAppending"
+            :disabled="isLoadingMorePhotos || isWallAppending"
             @click="loadMorePhotos"
           />
         </div>

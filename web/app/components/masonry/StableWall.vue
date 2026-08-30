@@ -40,6 +40,10 @@ defineSlots<{
   }) => unknown
 }>()
 
+const emit = defineEmits<{
+  layoutComplete: []
+}>()
+
 const wall = ref<HTMLElement>()
 const columns = ref<number[][]>([])
 let redrawToken = 0
@@ -114,6 +118,7 @@ const rebuild = async () => {
   })
 
   columns.value = nextColumns
+  emit('layoutComplete')
 }
 
 // Append one item at a time so each new card is placed using the measured
@@ -132,6 +137,7 @@ const append = async (start: number) => {
     ;(nextColumns[target] ||= []).push(index)
     columns.value = nextColumns
   }
+  if (token === redrawToken) emit('layoutComplete')
 }
 
 const handleItemsChange = (next: T[], previous: T[]) => {
