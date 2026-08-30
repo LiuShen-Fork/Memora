@@ -35,12 +35,20 @@ const photoCountLabel = computed(() => {
   }
 });
 
-const isDark = computed({
-  get: () => colorMode.value === "dark",
-  set: (value) => {
-    colorMode.preference = value ? "dark" : "light";
-  },
-});
+const themeIcon = computed(() => {
+  if (colorMode.preference === "dark") return "tabler:sun"
+  if (colorMode.preference === "light") return "tabler:moon"
+  return "tabler:device-desktop"
+})
+
+const cycleTheme = () => {
+  const nextTheme = {
+    system: "light",
+    light: "dark",
+    dark: "system",
+  } as const
+  colorMode.preference = nextTheme[colorMode.preference as keyof typeof nextTheme] || "system"
+}
 
 const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
 const footerLinkText = computed(() => {
@@ -108,10 +116,10 @@ const openLogin = () => router.push("/signin");
                   variant="ghost"
                   color="neutral"
                   class="masonry-topbar__button"
-                  :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                  :icon="themeIcon"
                   size="sm"
                   :aria-label="$t('ui.action.theme.tooltip')"
-                  @click="isDark = !isDark"
+                  @click="cycleTheme"
                 />
               </UTooltip>
               <LanguageSwitcher compact button-class="masonry-topbar__button" />
@@ -141,10 +149,10 @@ const openLogin = () => router.push("/signin");
                           variant="ghost"
                           color="neutral"
                           class="masonry-topbar__button"
-                          :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
+                          :icon="themeIcon"
                           size="sm"
                           :aria-label="$t('ui.action.theme.tooltip')"
-                          @click="isDark = !isDark"
+                          @click="cycleTheme"
                         />
                       </UTooltip>
                       <LanguageSwitcher compact button-class="masonry-topbar__button" />
