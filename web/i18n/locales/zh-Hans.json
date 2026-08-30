@@ -427,6 +427,7 @@
         "continue": "继续"
       },
       "signin": {
+        "oauthLogin": "通过{name}登录",
         "title": "登录",
         "subtitle": "登录到 {0}"
       },
@@ -1200,6 +1201,16 @@
         "help": "开启后，登录用户在任意环境都可看到 WebGL 调试面板；关闭后仅开发环境生效"
       },
       "auth": {
+        "oauth": {
+          "enabled": { "label": "启用 OAuth 2.0 登录", "description": "启用可配置的 OAuth 2.0 登录服务" },
+          "name": { "label": "OAuth 服务名称", "description": "显示在登录按钮上的名称" },
+          "clientId": { "label": "OAuth Client ID", "description": "OAuth 服务提供的 Client ID" },
+          "clientSecret": { "label": "OAuth Client Secret", "description": "OAuth 服务提供的 Client Secret" },
+          "authorizationUrl": { "label": "授权地址", "description": "OAuth 授权接口地址" },
+          "tokenUrl": { "label": "令牌地址", "description": "OAuth 令牌接口地址" },
+          "userInfoUrl": { "label": "用户信息地址", "description": "返回登录用户资料的接口地址" },
+          "scope": { "label": "OAuth 权限范围", "description": "以空格分隔的 OAuth 权限范围" }
+        },
         "github": {
           "enabled": {
             "label": "启用 GitHub 登录",

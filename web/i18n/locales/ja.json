@@ -418,6 +418,7 @@
   "auth": {
     "form": {
       "signin": {
+        "oauthLogin": "Continue with {name}",
         "title": "サインイン",
         "subtitle": "{0} にログインします"
       },
@@ -1100,6 +1101,16 @@
         "help": "有効にすると、ログイン中のユーザーは環境を問わず WebGL デバッグパネルを表示できます。無効時は開発環境のみ表示されます"
       },
       "auth": {
+        "oauth": {
+          "enabled": { "label": "OAuth 2.0ログインを有効化", "description": "設定可能なOAuth 2.0プロバイダーを有効にします" },
+          "name": { "label": "OAuthプロバイダー名", "description": "ログインボタンに表示する名前" },
+          "clientId": { "label": "OAuth Client ID", "description": "OAuthプロバイダーが発行したClient ID" },
+          "clientSecret": { "label": "OAuth Client Secret", "description": "OAuthプロバイダーが発行したClient Secret" },
+          "authorizationUrl": { "label": "認証URL", "description": "OAuth認証エンドポイント" },
+          "tokenUrl": { "label": "トークンURL", "description": "OAuthトークンエンドポイント" },
+          "userInfoUrl": { "label": "ユーザー情報URL", "description": "ログインユーザーのプロフィールを返すエンドポイント" },
+          "scope": { "label": "OAuthスコープ", "description": "スペース区切りのOAuthスコープ" }
+        },
         "github": {
           "enabled": {
             "label": "GitHub ログインを有効化",

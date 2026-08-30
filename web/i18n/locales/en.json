@@ -423,7 +423,8 @@
       },
       "signin": {
         "title": "Sign In",
-        "subtitle": "Log in to {0}"
+        "subtitle": "Log in to {0}",
+        "oauthLogin": "Continue with {name}"
       },
       "action": {
         "backToHome": "Back to Home",
@@ -1200,6 +1201,16 @@
         "help": "When enabled, logged-in users can view the WebGL debug panel in any environment; when disabled, debug info is shown only in development"
       },
       "auth": {
+        "oauth": {
+          "enabled": { "label": "Enable OAuth 2.0 login", "description": "Enable the configurable OAuth 2.0 provider" },
+          "name": { "label": "OAuth provider name", "description": "Name shown on the sign-in button" },
+          "clientId": { "label": "OAuth Client ID", "description": "Client ID issued by the OAuth provider" },
+          "clientSecret": { "label": "OAuth Client Secret", "description": "Client Secret issued by the OAuth provider" },
+          "authorizationUrl": { "label": "Authorization URL", "description": "OAuth authorization endpoint" },
+          "tokenUrl": { "label": "Token URL", "description": "OAuth token endpoint" },
+          "userInfoUrl": { "label": "User info URL", "description": "Endpoint returning the signed-in user's profile" },
+          "scope": { "label": "OAuth scope", "description": "Space-separated OAuth scopes" }
+        },
         "github": {
           "enabled": {
             "label": "Enable GitHub login",

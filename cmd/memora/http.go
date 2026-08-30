@@ -171,6 +171,8 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.wizardRoute(w, r, strings.TrimPrefix(path, "/api/wizard/"))
 	case path == "/api/auth/github" && r.Method == http.MethodGet:
 		a.githubAuth(w, r)
+	case path == "/api/auth/oauth" && r.Method == http.MethodGet:
+		a.oauthAuth(w, r)
 	default:
 		errorJSON(w, http.StatusNotFound, "Not Found")
 	}

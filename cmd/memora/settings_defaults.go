@@ -36,6 +36,14 @@ var defaultSettings = []settingDefault{
 	{Namespace: "system", Key: "auth.github.enabled", Type: "boolean", Default: false, Public: true, Label: "settings.system.auth.github.enabled.label", Description: "settings.system.auth.github.enabled.description"},
 	{Namespace: "system", Key: "auth.github.clientId", Type: "string", Default: "", Label: "settings.system.auth.github.clientId.label", Description: "settings.system.auth.github.clientId.description"},
 	{Namespace: "system", Key: "auth.github.clientSecret", Type: "string", Default: "", Secret: true, Label: "settings.system.auth.github.clientSecret.label", Description: "settings.system.auth.github.clientSecret.description"},
+	{Namespace: "system", Key: "auth.oauth.enabled", Type: "boolean", Default: false, Public: true, Label: "settings.system.auth.oauth.enabled.label", Description: "settings.system.auth.oauth.enabled.description"},
+	{Namespace: "system", Key: "auth.oauth.name", Type: "string", Default: "OAuth", Public: true, Label: "settings.system.auth.oauth.name.label", Description: "settings.system.auth.oauth.name.description"},
+	{Namespace: "system", Key: "auth.oauth.clientId", Type: "string", Default: "", Label: "settings.system.auth.oauth.clientId.label", Description: "settings.system.auth.oauth.clientId.description"},
+	{Namespace: "system", Key: "auth.oauth.clientSecret", Type: "string", Default: "", Secret: true, Label: "settings.system.auth.oauth.clientSecret.label", Description: "settings.system.auth.oauth.clientSecret.description"},
+	{Namespace: "system", Key: "auth.oauth.authorizationUrl", Type: "string", Default: "", Label: "settings.system.auth.oauth.authorizationUrl.label", Description: "settings.system.auth.oauth.authorizationUrl.description"},
+	{Namespace: "system", Key: "auth.oauth.tokenUrl", Type: "string", Default: "", Label: "settings.system.auth.oauth.tokenUrl.label", Description: "settings.system.auth.oauth.tokenUrl.description"},
+	{Namespace: "system", Key: "auth.oauth.userInfoUrl", Type: "string", Default: "", Label: "settings.system.auth.oauth.userInfoUrl.label", Description: "settings.system.auth.oauth.userInfoUrl.description"},
+	{Namespace: "system", Key: "auth.oauth.scope", Type: "string", Default: "openid profile email", Label: "settings.system.auth.oauth.scope.label", Description: "settings.system.auth.oauth.scope.description"},
 	{Namespace: "privacy", Key: "upload.autoEraseLocation", Type: "boolean", Default: false, Public: true, Label: "settings.privacy.upload.autoEraseLocation.label", Description: "settings.privacy.upload.autoEraseLocation.description"},
 	{Namespace: "map", Key: "provider", Type: "string", Default: "maplibre", Public: true, Enum: []string{"mapbox", "maplibre", "amap"}, Label: "settings.map.provider.label", Description: "settings.map.provider.description"},
 	{Namespace: "map", Key: "mapbox.token", Type: "string", Default: "", Public: true, Label: "settings.map.mapbox.token.label", Description: "settings.map.mapbox.token.description"},
@@ -146,7 +154,7 @@ func settingUI(namespace, key, typ string, enum []string) map[string]any {
 		uiType = "select"
 	}
 	ui := map[string]any{"type": uiType, "required": false}
-	if key == "auth.github.clientSecret" || strings.HasSuffix(key, ".token") {
+	if strings.HasSuffix(key, ".clientSecret") || strings.HasSuffix(key, ".token") {
 		ui["type"] = "password"
 	}
 	if len(enum) > 0 {

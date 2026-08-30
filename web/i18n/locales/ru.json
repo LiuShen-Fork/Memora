@@ -421,6 +421,7 @@
         "invalidPassword": "Пароль должен содержать не менее 6 символов"
       },
       "signin": {
+        "oauthLogin": "Continue with {name}",
         "title": "Вход",
         "subtitle": "Войдите в {0}"
       },
@@ -1173,6 +1174,16 @@
         "help": "Если включено, авторизованные пользователи увидят панель отладки WebGL в любом окружении. Если отключено — только в режиме разработки"
       },
       "auth": {
+        "oauth": {
+          "enabled": { "label": "Включить вход OAuth 2.0", "description": "Включить настраиваемого провайдера OAuth 2.0" },
+          "name": { "label": "Имя провайдера OAuth", "description": "Имя на кнопке входа" },
+          "clientId": { "label": "OAuth Client ID", "description": "Client ID от провайдера OAuth" },
+          "clientSecret": { "label": "OAuth Client Secret", "description": "Client Secret от провайдера OAuth" },
+          "authorizationUrl": { "label": "URL авторизации", "description": "Конечная точка авторизации OAuth" },
+          "tokenUrl": { "label": "URL токена", "description": "Конечная точка токена OAuth" },
+          "userInfoUrl": { "label": "URL данных пользователя", "description": "Конечная точка профиля вошедшего пользователя" },
+          "scope": { "label": "Область OAuth", "description": "Области OAuth через пробел" }
+        },
         "github": {
           "enabled": {
             "label": "Разрешить вход через GitHub",

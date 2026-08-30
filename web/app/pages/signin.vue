@@ -21,6 +21,41 @@ const githubOauthEnabled = computed(() => {
   return Boolean(config.public.oauth.github.enabled)
 })
 
+const genericOauthEnabled = computed(() =>
+  settingsStore.getSetting('system:auth.oauth.enabled') === true,
+)
+
+const oauthProvider = computed(() => {
+  if (genericOauthEnabled.value) {
+    const name = String(
+      settingsStore.getSetting('system:auth.oauth.name') || 'OAuth',
+    )
+    return {
+      icon: 'tabler:shield-lock',
+      size: 'lg',
+      color: 'neutral',
+      variant: 'subtle',
+      block: true,
+      label: $t('auth.form.signin.oauthLogin', { name }),
+      to: '/api/auth/oauth',
+      external: true,
+    }
+  }
+  if (githubOauthEnabled.value) {
+    return {
+      icon: 'tabler:brand-github',
+      size: 'lg',
+      color: 'neutral',
+      variant: 'subtle',
+      block: true,
+      label: 'GitHub',
+      to: '/api/auth/github',
+      external: true,
+    }
+  }
+  return null
+})
+
 const onAuthSubmit = async (event: any) => {
   isLoading.value = true
   await $fetch('/api/login', {
@@ -53,18 +88,7 @@ const onAuthSubmit = async (event: any) => {
       :title="$t('auth.form.signin.title')"
       :subtitle="$t('auth.form.signin.subtitle', [config.public.app.title])"
       :loading="isLoading"
-      :providers="[
-        githubOauthEnabled && {
-          icon: 'tabler:brand-github',
-          size: 'lg',
-          color: 'neutral',
-          variant: 'subtle',
-          block: true,
-          label: 'GitHub',
-          to: '/api/auth/github',
-          external: true,
-        },
-      ]"
+      :providers="oauthProvider ? [oauthProvider] : []"
       @submit="onAuthSubmit"
     />
   </div>

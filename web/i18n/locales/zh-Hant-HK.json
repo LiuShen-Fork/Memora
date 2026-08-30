@@ -418,6 +418,7 @@
   "auth": {
     "form": {
       "signin": {
+        "oauthLogin": "透過{name}登入",
         "title": "登入",
         "subtitle": "登錄到 {0}"
       },
@@ -1100,6 +1101,16 @@
         "help": "啟用後，已登入用戶喺任何環境都可以睇到 WebGL 偵錯面板；關閉後只會喺開發環境生效"
       },
       "auth": {
+        "oauth": {
+          "enabled": { "label": "啟用 OAuth 2.0 登入", "description": "啟用可自訂的 OAuth 2.0 登入服務" },
+          "name": { "label": "OAuth 服務名稱", "description": "顯示於登入按鈕上的名稱" },
+          "clientId": { "label": "OAuth Client ID", "description": "OAuth 服務提供的 Client ID" },
+          "clientSecret": { "label": "OAuth Client Secret", "description": "OAuth 服務提供的 Client Secret" },
+          "authorizationUrl": { "label": "授權網址", "description": "OAuth 授權介面網址" },
+          "tokenUrl": { "label": "令牌網址", "description": "OAuth 令牌介面網址" },
+          "userInfoUrl": { "label": "使用者資訊網址", "description": "返回登入使用者資料的介面網址" },
+          "scope": { "label": "OAuth 權限範圍", "description": "以空格分隔的 OAuth 權限範圍" }
+        },
         "github": {
           "enabled": {
             "label": "啟用 GitHub 登入",
