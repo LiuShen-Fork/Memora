@@ -112,6 +112,7 @@
           "prefix": "この写真をご覧ください:"
         }
       },
+      "loadMore": "More photos",
       "backtotop": {
         "tooltip": "ページの先頭に戻る",
         "ariaLabel": "トップへ戻る"

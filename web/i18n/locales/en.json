@@ -112,6 +112,7 @@
           "prefix": "Check out this photo:"
         }
       },
+      "loadMore": "Reveal more",
       "backtotop": {
         "tooltip": "Back to Top",
         "ariaLabel": "Back to top"

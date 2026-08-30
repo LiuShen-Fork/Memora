@@ -36,6 +36,7 @@ const displayPhotos = computed(() => {
 const { currentPhotoIndex, isViewerOpen } = storeToRefs(useViewerState())
 
 const FIRST_SCREEN_ITEMS_COUNT = 50
+const GALLERY_PAGE_SIZE = 100
 const MASONRY_GAP = 4
 
 const masonryWrapper = ref<HTMLElement>()
@@ -69,15 +70,32 @@ const minColumns = computed(() => {
   return 2
 })
 
+const visiblePhotoCount = ref(GALLERY_PAGE_SIZE)
+
 // Prepare items for masonry-wall
 const masonryItems = computed(() => {
   return (
-    displayPhotos.value?.map((photo, index) => ({
+    displayPhotos.value?.slice(0, visiblePhotoCount.value).map((photo, index) => ({
       id: photo.id,
       photo,
       originalIndex: index,
     })) ?? []
   )
+})
+
+const hasMorePhotos = computed(
+  () => visiblePhotoCount.value < displayPhotos.value.length,
+)
+
+const loadMorePhotos = () => {
+  visiblePhotoCount.value = Math.min(
+    visiblePhotoCount.value + GALLERY_PAGE_SIZE,
+    displayPhotos.value.length,
+  )
+}
+
+watch(displayPhotos, () => {
+  visiblePhotoCount.value = GALLERY_PAGE_SIZE
 })
 
 const photoStats = computed(() => {
@@ -373,6 +391,19 @@ watch(currentPhotoIndex, (newIndex) => {
             />
           </template>
         </MasonryWall>
+
+        <div
+          v-if="hasMorePhotos"
+          class="flex justify-center py-8"
+        >
+          <UButton
+            color="neutral"
+            variant="soft"
+            icon="tabler:chevron-down"
+            :label="$t('ui.action.loadMore')"
+            @click="loadMorePhotos"
+          />
+        </div>
       </div>
     </div>
   </div>

@@ -124,6 +124,7 @@
           "prefix": "來看看這張相片:"
         }
       },
+      "loadMore": "再賞百張",
       "backtotop": {
         "tooltip": "回到頂部",
         "ariaLabel": "回到頂部"

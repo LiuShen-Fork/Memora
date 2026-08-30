@@ -112,6 +112,7 @@
           "prefix": "Посмотрите на эту фотографию:"
         }
       },
+      "loadMore": "More photos",
       "backtotop": {
         "tooltip": "Наверх",
         "ariaLabel": "Вернуться наверх"
