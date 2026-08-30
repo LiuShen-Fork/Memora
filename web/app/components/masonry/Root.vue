@@ -52,9 +52,9 @@ const { columns: layoutColumns } = useMasonryLayout()
 const processedBatch = ref(new Set<string>())
 const columnWidth = computed(() => {
   if (props.columns === 'auto') {
-    return isMobile.value ? 280 : 280
+    return 180
   }
-  return 280
+  return 180
 })
 
 const maxColumns = computed(() => {
@@ -386,7 +386,7 @@ watch(currentPhotoIndex, (newIndex) => {
         </div>
 
         <!-- Masonry Wall -->
-        <MasonryWall
+        <MasonryStableWall
           class="masonry-wall-with-header"
           :items="masonryItems"
           :column-width="columnWidth"
@@ -395,8 +395,7 @@ watch(currentPhotoIndex, (newIndex) => {
           :max-columns="maxColumns"
           :ssr-columns="2"
           :key-mapper="
-            (_item, _column, _row, index) =>
-              masonryItems[index]?.originalIndex ?? index
+            (item) => item.id
           "
         >
           <template #default="{ item }">
@@ -413,7 +412,7 @@ watch(currentPhotoIndex, (newIndex) => {
               @open-viewer="handleOpenViewer($event)"
             />
           </template>
-        </MasonryWall>
+        </MasonryStableWall>
 
         <div
           v-if="hasMorePhotos"

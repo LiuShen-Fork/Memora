@@ -1,5 +1,5 @@
 const MASONRY_COLUMNS_KEY = 'memora-masonry-columns'
-const MASONRY_COLUMN_WIDTH = 280
+const MASONRY_COLUMN_WIDTH = 180
 const MASONRY_GAP = 4
 
 export function useMasonryLayout() {
@@ -23,7 +23,7 @@ export function useMasonryLayout() {
       2,
       Math.floor((viewportWidth + MASONRY_GAP) / (MASONRY_COLUMN_WIDTH + MASONRY_GAP)),
     )
-    const breakpointMax = viewportWidth < 1024 ? 4 : viewportWidth < 1920 ? 6 : 8
+    const breakpointMax = viewportWidth < 900 ? 4 : viewportWidth < 1280 ? 6 : 8
     const max = Math.min(physicalMax, breakpointMax)
     return { min: 2, max: Math.max(2, max), adjustable: max > 2 }
   })
