@@ -177,6 +177,7 @@ onUnmounted(() => {
   <div
     ref="wall"
     class="masonry-wall"
+    :class="`masonry-columns-${columns.length}`"
     :style="{
       display: 'flex',
       gap: `${gap}px`,

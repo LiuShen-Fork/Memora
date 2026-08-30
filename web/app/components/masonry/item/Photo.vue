@@ -484,7 +484,7 @@ onUnmounted(() => {
 <template>
   <div
     ref="photoRef"
-    class="photo-card w-full transition-all duration-300 cursor-pointer select-none"
+    class="w-full transition-all duration-300 cursor-pointer select-none"
     :style="{
       transform: 'translateZ(0)',
     }"
@@ -567,7 +567,7 @@ onUnmounted(() => {
       <!-- Photo info overlay (bottom) -->
       <motion.div
         v-show="shouldShowInfoOverlay"
-        class="photo-info absolute bottom-0 left-0 right-0 max-h-full overflow-hidden bg-linear-to-t from-black/60 to-transparent p-3"
+        class="photo-info absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3"
         :initial="{ y: '100%', opacity: 0 }"
         :animate="{
           y: shouldShowInfoOverlay && isHovering && !isMobile ? 0 : '100%',
@@ -606,7 +606,7 @@ onUnmounted(() => {
           </div>
           <div
             v-if="photo.tags?.length"
-            class="photo-info-tags mt-1 flex flex-wrap items-center gap-1 overflow-hidden"
+            class="mt-1 flex items-center gap-1"
           >
             <UBadge
               v-for="tag in photo.tags"
@@ -622,10 +622,10 @@ onUnmounted(() => {
             <!-- Camera info from EXIF if available -->
             <div
               v-if="photo.exif && (photo.exif.Make || photo.exif.Model)"
-              class="photo-info-camera text-sm opacity-70 mt-1 flex min-w-0 items-center gap-1"
+              class="photo-info-camera text-sm opacity-70 mt-1 flex items-center gap-1"
             >
               <Icon name="tabler:camera" />
-              <span class="min-w-0 text-xs font-medium text-ellipsis line-clamp-1">
+              <span class="text-xs font-medium text-ellipsis line-clamp-1">
                 {{ formatCameraInfo(photo.exif.Make, photo.exif.Model) }}
               </span>
             </div>
@@ -637,7 +637,7 @@ onUnmounted(() => {
                   photo.exif.ExposureTime ||
                   photo.exif.ISO)
               "
-              class="photo-info-specs text-sm opacity-70 mt-1 flex flex-wrap gap-2"
+              class="photo-info-specs text-sm opacity-70 mt-1 flex gap-2"
             >
               <div
                 v-if="photo.exif.FocalLengthIn35mmFormat"
@@ -694,43 +694,51 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.photo-card {
-  container-type: inline-size;
+/* Keep the overlay compact from the selected column count, without measuring
+ * every card or adding another observer to the gallery. */
+:global(.masonry-columns-5 .photo-info),
+:global(.masonry-columns-6 .photo-info) {
+  padding: 0.625rem;
 }
 
-@container (max-width: 240px) {
-  .photo-info {
-    padding: 0.5rem;
-  }
-
-  .photo-info-title {
-    font-size: 0.875rem;
-  }
-
-  .photo-info-meta,
-  .photo-info-camera,
-  .photo-info-specs {
-    font-size: 0.6875rem;
-  }
-
-  .photo-info-description {
-    display: none;
-  }
+:global(.masonry-columns-5 .photo-info-title),
+:global(.masonry-columns-6 .photo-info-title) {
+  font-size: 0.9375rem;
 }
 
-@container (max-width: 190px) {
-  .photo-info {
-    padding: 0.375rem;
-  }
+:global(.masonry-columns-5 .photo-info-meta),
+:global(.masonry-columns-6 .photo-info-meta),
+:global(.masonry-columns-5 .photo-info-camera),
+:global(.masonry-columns-6 .photo-info-camera),
+:global(.masonry-columns-5 .photo-info-specs),
+:global(.masonry-columns-6 .photo-info-specs) {
+  font-size: 0.6875rem;
+}
 
-  .photo-info-title {
-    font-size: 0.75rem;
-  }
+:global(.masonry-columns-7 .photo-info),
+:global(.masonry-columns-8 .photo-info) {
+  padding: 0.5rem;
+}
 
-  .photo-info-meta,
-  .photo-info-camera,
-  .photo-info-specs {
-    font-size: 0.625rem;
-  }
+:global(.masonry-columns-7 .photo-info-title),
+:global(.masonry-columns-8 .photo-info-title) {
+  font-size: 0.875rem;
+}
+
+:global(.masonry-columns-7 .photo-info-meta),
+:global(.masonry-columns-8 .photo-info-meta),
+:global(.masonry-columns-7 .photo-info-camera),
+:global(.masonry-columns-8 .photo-info-camera),
+:global(.masonry-columns-7 .photo-info-specs),
+:global(.masonry-columns-8 .photo-info-specs) {
+  font-size: 0.625rem;
+}
+
+:global(.masonry-columns-7 .photo-info-description),
+:global(.masonry-columns-8 .photo-info-description) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
