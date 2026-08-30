@@ -28,6 +28,12 @@
         "searchPlaceholder": "ファイル名などで検索...",
         "shuffleTooltip": "リストをシャッフル"
       },
+      "displaySettings": {
+        "tooltip": "Display settings",
+        "title": "Display settings",
+        "sort": "Sort",
+        "columns": "Columns"
+      },
       "sort": {
         "tooltip": "写真の並び替え",
         "title": "並び替え",

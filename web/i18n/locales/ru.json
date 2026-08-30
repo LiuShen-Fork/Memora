@@ -28,6 +28,12 @@
         "searchPlaceholder": "Поиск по именам файлов и другим данным…",
         "shuffleTooltip": "Перемешать список"
       },
+      "displaySettings": {
+        "tooltip": "Display settings",
+        "title": "Display settings",
+        "sort": "Sort",
+        "columns": "Columns"
+      },
       "sort": {
         "tooltip": "Сортировка фотографий",
         "title": "Сортировать по",

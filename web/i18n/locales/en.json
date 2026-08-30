@@ -28,6 +28,12 @@
         "searchPlaceholder": "Search filenames, etc...",
         "shuffleTooltip": "Shuffle list"
       },
+      "displaySettings": {
+        "tooltip": "Display settings",
+        "title": "Display settings",
+        "sort": "Sort",
+        "columns": "Columns"
+      },
       "sort": {
         "tooltip": "Photo Sorting",
         "title": "Sort By",

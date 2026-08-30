@@ -46,6 +46,12 @@
       "logout": {
         "tooltip": "登出"
       },
+      "displaySettings": {
+        "tooltip": "显示设置",
+        "title": "显示设置",
+        "sort": "排序",
+        "columns": "列数"
+      },
       "sort": {
         "options": {
           "dateTakenAsc": "日期(最旧的在前)",

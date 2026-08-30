@@ -47,6 +47,7 @@ const visiblePhotos = ref(new Set<number>())
 
 const isMobile = useMediaQuery('(max-width: 768px)')
 const { batchProcessLivePhotos } = useLivePhotoProcessor()
+const { columns: layoutColumns } = useMasonryLayout()
 
 const processedBatch = ref(new Set<string>())
 const columnWidth = computed(() => {
@@ -60,7 +61,7 @@ const maxColumns = computed(() => {
   if (props.columns !== 'auto') {
     return props.columns
   }
-  return isMobile.value ? 2 : 8
+  return layoutColumns.value
 })
 
 const minColumns = computed(() => {
