@@ -51,12 +51,20 @@ const cycleTheme = () => {
 }
 
 const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
+const customFooterLinkText = computed(() =>
+  String(getSetting("app:footerLinkText") || "").trim(),
+);
+const customFooterLinkUrl = computed(() =>
+  String(getSetting("app:footerLinkUrl") || "").trim(),
+);
+const hasCustomFooterLink = computed(
+  () => Boolean(customFooterLinkText.value || customFooterLinkUrl.value),
+);
 const footerLinkText = computed(() => {
-  const value = getSetting("app:footerLinkText");
-  return String(value || "").trim() || "Memora";
+  return customFooterLinkText.value || "Memora";
 });
 const footerLinkUrl = computed(() => {
-  const value = String(getSetting("app:footerLinkUrl") || "").trim();
+  const value = customFooterLinkUrl.value;
   try {
     const parsed = new URL(value);
     if (parsed.protocol === "http:" || parsed.protocol === "https:") {
@@ -238,7 +246,7 @@ const openLogin = () => router.push("/signin");
     rel="noopener noreferrer"
     class="masonry-page-footer"
   >
-    <Icon name="tabler:brand-github" class="size-3.5" />
+    <Icon v-if="!hasCustomFooterLink" name="tabler:brand-github" class="size-3.5" />
     <span class="max-w-36 truncate">{{ footerLinkText }}</span>
   </a>
 </template>
