@@ -20,7 +20,7 @@ const selectedTasks = ref<number[]>([])
 const statusFilter = ref<string>('all')
 const typeFilter = ref<string>('all')
 const page = ref(1)
-const pageSize = 25
+const pageSize = 20
 
 // 数据获取
 const { data: queueData, refresh: refreshQueue } = await useFetch(

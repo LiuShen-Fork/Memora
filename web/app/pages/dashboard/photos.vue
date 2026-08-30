@@ -2682,7 +2682,7 @@ onUnmounted(() => {
             <UPagination
               :page="photoPage"
               :total="totalCount"
-              :items-per-page="50"
+              :items-per-page="20"
               show-edges
               @update:page="setPhotoPage"
             />

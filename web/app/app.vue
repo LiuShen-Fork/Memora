@@ -73,7 +73,7 @@ const photoQuery = computed(() => {
   if (route.path !== '/dashboard/photos') return undefined
   const rawPage = Number(route.query.page)
   const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1
-  return { page, pageSize: 50 }
+  return { page, pageSize: 20 }
 })
 // Keep the shell and route visible while the photo collection is loading.
 // The collection can be large, and album pages fetch their own focused data.
