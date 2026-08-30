@@ -29,10 +29,10 @@
         "shuffleTooltip": "Перемешать список"
       },
       "displaySettings": {
-        "tooltip": "Display settings",
-        "title": "Display settings",
-        "sort": "Sort",
-        "columns": "Columns"
+        "tooltip": "Настройки отображения",
+        "title": "Настройки отображения",
+        "sort": "Сортировка",
+        "columns": "Колонки"
       },
       "sort": {
         "tooltip": "Сортировка фотографий",
@@ -118,7 +118,7 @@
           "prefix": "Посмотрите на эту фотографию:"
         }
       },
-      "loadMore": "More photos",
+      "loadMore": "Показать ещё",
       "backtotop": {
         "tooltip": "Наверх",
         "ariaLabel": "Вернуться наверх"

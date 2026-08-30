@@ -29,10 +29,10 @@
         "shuffleTooltip": "リストをシャッフル"
       },
       "displaySettings": {
-        "tooltip": "Display settings",
-        "title": "Display settings",
-        "sort": "Sort",
-        "columns": "Columns"
+        "tooltip": "表示設定",
+        "title": "表示設定",
+        "sort": "並べ替え",
+        "columns": "列数"
       },
       "sort": {
         "tooltip": "写真の並び替え",
@@ -118,7 +118,7 @@
           "prefix": "この写真をご覧ください:"
         }
       },
-      "loadMore": "More photos",
+      "loadMore": "さらに見る",
       "backtotop": {
         "tooltip": "ページの先頭に戻る",
         "ariaLabel": "トップへ戻る"
