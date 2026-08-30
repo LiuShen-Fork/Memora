@@ -368,8 +368,7 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 		trends = append(trends, trend{Date: day, Count: trendByDate[day]})
 	}
 
-	var memory runtime.MemStats
-	runtime.ReadMemStats(&memory)
+	memoryUsed, memoryTotal := memoryStats()
 	runningOn := runtime.GOOS
 	if _, err := os.Stat(`/.dockerenv`); err == nil {
 		runningOn = "docker"
@@ -377,7 +376,7 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{
 		"uptime":     time.Since(processStartedAt).Seconds(),
 		"runningOn":  runningOn,
-		"memory":     map[string]any{"used": memory.Alloc, "total": memory.Sys},
+		"memory":     map[string]any{"used": memoryUsed, "total": memoryTotal},
 		"photos":     map[string]any{"total": total, "today": today, "thisWeek": week, "thisMonth": month},
 		"workerPool": a.queuePoolStats(),
 		"storage":    map[string]any{"totalSize": nullFloat(totalSize), "averageSize": nullFloat(averageSize), "maxSize": nullFloat(maxSize)},
