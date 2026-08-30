@@ -109,14 +109,13 @@ watch(
 const themeSetting = useSettingRef('app:appearance.theme')
 // A browser-level choice must win over the server default on subsequent
 // visits. The color-mode module writes this key whenever the user toggles it.
-const hasStoredThemePreference = import.meta.client
-  ? Boolean(window.localStorage.getItem('cframe-color-mode'))
-  : false
+const hasStoredThemePreference = () =>
+  import.meta.client && Boolean(window.localStorage.getItem('cframe-color-mode'))
 watch(
   themeSetting,
   (theme) => {
     if (
-      !hasStoredThemePreference &&
+      !hasStoredThemePreference() &&
       typeof theme === 'string' &&
       theme.length > 0
     ) {
