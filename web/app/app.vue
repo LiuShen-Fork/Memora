@@ -36,6 +36,7 @@ const { loggedIn } = session
 
 const appTitle = useSettingRef('app:title')
 const GALLERY_PAGE_SIZE = 50
+const INITIAL_GALLERY_COUNT = 100
 
 useHead({
   titleTemplate: (title) =>
@@ -100,10 +101,12 @@ const { data, refresh, status } = useFetch(() => apiEndpoint.value, {
 const additionalPhotos = ref<Photo[]>([])
 const isLoadingMorePhotos = ref(false)
 const nextGalleryPage = ref(2)
+const initialGalleryPagePending = ref(false)
 
 const resetGalleryPages = () => {
   additionalPhotos.value = []
   nextGalleryPage.value = 2
+  initialGalleryPagePending.value = route.path === '/'
 }
 
 watch(
@@ -168,6 +171,54 @@ const loadMorePhotos = async () => {
     isLoadingMorePhotos.value = false
   }
 }
+
+// The first gallery view is filled with two bounded requests. Keeping each
+// request at 50 rows avoids a large SQLite response while preserving the
+// denser initial gallery that users expect on the home page.
+watch(
+  [status, basePhotos],
+  async ([nextStatus]) => {
+    if (
+      nextStatus !== 'success' ||
+      !initialGalleryPagePending.value ||
+      !isGalleryPagedRoute.value
+    ) {
+      return
+    }
+
+    initialGalleryPagePending.value = false
+    if (basePhotos.value.length >= INITIAL_GALLERY_COUNT) return
+
+    const total = (data.value as any)?.total
+    if (typeof total === 'number' && basePhotos.value.length >= total) return
+
+    isLoadingMorePhotos.value = true
+    try {
+      const endpoint = apiEndpoint.value
+      const page = nextGalleryPage.value
+      const response = await $fetch<{
+        data: Photo[]
+        page: number
+        total: number
+      }>(endpoint, {
+        query: { page, pageSize: GALLERY_PAGE_SIZE },
+      })
+      if (endpoint !== apiEndpoint.value || route.path !== '/') return
+
+      const knownIds = new Set([
+        ...basePhotos.value.map((photo) => photo.id),
+        ...additionalPhotos.value.map((photo) => photo.id),
+      ])
+      additionalPhotos.value.push(
+        ...response.data.filter((photo) => !knownIds.has(photo.id)),
+      )
+      nextGalleryPage.value = page + 1
+    } finally {
+      isLoadingMorePhotos.value = false
+    }
+  },
+  { flush: 'post' },
+)
 
 // Keep theme application deterministic even when settings arrive after the
 // first gallery response.
