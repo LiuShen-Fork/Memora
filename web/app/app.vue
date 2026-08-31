@@ -60,6 +60,7 @@ const shouldLoadPhotos = computed(() => {
     path === '/albums' ||
     path === '/globe' ||
     path === '/dashboard/photos' ||
+    path === '/dashboard/albums' ||
     isPhotoDetailRoute
   )
 })

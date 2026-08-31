@@ -24,8 +24,7 @@ interface AlbumFormState {
 
 const albums = ref<AlbumItem[]>([])
 const isLoadingAlbums = ref(false)
-const allPhotos = ref<Photo[]>([])
-const isLoadingPhotos = ref(false)
+const { photos: allPhotos } = usePhotos()
 
 const isAlbumSlideoverOpen = ref(false)
 const isDeleteConfirmOpen = ref(false)
@@ -63,6 +62,14 @@ const totalSelectedFilters = computed(() => {
   )
 })
 
+const syncAlbumCovers = () => {
+  for (const album of albums.value) {
+    album.coverPhoto = album.coverPhotoId
+      ? allPhotos.value.find((photo) => photo.id === album.coverPhotoId) || null
+      : null
+  }
+}
+
 const validateForm = (state: any): FormError[] => {
   const errors: FormError[] = []
   if (!state.title?.trim()) {
@@ -82,17 +89,7 @@ const loadAlbums = async () => {
       ...album,
       photoCount: album.photoIds?.length || 0,
     }))
-
-    for (const album of albums.value) {
-      if (album.coverPhotoId && allPhotos.value.length > 0) {
-        const coverPhoto = allPhotos.value.find(
-          (p) => p.id === album.coverPhotoId,
-        )
-        if (coverPhoto) {
-          album.coverPhoto = coverPhoto
-        }
-      }
-    }
+    syncAlbumCovers()
   } catch (error) {
     console.error('Failed to load albums:', error)
     useToast().add({
@@ -104,17 +101,7 @@ const loadAlbums = async () => {
   }
 }
 
-const loadPhotos = async () => {
-  isLoadingPhotos.value = true
-  try {
-    const { photos } = usePhotos()
-    allPhotos.value = photos.value
-  } catch (error) {
-    console.error('Failed to load photos:', error)
-  } finally {
-    isLoadingPhotos.value = false
-  }
-}
+watch(allPhotos, syncAlbumCovers, { deep: false })
 
 const openCreateSlideover = () => {
   currentAlbum.value = null
@@ -355,7 +342,7 @@ const selectedPhotosOverflowCount = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadPhotos(), loadAlbums()])
+  await loadAlbums()
 })
 
 const dayjs = useDayjs()
