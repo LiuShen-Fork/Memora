@@ -21,6 +21,8 @@ The maintained repository is [LiuShen-Fork/Memora](https://github.com/LiuShen-Fo
 - Albums, search, filters, reactions, and photo metadata editing
 - Map exploration with MapLibre, Mapbox, or AMap
 - JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, and Live/Motion Photo support
+  - HEIC/HEIF uploads are converted to JPEG, which replaces the upload as the
+    stored original; the metadata is carried over, so nothing else is lost
 - Local filesystem, S3-compatible, and OpenList storage
 - Automatic thumbnails, EXIF parsing, reverse geocoding, and durable queues
 

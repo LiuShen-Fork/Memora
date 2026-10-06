@@ -21,6 +21,8 @@ Memora 是对原 Nuxt 应用的大幅重构：
 - 相册、搜索、筛选、反应和照片信息编辑
 - MapLibre、Mapbox、AMap 地图浏览
 - JPEG、PNG、WebP、GIF、BMP、TIFF、HEIC/HEIF 和 Live/Motion Photo
+  - HEIC/HEIF 上传后会转换为 JPEG 并作为原图保存（原始 HEIC 不再保留），
+    元数据会一并转移，不丢失信息
 - 本地文件系统、S3 兼容存储和 OpenList
 - 自动生成缩略图、解析 EXIF、逆地理编码和持久化任务队列
 
