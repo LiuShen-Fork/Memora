@@ -260,13 +260,15 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
-	if !uploadMIMEAllowed(contentType) {
-		errorJSON(w, http.StatusUnsupportedMediaType, "Unsupported media type")
-		return
-	}
 	key := r.URL.Query().Get("key")
 	if key == "" {
 		errorJSON(w, 400, "key is required")
+		return
+	}
+	// The key is checked alongside the header so uploads whose browser reports
+	// no content type, HEIC in particular, are still accepted.
+	if !uploadMIMEAllowed(contentType, key) {
+		errorJSON(w, http.StatusUnsupportedMediaType, "Unsupported media type")
 		return
 	}
 	max := a.maxUploadBytes()
