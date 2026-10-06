@@ -23,7 +23,9 @@ COPY cmd ./cmd
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/memora ./cmd/memora
 
-FROM alpine:3.22 AS runtime
+# FFmpeg gained HEIC/HEIF reading in 7.0; the 6.1 build shipped with Alpine 3.22
+# cannot open HEIC uploads at all.
+FROM alpine:3.24 AS runtime
 RUN apk add --no-cache ca-certificates ffmpeg perl exiftool \
     && addgroup -S memora \
     && adduser -S -G memora -h /app memora \
