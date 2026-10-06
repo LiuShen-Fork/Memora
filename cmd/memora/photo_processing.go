@@ -49,6 +49,9 @@ func (a *App) preprocessPhoto(ctx context.Context, key string, raw []byte) (proc
 		if err != nil {
 			return processedPhoto{}, fmt.Errorf("store converted jpeg: %w", err)
 		}
+		if object.Size <= 0 {
+			object.Size = int64(len(converted))
+		}
 		result.image = converted
 		result.jpegKey = object.Key
 		result.object = object
