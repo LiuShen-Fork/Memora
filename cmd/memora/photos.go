@@ -700,7 +700,8 @@ func (a *App) deletePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	if liveVideo != "" {
 		_ = a.storage.Delete(r.Context(), liveVideo)
 	}
-	// HEIC processing may leave a converted JPEG alongside the original.
+	// Uploads made before HEIC conversion replaced the original kept both
+	// files, and the row still points at the HEIC, so clear the JPEG too.
 	lowerKey := strings.ToLower(key)
 	for _, ext := range []string{".heic", ".heif", ".hif"} {
 		if strings.HasSuffix(lowerKey, ext) {

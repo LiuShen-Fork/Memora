@@ -294,6 +294,8 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 		isLivePhoto = 1
 		liveVideoURL = publicMediaURL(a.storage, motionVideoKey)
 	}
+	// A converted HEIC upload is stored as JPEG only. That JPEG is the single
+	// source for the photo from here on, both for display and for reprocessing.
 	originalKey := key
 	if processed.jpegKey != "" {
 		originalKey = processed.jpegKey
@@ -312,9 +314,16 @@ func (a *App) processPhoto(ctx context.Context, t *Task) error {
 	if processed.object.Size <= 0 {
 		fileSize = len(raw)
 	}
-	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=COALESCE(excluded.date_taken,photos.date_taken),storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,thumbnail_hash=excluded.thumbnail_hash,tags=excluded.tags,exif=excluded.exif,latitude=excluded.latitude,longitude=excluded.longitude,is_live_photo=excluded.is_live_photo,live_photo_video_url=excluded.live_photo_video_url,live_photo_video_key=excluded.live_photo_video_key`, id, title, description, processed.width, processed.height, float64(processed.width)/float64(processed.height), nullableString(dateTaken), key, thumbKey, fileSize, last, original, thumbURL, thumbnailHash, jsonValue(tags), jsonValue(exif), latValue, lonValue, nil, nil, nil, isLivePhoto, liveVideoURL, nullableString(motionVideoKey))
+	_, err = a.db.Exec(`INSERT INTO photos (id,title,description,width,height,aspect_ratio,date_taken,storage_key,thumbnail_key,file_size,last_modified,original_url,thumbnail_url,thumbnail_hash,tags,exif,latitude,longitude,country,city,location_name,is_live_photo,live_photo_video_url,live_photo_video_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,description=excluded.description,width=excluded.width,height=excluded.height,aspect_ratio=excluded.aspect_ratio,date_taken=COALESCE(excluded.date_taken,photos.date_taken),storage_key=excluded.storage_key,thumbnail_key=excluded.thumbnail_key,file_size=excluded.file_size,last_modified=excluded.last_modified,original_url=excluded.original_url,thumbnail_url=excluded.thumbnail_url,thumbnail_hash=excluded.thumbnail_hash,tags=excluded.tags,exif=excluded.exif,latitude=excluded.latitude,longitude=excluded.longitude,is_live_photo=excluded.is_live_photo,live_photo_video_url=excluded.live_photo_video_url,live_photo_video_key=excluded.live_photo_video_key`, id, title, description, processed.width, processed.height, float64(processed.width)/float64(processed.height), nullableString(dateTaken), originalKey, thumbKey, fileSize, last, original, thumbURL, thumbnailHash, jsonValue(tags), jsonValue(exif), latValue, lonValue, nil, nil, nil, isLivePhoto, liveVideoURL, nullableString(motionVideoKey))
 	if err != nil {
 		return err
+	}
+	if processed.jpegKey != "" && processed.jpegKey != key {
+		// The converted JPEG replaced the upload. Drop the original only now,
+		// so a failure earlier in the pipeline always leaves it recoverable.
+		if err := a.storage.Delete(ctx, key); err != nil && !errors.Is(err, ErrStorageNotFound) {
+			a.logs.Add("queue", fmt.Sprintf("failed to remove replaced original %s: %v", key, err))
+		}
 	}
 	if albumID, ok := numberValue(t.Payload["albumId"]); ok && albumID > 0 {
 		// The album may have been deleted while the upload was processing. Do
