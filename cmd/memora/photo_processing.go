@@ -118,9 +118,12 @@ func (a *App) heicToJPEG(ctx context.Context, raw []byte, ext string) ([]byte, e
 // transferPhotoMetadata copies every tag from the uploaded original onto the
 // converted JPEG.
 //
-// FFmpeg applies the EXIF orientation while decoding, so the pixels are already
-// upright; keeping the source orientation tag would rotate the photo a second
-// time in viewers. Resetting it to "normal" is what makes the copy safe.
+// Rotation is deliberately not carried over. HEIF stores it in the container's
+// irot/imir properties, which the specification treats as normative while the
+// Exif Orientation tag is only informative. FFmpeg follows that rule: it bakes
+// irot into the decoded pixels and discards the Exif tag, so the photo is
+// already upright and a copied orientation would rotate it a second time in
+// viewers. Resetting it to "normal" is what makes the copy safe.
 func (a *App) transferPhotoMetadata(ctx context.Context, source, target string) error {
 	cmd := exec.CommandContext(ctx, a.cfg.ExifTool,
 		"-overwrite_original",
