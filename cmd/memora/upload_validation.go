@@ -5,7 +5,10 @@ import (
 	"strings"
 )
 
-const defaultUploadMIMEs = "image/jpeg,image/png,image/webp,image/gif,image/bmp,image/tiff,image/heic,image/heif,video/mp4"
+// The registered HEIF family also covers the -sequence variants, which a client
+// reports for burst files. The dashboard accepts those uploads by extension, so
+// the default whitelist has to accept the declared types as well.
+const defaultUploadMIMEs = "image/jpeg,image/png,image/webp,image/gif,image/bmp,image/tiff,image/heic,image/heif,image/heic-sequence,image/heif-sequence,video/mp4"
 
 // uploadContentTypes maps the extensions the app accepts to the type a browser
 // reports for them. Browsers regularly have no type at all for HEIC/HEIF and

@@ -43,3 +43,14 @@ func TestUploadRejectsMismatchedDeclaredType(t *testing.T) {
 		t.Fatalf("expected unsupported media type, got %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
+
+// The -sequence variants belong to the same registered HEIF family, and the
+// dashboard lets burst uploads through by extension, so the declared type must
+// not be the one thing that rejects them.
+func TestUploadAcceptsHeifSequenceTypes(t *testing.T) {
+	for _, contentType := range []string{"image/heic-sequence", "image/heif-sequence"} {
+		if !uploadMIMEAllowed(contentType, "photos/burst.heic") {
+			t.Fatalf("expected %s to be accepted", contentType)
+		}
+	}
+}
