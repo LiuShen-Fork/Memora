@@ -244,8 +244,10 @@ func isVideoUpload(fileName, contentType string) bool {
 }
 
 func isImageStorageKey(key string) bool {
+	// .hif is the same HEIF container that the upload whitelist accepts and the
+	// conversion step decodes, so it has to count as an image here as well.
 	switch strings.ToLower(filepath.Ext(key)) {
-	case ".avif", ".bmp", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp":
+	case ".avif", ".bmp", ".gif", ".heic", ".heif", ".hif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp":
 		return true
 	default:
 		return false
