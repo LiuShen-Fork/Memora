@@ -169,6 +169,8 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.settingsRoute(w, r, strings.TrimPrefix(path, "/api/system/settings"))
 	case path == "/api/system/stats":
 		a.systemStats(w, r)
+	case path == "/api/system/tours":
+		a.toursRoute(w, r)
 	case path == "/api/system/logs":
 		a.systemLogs(w, r)
 	case strings.HasPrefix(path, "/api/wizard/"):

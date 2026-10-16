@@ -146,6 +146,7 @@ func (a *App) ensureSchema() error {
 		`CREATE INDEX IF NOT EXISTS photos_date_taken_idx ON photos(date_taken DESC)`,
 		`CREATE INDEX IF NOT EXISTS photos_last_modified_idx ON photos(last_modified DESC)`,
 		`CREATE INDEX IF NOT EXISTS album_photos_photo_idx ON album_photos(photo_id,album_id)`,
+		`CREATE TABLE IF NOT EXISTS tour_progress (tour_id TEXT PRIMARY KEY, status TEXT NOT NULL, updated_at INTEGER NOT NULL DEFAULT (unixepoch()))`,
 		`CREATE INDEX IF NOT EXISTS pipeline_queue_pending_idx ON pipeline_queue(status,priority DESC,created_at ASC,id ASC)`,
 		`CREATE INDEX IF NOT EXISTS pipeline_queue_type_idx ON pipeline_queue(json_extract(payload,'$.type'))`,
 		schemaMigrationsTable,
