@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -286,13 +287,34 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 	if info, err := os.Stat(file); err == nil && !info.IsDir() {
 		if strings.HasPrefix(path, "/_nuxt/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "no-store")
 		}
+		if path == "/index.html" {
+			a.serveIndex(w, r, file)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
 		http.ServeFile(w, r, file)
 		return
 	}
-	index := filepath.Join(webDir, "index.html")
+	// A path that carries an extension but names no file still gets the client
+	// shell, and the client decides what to do with it.
+	a.serveIndex(w, r, filepath.Join(webDir, "index.html"))
+}
+
+// serveIndex hands over the client shell with this page's link preview in it.
+// The shell is read per request rather than cached: the preview depends on the
+// address being opened and on settings an administrator can change at any
+// moment, and no browser re-fetches the shell it already has.
+func (a *App) serveIndex(w http.ResponseWriter, r *http.Request, file string) {
+	page, err := os.ReadFile(file)
+	if err != nil {
+		errorJSON(w, http.StatusNotFound, "Not Found")
+		return
+	}
+	page = a.annotatePage(page, r)
 	w.Header().Set("Cache-Control", "no-store")
-	http.ServeFile(w, r, index)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Length", strconv.Itoa(len(page)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(page)
 }

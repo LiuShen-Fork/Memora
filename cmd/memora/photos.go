@@ -63,6 +63,12 @@ func scanPhoto(rows *sql.Rows) (Photo, error) {
 
 const photoSelect = `SELECT photos.id,photos.title,photos.description,photos.width,photos.height,photos.aspect_ratio,photos.date_taken,photos.storage_key,photos.thumbnail_key,photos.file_size,photos.last_modified,photos.original_url,photos.thumbnail_url,photos.thumbnail_hash,photos.tags,photos.exif,photos.latitude,photos.longitude,photos.country,photos.city,photos.location_name,photos.is_live_photo,photos.live_photo_video_url,photos.live_photo_video_key FROM photos`
 
+// publicPhotoClause keeps a photo out of anonymous hands when it belongs to a
+// hidden or password-protected album. The gallery and the link preview ask the
+// same question of the same rows, so a photo a visitor cannot open is never
+// described in the page a crawler is handed either.
+const publicPhotoClause = `NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND (al.is_hidden=1 OR (al.password_hash IS NOT NULL AND al.password_hash<>'')))`
+
 func (a *App) photoByID(id string) (Photo, error) {
 	rows, err := a.db.Query(photoSelect+` WHERE id=?`, id)
 	if err != nil {
@@ -81,7 +87,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 	// filtering for anonymous browsing.
 	query := photoSelect
 	if visible {
-		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND (al.is_hidden=1 OR (al.password_hash IS NOT NULL AND al.password_hash<>'')))`
+		query += ` WHERE ` + publicPhotoClause
 	}
 	query += ` ORDER BY date_taken DESC, photos.id DESC`
 	page, pageSize, paginated := paginationParams(r)
@@ -92,7 +98,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 		var total int
 		countQuery := `SELECT COUNT(*) FROM photos`
 		if visible {
-			countQuery += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND (al.is_hidden=1 OR (al.password_hash IS NOT NULL AND al.password_hash<>'')))`
+			countQuery += ` WHERE ` + publicPhotoClause
 		}
 		if err := a.db.QueryRowContext(r.Context(), countQuery).Scan(&total); err != nil {
 			errorJSON(w, http.StatusInternalServerError, "Unable to count photos")
