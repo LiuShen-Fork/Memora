@@ -167,17 +167,17 @@
     }
   },
   "album": {
-  "unlock": {
-    "title": "受保护的相簿",
-    "description": "该相簿受密码保护，请输入密码后查看其中的照片。",
-    "placeholder": "相簿密码",
-    "submit": "解锁",
-    "incorrectPassword": "密码不正确。",
-    "tooManyAttempts": "尝试次数过多，请稍后再试。",
-    "failedToUnlock": "无法解锁该相簿。",
-    "showPassword": "显示密码",
-    "hidePassword": "隐藏密码"
-  },
+    "unlock": {
+      "title": "受保护的相簿",
+      "description": "该相簿受密码保护，请输入密码后查看其中的照片。",
+      "placeholder": "相簿密码",
+      "submit": "解锁",
+      "incorrectPassword": "密码不正确。",
+      "tooManyAttempts": "尝试次数过多，请稍后再试。",
+      "failedToUnlock": "无法解锁该相簿。",
+      "showPassword": "显示密码",
+      "hidePassword": "隐藏密码"
+    },
     "notFound": "相簿未找到",
     "noDateInfo": "无日期信息",
     "noPhotosTip": "该相簿中还没有照片",

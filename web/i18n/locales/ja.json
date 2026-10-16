@@ -156,17 +156,17 @@
     }
   },
   "album": {
-  "unlock": {
-    "title": "保護されたアルバム",
-    "description": "このアルバムはパスワードで保護されています。パスワードを入力すると写真を表示できます。",
-    "placeholder": "アルバムのパスワード",
-    "submit": "ロックを解除",
-    "incorrectPassword": "パスワードが正しくありません。",
-    "tooManyAttempts": "試行回数が多すぎます。しばらくしてからお試しください。",
-    "failedToUnlock": "このアルバムのロックを解除できませんでした。",
-    "showPassword": "パスワードを表示",
-    "hidePassword": "パスワードを隠す"
-  },
+    "unlock": {
+      "title": "保護されたアルバム",
+      "description": "このアルバムはパスワードで保護されています。パスワードを入力すると写真を表示できます。",
+      "placeholder": "アルバムのパスワード",
+      "submit": "ロックを解除",
+      "incorrectPassword": "パスワードが正しくありません。",
+      "tooManyAttempts": "試行回数が多すぎます。しばらくしてからお試しください。",
+      "failedToUnlock": "このアルバムのロックを解除できませんでした。",
+      "showPassword": "パスワードを表示",
+      "hidePassword": "パスワードを隠す"
+    },
     "notFound": "アルバムが見つかりません",
     "noDateInfo": "日付情報なし",
     "noPhotosTip": "このアルバムにはまだ写真がありません",

@@ -156,17 +156,17 @@
     }
   },
   "album": {
-  "unlock": {
-    "title": "Protected Album",
-    "description": "This album is protected. Enter the password to see its photos.",
-    "placeholder": "Album password",
-    "submit": "Unlock",
-    "incorrectPassword": "That password is not right.",
-    "tooManyAttempts": "Too many attempts. Please try again in a minute.",
-    "failedToUnlock": "Could not unlock this album.",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password"
-  },
+    "unlock": {
+      "title": "Protected Album",
+      "description": "This album is protected. Enter the password to see its photos.",
+      "placeholder": "Album password",
+      "submit": "Unlock",
+      "incorrectPassword": "That password is not right.",
+      "tooManyAttempts": "Too many attempts. Please try again in a minute.",
+      "failedToUnlock": "Could not unlock this album.",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
+    },
     "notFound": "Album not found",
     "noDateInfo": "No date info",
     "noPhotosTip": "No photos in this album yet",
