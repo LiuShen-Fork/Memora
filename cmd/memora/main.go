@@ -22,14 +22,20 @@ import (
 )
 
 type App struct {
-	cfg            Config
-	db             *sql.DB
-	storage        Storage
-	queueWake      chan struct{}
-	stop           chan struct{}
-	wg             sync.WaitGroup
-	logs           *LogBuffer
-	queueClaimMu   sync.Mutex
+	cfg          Config
+	db           *sql.DB
+	storage      Storage
+	queueWake    chan struct{}
+	stop         chan struct{}
+	wg           sync.WaitGroup
+	logs         *LogBuffer
+	queueClaimMu sync.Mutex
+	// workersMu guards the live pool: whether one is running, the retire
+	// channel each worker watches, and the number it was handed in the log line.
+	workersMu      sync.Mutex
+	workersStarted bool
+	workerRetire   []chan struct{}
+	workerSeq      int
 	settingsMu     sync.RWMutex
 	settingsLoadMu sync.Mutex
 	publicSettings map[string]map[string]any

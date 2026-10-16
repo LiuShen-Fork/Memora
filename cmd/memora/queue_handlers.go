@@ -24,6 +24,14 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request, rest string) {
 		a.queueStats(w, r, 0)
 		return
 	}
+	if rest == "concurrency" && r.Method == http.MethodGet {
+		a.queueConcurrency(w, r, false)
+		return
+	}
+	if rest == "concurrency" && r.Method == http.MethodPut {
+		a.queueConcurrency(w, r, true)
+		return
+	}
 	if strings.HasPrefix(rest, "stats/") && r.Method == "GET" {
 		id, err := strconv.ParseInt(strings.TrimPrefix(rest, "stats/"), 10, 64)
 		if err != nil || id <= 0 {
@@ -242,6 +250,50 @@ func retryTime(availableAt int64) any {
 		return nil
 	}
 	return time.Unix(availableAt, 0)
+}
+
+// queueConcurrency reports how many tasks the queue runs at once, and takes a
+// new number while the process is running. The change is stored as a setting so
+// it survives a restart, and the pool is resized in the same request — which is
+// the point: an administrator who has just queued a large import can raise the
+// number and watch the backlog start moving instead of restarting the server.
+func (a *App) queueConcurrency(w http.ResponseWriter, r *http.Request, update bool) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	if !update {
+		writeJSON(w, http.StatusOK, a.queueConcurrencyState())
+		return
+	}
+	var body struct {
+		Concurrency *int `json:"concurrency"`
+	}
+	if decodeJSON(r, &body) != nil || body.Concurrency == nil {
+		errorJSON(w, http.StatusBadRequest, "concurrency is required")
+		return
+	}
+	if *body.Concurrency < minQueueWorkers || *body.Concurrency > maxQueueWorkers {
+		errorJSON(w, http.StatusBadRequest, fmt.Sprintf("concurrency must be between %d and %d", minQueueWorkers, maxQueueWorkers))
+		return
+	}
+	if err := a.updateSetting("system", "queueConcurrency", *body.Concurrency, nil, false); err != nil {
+		errorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, a.queueConcurrencyState())
+}
+
+// queueConcurrencyState is what the dashboard needs to draw the control: the
+// number that was stored, the range it may offer, and how many workers are
+// actually running. The last one can differ from the first while an operator's
+// environment override is in force.
+func (a *App) queueConcurrencyState() map[string]any {
+	return map[string]any{
+		"concurrency": a.storedQueueWorkers(),
+		"min":         minQueueWorkers,
+		"max":         maxQueueWorkers,
+		"workers":     a.workerCount(),
+	}
 }
 
 func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {

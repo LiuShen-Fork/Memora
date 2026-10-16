@@ -73,6 +73,52 @@ watch([statusFilter, typeFilter], () => {
   page.value = 1
 })
 
+// 队列的并发数由服务端设置保存，修改后立即调整正在运行的 worker，
+// 因此积压的任务不需要重启就能开始处理。
+const { data: concurrencyState, refresh: refreshConcurrency } = await useFetch<{
+  concurrency: number
+  min: number
+  max: number
+  workers: number
+}>('/api/queue/concurrency')
+
+const concurrencyDraft = ref(concurrencyState.value?.concurrency ?? 5)
+const isSavingConcurrency = ref(false)
+const concurrencyDirty = computed(
+  () => concurrencyDraft.value !== concurrencyState.value?.concurrency,
+)
+
+watch(concurrencyState, (state) => {
+  if (state) concurrencyDraft.value = state.concurrency
+})
+
+const saveConcurrency = async () => {
+  if (isSavingConcurrency.value || !concurrencyDirty.value) return
+  isSavingConcurrency.value = true
+  try {
+    await $fetch('/api/queue/concurrency', {
+      method: 'PUT',
+      body: { concurrency: concurrencyDraft.value },
+    })
+    await refreshConcurrency()
+    toast.add({
+      title: $t('dashboard.queue.concurrency.saved', {
+        count: concurrencyDraft.value,
+      }),
+      color: 'success',
+    })
+  } catch (error: any) {
+    console.error('Update queue concurrency failed:', error)
+    toast.add({
+      title: $t('dashboard.queue.messages.operationFailed'),
+      description: error?.message,
+      color: 'error',
+    })
+  } finally {
+    isSavingConcurrency.value = false
+  }
+}
+
 // 清理非活跃任务
 const clearNonActiveTasks = async () => {
   try {
@@ -366,6 +412,73 @@ onBeforeUnmount(() => {
             <div class="flex items-center justify-between pb-2">
               <h2 class="text-lg font-semibold">{{ $t('dashboard.queue.taskListTitle') }}</h2>
               <div class="flex items-center gap-2">
+                <!-- 并发数：队列同时处理多少个任务，改完立即生效 -->
+                <UPopover :content="{ align: 'end' }">
+                  <UButton
+                    icon="tabler:adjustments-horizontal"
+                    variant="soft"
+                    color="neutral"
+                    size="sm"
+                  >
+                    {{ $t('dashboard.queue.concurrency.button') }}
+                    <span class="font-semibold tabular-nums">
+                      {{ concurrencyState?.concurrency }}
+                    </span>
+                  </UButton>
+
+                  <template #content>
+                    <div class="w-72 space-y-4 p-1">
+                      <div class="space-y-1">
+                        <p
+                          class="text-sm font-semibold text-neutral-900 dark:text-neutral-100"
+                        >
+                          {{ $t('dashboard.queue.concurrency.title') }}
+                        </p>
+                        <p
+                          class="text-xs leading-relaxed text-neutral-500 dark:text-neutral-400"
+                        >
+                          {{ $t('dashboard.queue.concurrency.description') }}
+                        </p>
+                      </div>
+
+                      <div class="space-y-2">
+                        <USlider
+                          v-model="concurrencyDraft"
+                          :min="concurrencyState?.min ?? 1"
+                          :max="concurrencyState?.max ?? 8"
+                          :step="1"
+                        />
+                        <div
+                          class="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400"
+                        >
+                          <span>
+                            {{
+                              $t('dashboard.queue.concurrency.running', {
+                                count: concurrencyState?.workers ?? 0,
+                              })
+                            }}
+                          </span>
+                          <span
+                            class="font-semibold tabular-nums text-neutral-900 dark:text-neutral-100"
+                          >
+                            {{ concurrencyDraft }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <UButton
+                        block
+                        size="sm"
+                        :loading="isSavingConcurrency"
+                        :disabled="!concurrencyDirty"
+                        @click="saveConcurrency"
+                      >
+                        {{ $t('common.actions.save') }}
+                      </UButton>
+                    </div>
+                  </template>
+                </UPopover>
+
                 <USelectMenu
                   v-model="statusFilter"
                   :items="statusOptions"

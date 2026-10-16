@@ -41,53 +41,6 @@ var queueAvailableAtStep = schemaStep{
 	backfill:   `UPDATE pipeline_queue SET available_at = created_at`,
 }
 
-func (a *App) startWorkers() {
-	// Tasks left in an in-progress state after a process crash must be retried.
-	_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL WHERE status='in-stages'`)
-	for i := 0; i < a.cfg.WorkerCount; i++ {
-		a.wg.Add(1)
-		go a.worker(i + 1)
-	}
-}
-func (a *App) stopWorkers() { close(a.stop); a.wg.Wait() }
-func (a *App) worker(id int) {
-	defer a.wg.Done()
-	for {
-		select {
-		case <-a.stop:
-			return
-		default:
-		}
-		task, err := a.claimTask()
-		if err != nil {
-			a.logs.Add("queue", fmt.Sprintf("worker %d: %v", id, err))
-			time.Sleep(time.Second)
-			continue
-		}
-		if task == nil {
-			select {
-			case <-a.stop:
-				return
-			case <-a.queueWake:
-			case <-time.After(2 * time.Second):
-			}
-			continue
-		}
-		if err := a.processTask(task); err != nil {
-			// A provider-confirmed missing object cannot become available by
-			// retrying. Keep the task visible as failed, but avoid hammering
-			// remote storage three times for the same deleted file.
-			if errors.Is(err, ErrStorageNotFound) {
-				a.failTaskPermanent(task.ID, err.Error())
-			} else {
-				a.failTask(task.ID, err.Error())
-			}
-		} else {
-			a.completeTask(task.ID)
-		}
-	}
-}
-
 type Task struct {
 	ID                    int64
 	Payload               map[string]any

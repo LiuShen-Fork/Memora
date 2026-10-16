@@ -938,6 +938,13 @@
     },
     "queue": {
       "title": "キュー管理",
+      "concurrency": {
+        "button": "同時実行数",
+        "title": "同時実行タスク数",
+        "description": "キューが同時に処理するタスク数です。変更はすぐに反映されます。",
+        "running": "実行中: {count}",
+        "saved": "同時実行数を {count} に設定しました"
+      },
       "indicator": {
         "pending": "処理待ち",
         "processing": "処理中",

@@ -938,6 +938,13 @@
     },
     "queue": {
       "title": "隊列管理",
+      "concurrency": {
+        "button": "併發數",
+        "title": "併發任務數",
+        "description": "佇列同時處理的任務數量，修改後立即生效。",
+        "running": "目前執行：{count}",
+        "saved": "併發數已設為 {count}"
+      },
       "indicator": {
         "pending": "等待處理",
         "processing": "正在處理",

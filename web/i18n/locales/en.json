@@ -1038,6 +1038,13 @@
     },
     "queue": {
       "title": "Queue Management",
+      "concurrency": {
+        "button": "Concurrency",
+        "title": "Concurrent tasks",
+        "description": "How many tasks the queue processes at once. The change takes effect immediately.",
+        "running": "Running now: {count}",
+        "saved": "Queue concurrency set to {count}"
+      },
       "indicator": {
         "pending": "Pending",
         "processing": "Processing",

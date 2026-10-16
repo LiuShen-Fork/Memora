@@ -1038,6 +1038,13 @@
     },
     "queue": {
       "title": "队列管理",
+      "concurrency": {
+        "button": "并发数",
+        "title": "并发任务数",
+        "description": "队列同时处理的任务数量，修改后立即生效。",
+        "running": "当前运行：{count}",
+        "saved": "并发数已设为 {count}"
+      },
       "indicator": {
         "pending": "等待处理",
         "processing": "正在处理",

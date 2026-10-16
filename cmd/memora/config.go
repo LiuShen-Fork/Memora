@@ -114,13 +114,16 @@ func loadConfig() Config {
 		webDir = migrated
 	}
 	return Config{
-		DBPath:             env("DATABASE_URL", filepath.Join(dataDir, "app.sqlite3")),
-		DataDir:            dataDir,
-		WebDir:             webDir,
-		Addr:               env("CFRAME_ADDR", ":3000"),
-		DBMaxOpenConns:     envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
-		SessionKey:         []byte(secret),
-		WorkerCount:        envInt("CFRAME_WORKERS", 2),
+		DBPath:         env("DATABASE_URL", filepath.Join(dataDir, "app.sqlite3")),
+		DataDir:        dataDir,
+		WebDir:         webDir,
+		Addr:           env("CFRAME_ADDR", ":3000"),
+		DBMaxOpenConns: envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
+		SessionKey:     []byte(secret),
+		// Zero means the operator has not asked for a number, and the queue uses
+		// its own setting instead. CFRAME_WORKERS is a starting point, not a
+		// limit: the dashboard changes the setting while the process runs.
+		WorkerCount:        envInt("CFRAME_WORKERS", 0),
 		MediaConcurrency:   envInt("CFRAME_MEDIA_CONCURRENCY", 1),
 		MediaMaxBytes:      envBytesMB("CFRAME_MEDIA_MAX_MB", 32),
 		MediaTimeout:       envDuration("CFRAME_MEDIA_TIMEOUT", 2*time.Minute),

@@ -10,7 +10,7 @@ import (
 func (a *App) queuePoolStats() map[string]any {
 	var completed, failed, inStages int
 	_ = a.db.QueryRow(`SELECT COALESCE(SUM(status='completed'),0), COALESCE(SUM(status='failed'),0), COALESCE(SUM(status='in-stages'),0) FROM pipeline_queue`).Scan(&completed, &failed, &inStages)
-	workers := a.cfg.WorkerCount
+	workers := a.workerCount()
 	if workers < 1 {
 		workers = 1
 	}

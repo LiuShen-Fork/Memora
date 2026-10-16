@@ -42,6 +42,7 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 | NUXT_OAUTH_GITHUB_CLIENT_ID              | GitHub OAuth app Client ID                                      | None                                  | No (optional, for GitHub login)                      |
 | NUXT_OAUTH_GITHUB_CLIENT_SECRET          | GitHub OAuth app Client Secret                                  | None                                  | No (optional, for GitHub login)                      |
 | NUXT_SESSION_PASSWORD                    | Password for encrypting sessions, 32-character random string    | None                                  | Yes                                                  |
+| CFRAME_WORKERS                           | How many tasks the queue runs at once (1-8) when the process starts. The queue page in the dashboard changes the same number while the server is running. | `5` | No |
 | NUXT_PUBLIC_GTAG_ID                      | Google Analytics Tracking ID                                    | None                                  | No                                                   |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_ENABLED     | Enable Matomo analytics tracking                                | `false`                               | No                                                   |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_URL         | Matomo instance URL (e.g., https://matomo.example.com)          | None                                  | No (required when Matomo is enabled)                 |

@@ -303,25 +303,53 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 			return fmt.Errorf("invalid value for setting %s:%s", ns, key)
 		}
 	}
+	if ns == "system" && key == "queueConcurrency" {
+		// The range is a property of the queue rather than of the setting type,
+		// so it is checked here instead of being carried in the enum column.
+		size, ok := settingNumber(value)
+		if !ok || size < float64(minQueueWorkers) || size > float64(maxQueueWorkers) {
+			return fmt.Errorf("queueConcurrency must be a number between %d and %d", minQueueWorkers, maxQueueWorkers)
+		}
+	}
 	serialized := serializeSetting(typ, value)
 	if updatedBy == nil {
 		_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch() WHERE namespace=? AND key=?`, serialized, ns, key)
-		if err == nil && ns == "storage" && key == "provider" && a.storage != nil {
-			a.storage = a.loadStorage()
-		}
 		if err == nil {
-			a.updatePublicSettingsCache(ns, key, typ, serialized, isPublic == 1)
+			a.applySettingChange(ns, key, typ, serialized, isPublic == 1)
 		}
 		return err
 	}
 	_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch(),updated_by=? WHERE namespace=? AND key=?`, serialized, updatedBy, ns, key)
-	if err == nil && ns == "storage" && key == "provider" && a.storage != nil {
-		a.storage = a.loadStorage()
-	}
 	if err == nil {
-		a.updatePublicSettingsCache(ns, key, typ, serialized, isPublic == 1)
+		a.applySettingChange(ns, key, typ, serialized, isPublic == 1)
 	}
 	return err
+}
+
+// applySettingChange runs what a saved setting changes beyond its own row:
+// which storage the server talks to, how many tasks the queue runs at once, and
+// what the public snapshot serves.
+func (a *App) applySettingChange(ns, key, typ string, serialized any, isPublic bool) {
+	if ns == "storage" && key == "provider" && a.storage != nil {
+		a.storage = a.loadStorage()
+	}
+	if ns == "system" && key == "queueConcurrency" {
+		a.resizeQueue()
+	}
+	a.updatePublicSettingsCache(ns, key, typ, serialized, isPublic)
+}
+
+// settingNumber reads a numeric setting the way the JSON decoder delivers it.
+func settingNumber(value any) (float64, bool) {
+	switch number := value.(type) {
+	case float64:
+		return number, true
+	case int:
+		return float64(number), true
+	case int64:
+		return float64(number), true
+	}
+	return 0, false
 }
 
 func containsString(values []string, value string) bool {

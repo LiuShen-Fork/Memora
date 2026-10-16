@@ -33,6 +33,7 @@ var defaultSettings = []settingDefault{
 	{Namespace: "system", Key: "upload.duplicateCheck.enabled", Type: "boolean", Default: true, Public: true, Label: "settings.system.upload.duplicateCheck.enabled.label", Description: "settings.system.upload.duplicateCheck.enabled.description"},
 	{Namespace: "system", Key: "upload.duplicateCheck.mode", Type: "string", Default: "skip", Public: true, Enum: []string{"warn", "block", "skip"}, Label: "settings.system.upload.duplicateCheck.mode.label", Description: "settings.system.upload.duplicateCheck.mode.description"},
 	{Namespace: "system", Key: "webglImageViewerDebug", Type: "boolean", Default: false, Public: true, Label: "settings.system.webglImageViewerDebug.label", Description: "settings.system.webglImageViewerDebug.description"},
+	{Namespace: "system", Key: "queueConcurrency", Type: "number", Default: defaultQueueWorkers, Label: "settings.system.queueConcurrency.label", Description: "settings.system.queueConcurrency.description"},
 	{Namespace: "system", Key: "auth.github.enabled", Type: "boolean", Default: false, Public: true, Label: "settings.system.auth.github.enabled.label", Description: "settings.system.auth.github.enabled.description"},
 	{Namespace: "system", Key: "auth.github.clientId", Type: "string", Default: "", Label: "settings.system.auth.github.clientId.label", Description: "settings.system.auth.github.clientId.description"},
 	{Namespace: "system", Key: "auth.github.clientSecret", Type: "string", Default: "", Secret: true, Label: "settings.system.auth.github.clientSecret.label", Description: "settings.system.auth.github.clientSecret.description"},
@@ -154,6 +155,13 @@ func settingUI(namespace, key, typ string, enum []string) map[string]any {
 		uiType = "select"
 	}
 	ui := map[string]any{"type": uiType, "required": false}
+	// The queue's concurrency is edited where the workers are visible, so the
+	// dashboard is told the range it may offer. The server refuses anything
+	// outside it whatever the browser sends.
+	if key == "queueConcurrency" {
+		ui["min"] = minQueueWorkers
+		ui["max"] = maxQueueWorkers
+	}
 	if strings.HasSuffix(key, ".clientSecret") || strings.HasSuffix(key, ".token") {
 		ui["type"] = "password"
 	}
