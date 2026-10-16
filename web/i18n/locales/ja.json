@@ -186,6 +186,9 @@
       "created": "作成"
     },
     "createdTooltip": "作成日：{date}"
+  },  "albumProtectionWarning": {
+    "title": "アルバムのパスワード保護の制限",
+    "description": "アルバムのパスワードでは、S3、OpenList、CDN の公開写真 URL を保護できません。直接リンクを持つ人は、パスワードなしでファイルにアクセスできます。保護するアルバムにはローカルストレージを使用してください。パスワードやデフォルトのストレージを変更しても、既存のリンクやキャッシュは無効になりません。すでに公開した写真は、ストレージ/CDN 側で公開アクセスを無効にし、キャッシュを削除してオブジェクト URL を変更する必要があります。"
   },
   "map": {
     "amap": {
@@ -502,6 +505,7 @@
       "reset": "リセット",
       "cancel": "キャンセル",
       "continue": "続行",
+      "edit": "編集",
       "delete": "削除"
     },
     "unknownError": "不明なエラー"
@@ -1388,7 +1392,20 @@
           "description": "画像にアクセスするためのカスタム CDN URL"
         }
       },
-      "sectionDescription": "デフォルトのストレージ構成と利用可能なストレージプロバイダーを管理します。このページの設定は以降のファイルアップロードにのみ影響します。",
+      "sectionDescription": "ファイルの保存先を管理します。使用中の構成への変更は保存後すぐに反映されます。",
+      "listDescription": "構成を直接編集するか、別の構成をデフォルトに設定できます。",
+      "active": "使用中",
+      "editActiveHint": "この構成は使用中です。変更は保存後すぐに反映されます。",
+      "advancedSettings": "詳細設定",
+      "moreActions": "「{name}」のその他の操作",
+      "empty": {
+        "title": "ストレージが未設定です",
+        "description": "写真のアップロードを始めるにはストレージ構成を追加してください。最初の構成は自動的にデフォルトになります。"
+      },
+      "discard": {
+        "title": "未保存の変更を破棄しますか？",
+        "description": "変更はまだ保存されていません。編集画面を閉じると変更が失われます。"
+      },
       "table": {
         "columns": {
           "name": "ストレージ名",
@@ -1402,7 +1419,9 @@
         "created": "ストレージ構成を作成しました",
         "createError": "ストレージ構成の作成中にエラーが発生しました",
         "deleted": "ストレージ構成を削除しました",
-        "deleteError": "ストレージ構成の削除に失敗しました"
+        "deleteError": "ストレージ構成の削除に失敗しました",
+        "updated": "ストレージ構成を更新しました",
+        "updateError": "ストレージ構成の更新に失敗しました"
       },
       "providers": {
         "s3": "AWS S3 互換ストレージ",
@@ -1418,17 +1437,29 @@
         "schemePlaceholder": "ストレージ構成を選択",
         "typeLabel": "ストレージ種別",
         "typePlaceholder": "ストレージ種別を選択",
-        "nameLabel": "ストレージ名"
+        "nameLabel": "ストレージ名",
+        "namePlaceholder": "例：写真ストレージ",
+        "isrequired": "この項目は必須です"
       },
       "changeModal": {
+        "target": "「{name}」をデフォルトのストレージに設定しますか？",
         "title": "ストレージ構成を変更",
         "alertTitle": "注意",
         "alertDescription": "ストレージ構成を変更した後にアップロードされたファイルは新しいストレージ構成に保存されます。元の構成にある既存のファイルは移行されません。"
       },
+      "deleteModal": {
+        "title": "ストレージ構成を削除",
+        "message": "「{name}」を削除してもよろしいですか？この構成は Memora から削除されます。この構成で保存済みのファイルは削除されません。"
+      },
       "slideover": {
-        "title": "ストレージ構成を作成"
+        "title": "ストレージ構成を作成",
+        "editTitle": "ストレージ構成を編集"
       },
       "actions": {
+        "discard": "変更を破棄",
+        "keepEditing": "編集を続ける",
+        "retry": "再試行",
+        "activate": "デフォルトに設定",
         "add": "ストレージを追加",
         "create": "ストレージを作成"
       }

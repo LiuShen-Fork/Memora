@@ -186,6 +186,9 @@
       "created": "Created"
     },
     "createdTooltip": "Created: {date}"
+  },  "albumProtectionWarning": {
+    "title": "Album password protection limitations",
+    "description": "Album passwords cannot protect public S3, OpenList or CDN photo URLs: anyone with a direct link can still access the file without the password. Use local storage for protected albums. Changing the password or default storage does not revoke existing links or cached copies. If photos were already public, disable public access at the storage/CDN, clear caches and change object URLs."
   },
   "map": {
     "amap": {
@@ -502,6 +505,7 @@
       "reset": "Reset",
       "cancel": "Cancel",
       "continue": "Continue",
+      "edit": "Edit",
       "delete": "Delete"
     },
     "unknownError": "Unknown error"
@@ -1488,7 +1492,20 @@
           "description": "Custom CDN URL for accessing images"
         }
       },
-      "sectionDescription": "Manage the default storage scheme and available storage providers. Settings on this page only affect subsequent file uploads.",
+      "sectionDescription": "Manage storage destinations. Saved changes to the active configuration take effect immediately.",
+      "listDescription": "Edit a configuration or set it as the default directly from this list.",
+      "active": "Active",
+      "editActiveHint": "Changes to this active configuration take effect when saved.",
+      "advancedSettings": "Advanced settings",
+      "moreActions": "More actions for {name}",
+      "empty": {
+        "title": "No storage configured",
+        "description": "Add a storage configuration to start uploading photos. The first configuration becomes the default automatically."
+      },
+      "discard": {
+        "title": "Discard unsaved changes?",
+        "description": "Your changes have not been saved. Discard them to leave this editor."
+      },
       "table": {
         "columns": {
           "name": "Storage Name",
@@ -1502,7 +1519,9 @@
         "created": "Storage scheme created",
         "createError": "Error creating storage scheme",
         "deleted": "Storage scheme deleted",
-        "deleteError": "Failed to delete storage scheme"
+        "deleteError": "Failed to delete storage scheme",
+        "updated": "Storage scheme updated",
+        "updateError": "Failed to update storage scheme"
       },
       "providers": {
         "s3": "AWS S3 Compatible Storage",
@@ -1518,17 +1537,29 @@
         "schemePlaceholder": "Select a storage scheme",
         "typeLabel": "Storage Type",
         "typePlaceholder": "Select a storage type",
-        "nameLabel": "Storage Name"
+        "nameLabel": "Storage Name",
+        "namePlaceholder": "For example, Photo storage",
+        "isrequired": "This field is required"
       },
       "changeModal": {
+        "target": "Set “{name}” as the default storage?",
         "title": "Change Storage Scheme",
         "alertTitle": "Note",
         "alertDescription": "Files uploaded after changing the storage scheme will be stored in the new scheme. Files already in the original scheme will not be migrated."
       },
+      "deleteModal": {
+        "title": "Delete Storage Scheme",
+        "message": "Are you sure you want to delete \"{name}\"? This removes the scheme from Memora. Files already stored with it are not deleted."
+      },
       "slideover": {
-        "title": "Create Storage Scheme"
+        "title": "Create Storage Scheme",
+        "editTitle": "Edit Storage Scheme"
       },
       "actions": {
+        "discard": "Discard changes",
+        "keepEditing": "Keep editing",
+        "retry": "Retry",
+        "activate": "Set as default",
         "add": "Add Storage",
         "create": "Create Storage"
       }

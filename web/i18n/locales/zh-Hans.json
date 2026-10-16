@@ -1,4 +1,7 @@
-{
+{  "albumProtectionWarning": {
+    "title": "相簿密码保护的限制",
+    "description": "相簿密码无法保护 S3、OpenList 或 CDN 的公开照片直链：持有直链的人仍可无需密码访问文件。受保护相簿请使用本地存储。修改密码或默认存储不会撤销已有直链或缓存副本。若照片已经公开，还需在存储/CDN 侧关闭公开访问、清理缓存并更换对象地址。"
+  },
   "map": {
     "amap": {
       "missingKey": "请配置高德地图 Key 以显示地图"
@@ -502,6 +505,7 @@
       "reset": "重置",
       "cancel": "取消",
       "continue": "继续",
+      "edit": "编辑",
       "delete": "删除"
     },
     "unknownError": "未知错误"
@@ -1488,7 +1492,20 @@
           "description": "用于访问图像的自定义 CDN URL"
         }
       },
-      "sectionDescription": "管理默认存储方案与可用存储提供者。此页面的设置仅影响后续上传文件。",
+      "sectionDescription": "管理文件的存储位置。当前启用方案的配置修改会在保存后立即生效。",
+      "listDescription": "直接编辑方案，或将其他方案设为默认存储。",
+      "active": "正在使用",
+      "editActiveHint": "此方案正在使用，配置修改会在保存后立即生效。",
+      "advancedSettings": "高级设置",
+      "moreActions": "“{name}”的更多操作",
+      "empty": {
+        "title": "尚未配置存储",
+        "description": "添加存储方案以开始上传照片。首个方案会自动设为默认存储。"
+      },
+      "discard": {
+        "title": "放弃未保存的修改？",
+        "description": "当前修改尚未保存，离开编辑器将丢弃这些修改。"
+      },
       "table": {
         "columns": {
           "name": "存储名称",
@@ -1502,7 +1519,9 @@
         "created": "存储方案已创建",
         "createError": "创建存储方案时出错",
         "deleted": "存储方案已删除",
-        "deleteError": "删除存储方案失败"
+        "deleteError": "删除存储方案失败",
+        "updated": "存储方案已更新",
+        "updateError": "更新存储方案失败"
       },
       "providers": {
         "s3": "AWS S3 兼容存储",
@@ -1518,17 +1537,29 @@
         "schemePlaceholder": "选择存储方案",
         "typeLabel": "存储类型",
         "typePlaceholder": "选择存储类型",
-        "nameLabel": "存储名称"
+        "nameLabel": "存储名称",
+        "namePlaceholder": "例如：照片存储",
+        "isrequired": "此项为必填项"
       },
       "changeModal": {
+        "target": "将“{name}”设为默认存储？",
         "title": "变更存储方案",
         "alertTitle": "注意",
         "alertDescription": "变更存储方案之后上传的文件将会存储到新的存储方案中，原方案中已有文件不会被迁移。"
       },
+      "deleteModal": {
+        "title": "删除存储方案",
+        "message": "确定要删除“{name}”吗？这将从 Memora 中移除该方案。已使用该方案存储的文件不会被删除。"
+      },
       "slideover": {
-        "title": "创建存储方案"
+        "title": "创建存储方案",
+        "editTitle": "编辑存储方案"
       },
       "actions": {
+        "discard": "放弃修改",
+        "keepEditing": "继续编辑",
+        "retry": "重试",
+        "activate": "设为默认",
         "add": "添加存储",
         "create": "创建存储"
       }
