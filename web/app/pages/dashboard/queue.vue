@@ -417,12 +417,31 @@ onBeforeUnmount(() => {
 
               <!-- 状态 -->
               <template #status-cell="{ row }">
-                <UBadge
-                  :label="$t(`dashboard.queue.status.${row.original.status}`)"
-                  variant="soft"
-                  :color="getStatusColor(row.original.status)"
-                  size="sm"
-                />
+                <div class="flex flex-col items-start gap-1">
+                  <UBadge
+                    :label="$t(`dashboard.queue.status.${row.original.status}`)"
+                    variant="soft"
+                    :color="getStatusColor(row.original.status)"
+                    size="sm"
+                  />
+                  <!-- 任务正在等待重试延迟结束，说明回来的时间 -->
+                  <span
+                    v-if="row.original.availableAt"
+                    class="inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400"
+                  >
+                    <UIcon
+                      name="tabler:clock-hour-4"
+                      class="size-3"
+                    />
+                    {{
+                      $t('dashboard.queue.table.retryAt', {
+                        time: $dayjs(row.original.availableAt).format(
+                          'MM-DD HH:mm:ss',
+                        ),
+                      })
+                    }}
+                  </span>
+                </div>
               </template>
 
               <!-- 尝试次数 -->

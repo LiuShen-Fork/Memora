@@ -964,6 +964,7 @@
         "errorMessage": "錯誤詳情",
         "createdAt": "建立時間",
         "completedAt": "完成時間",
+        "retryAt": "重試於 {time}",
         "actions": "操作",
         "expandAria": "展開",
         "detail": {

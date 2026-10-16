@@ -1064,6 +1064,7 @@
         "errorMessage": "错误详情",
         "createdAt": "创建时间",
         "completedAt": "完成时间",
+        "retryAt": "重试于 {time}",
         "actions": "操作",
         "expandAria": "展开",
         "detail": {

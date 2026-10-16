@@ -1064,6 +1064,7 @@
         "errorMessage": "Error Message",
         "createdAt": "Created At",
         "completedAt": "Completed At",
+        "retryAt": "Retry at {time}",
         "actions": "Actions",
         "expandAria": "Expand",
         "detail": {

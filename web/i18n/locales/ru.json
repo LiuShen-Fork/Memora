@@ -1037,6 +1037,7 @@
         "errorMessage": "Сообщение об ошибке",
         "createdAt": "Создана",
         "completedAt": "Завершена",
+        "retryAt": "Повтор в {time}",
         "actions": "Действия",
         "expandAria": "Развернуть",
         "detail": {

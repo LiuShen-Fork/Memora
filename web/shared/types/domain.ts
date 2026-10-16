@@ -84,6 +84,9 @@ export interface PipelineQueueItem {
   errorMessage?: string | null
   createdAt?: string | number | Date
   completedAt?: string | number | Date | null
+  // When a pending task will be handed out again, or null when it is due now.
+  // Only a task waiting out a retry delay has one.
+  availableAt?: string | number | Date | null
 }
 
 export interface PhotoReaction {

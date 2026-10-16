@@ -232,6 +232,18 @@ func validateQueuePayload(payload map[string]any) error {
 	}
 	return nil
 }
+
+// retryTime reports when the queue will hand a pending task out again, or nil
+// when it is due already. The dashboard only has something to say while a task
+// is actually waiting, so a task that is ready reports nothing rather than the
+// epoch it was inserted with.
+func retryTime(availableAt int64) any {
+	if availableAt <= time.Now().Unix() {
+		return nil
+	}
+	return time.Unix(availableAt, 0)
+}
+
 func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 	if _, ok := a.require(r); !ok {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
@@ -247,8 +259,9 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 		var p any
 		_ = json.Unmarshal([]byte(payload), &p)
 		var created, completed sql.NullInt64
-		_ = a.db.QueryRow(`SELECT created_at,completed_at FROM pipeline_queue WHERE id=?`, id).Scan(&created, &completed)
-		result := map[string]any{"id": id, "payload": p, "status": status, "statusStage": stage, "errorMessage": errMsg, "attempts": attempts, "maxAttempts": max, "createdAt": nil, "completedAt": nil}
+		var available int64
+		_ = a.db.QueryRow(`SELECT created_at,completed_at,available_at FROM pipeline_queue WHERE id=?`, id).Scan(&created, &completed, &available)
+		result := map[string]any{"id": id, "payload": p, "status": status, "statusStage": stage, "errorMessage": errMsg, "attempts": attempts, "maxAttempts": max, "createdAt": nil, "completedAt": nil, "availableAt": retryTime(available)}
 		if created.Valid {
 			result["createdAt"] = time.Unix(created.Int64, 0)
 		}
@@ -288,7 +301,7 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	if pageSize > 100 {
 		pageSize = 100
 	}
-	query := `SELECT id,payload,priority,attempts,max_attempts,status,status_stage,error_message,created_at,completed_at FROM pipeline_queue`
+	query := `SELECT id,payload,priority,attempts,max_attempts,status,COALESCE(status_stage,''),COALESCE(error_message,''),created_at,completed_at,available_at FROM pipeline_queue`
 	conditions := []string{}
 	args := []any{}
 	if statusFilter != "" {
@@ -339,16 +352,23 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	for rows != nil && rows.Next() {
 		var id, priority, attempts, max int
 		var p, status, stage, errMsg string
-		var created int64
+		var created, available int64
 		var completed sql.NullInt64
-		_ = rows.Scan(&id, &p, &priority, &attempts, &max, &status, &stage, &errMsg, &created, &completed)
+		// A scan that silently fails here would hand the dashboard a row of
+		// zeroes, and the columns after the one that failed would come back as
+		// 1970, so the error is reported rather than dropped.
+		if err := rows.Scan(&id, &p, &priority, &attempts, &max, &status, &stage, &errMsg, &created, &completed, &available); err != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Failed to fetch task list")
+			return
+		}
 		var payload any
 		_ = json.Unmarshal([]byte(p), &payload)
 		var completedAt any
 		if completed.Valid {
 			completedAt = time.Unix(completed.Int64, 0)
 		}
-		out = append(out, map[string]any{"id": id, "payload": payload, "priority": priority, "attempts": attempts, "maxAttempts": max, "status": status, "statusStage": stage, "errorMessage": errMsg, "createdAt": time.Unix(created, 0), "completedAt": completedAt})
+		out = append(out, map[string]any{"id": id, "payload": payload, "priority": priority, "attempts": attempts, "maxAttempts": max, "status": status, "statusStage": stage, "errorMessage": errMsg, "createdAt": time.Unix(created, 0), "completedAt": completedAt, "availableAt": retryTime(available)})
 	}
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()
@@ -442,7 +462,11 @@ func (a *App) taskRetry(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusBadRequest, "Task is not in failed status, current status: "+status)
 		return
 	}
-	if _, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,created_at=unixepoch() WHERE id=?`, b.TaskID); err != nil {
+	// A manual retry means "run it now", so it clears the schedule along with
+	// the attempt count and leaves created_at as the record of when the task
+	// first arrived. A task the queue scheduled for later is pulled forward;
+	// nothing is ever pushed further out from here.
+	if _, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,available_at=unixepoch() WHERE id=?`, b.TaskID); err != nil {
 		errorJSON(w, 500, err.Error())
 		return
 	}
@@ -482,7 +506,7 @@ func (a *App) taskRetryBatch(w http.ResponseWriter, r *http.Request) {
 		if rows != nil {
 			rows.Close()
 		}
-		result, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,created_at=unixepoch() WHERE status='failed'`)
+		result, err := a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,available_at=unixepoch() WHERE status='failed'`)
 		if err != nil {
 			errorJSON(w, http.StatusInternalServerError, err.Error())
 			return
@@ -507,7 +531,7 @@ func (a *App) taskRetryBatch(w http.ResponseWriter, r *http.Request) {
 			skippedTasks = append(skippedTasks, map[string]any{"id": id, "status": status, "reason": "Task is not in failed status (current: " + status + ")"})
 			continue
 		}
-		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,created_at=unixepoch() WHERE id=?`, id)
+		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending',status_stage=NULL,error_message=NULL,attempts=0,available_at=unixepoch() WHERE id=?`, id)
 		var parsed map[string]any
 		_ = json.Unmarshal([]byte(payload), &parsed)
 		retried++

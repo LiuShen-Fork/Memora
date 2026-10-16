@@ -964,6 +964,7 @@
         "errorMessage": "エラーメッセージ",
         "createdAt": "作成日時",
         "completedAt": "完了日時",
+        "retryAt": "再試行 {time}",
         "actions": "操作",
         "expandAria": "展開",
         "detail": {

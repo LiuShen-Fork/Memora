@@ -37,6 +37,7 @@ func (a *App) migrateSchema() error {
 	steps := []schemaStep{
 		albumPositionStep,
 		albumPasswordStep,
+		queueAvailableAtStep,
 	}
 	for _, step := range steps {
 		if err := a.applySchemaStep(step); err != nil {

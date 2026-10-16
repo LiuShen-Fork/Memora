@@ -13,6 +13,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"math/rand/v2"
 	"mime"
 	"os"
 	"os/exec"
@@ -21,6 +22,24 @@ import (
 	"strings"
 	"time"
 )
+
+// queueAvailableAtStep gives the queue a column of its own for the time a task
+// may run again. A retry used to push created_at into the future, which made a
+// task's age unreadable and its place in the queue wrong; created_at keeps
+// meaning "when the task arrived" from now on.
+//
+// Existing rows start at their creation time. A task that was waiting out a
+// delay has a creation time in the future — the moment the old build meant to
+// retry it at — so it keeps waiting and comes back when it was always going to;
+// for every other task the time is in the past, and the upgrade delays nothing.
+// A row inserted afterwards takes the default of zero, which is the epoch, so a
+// new task is due the moment it arrives.
+var queueAvailableAtStep = schemaStep{
+	table:      "pipeline_queue",
+	column:     "available_at",
+	definition: "INTEGER NOT NULL DEFAULT 0",
+	backfill:   `UPDATE pipeline_queue SET available_at = created_at`,
+}
 
 func (a *App) startWorkers() {
 	// Tasks left in an in-progress state after a process crash must be retried.
@@ -90,7 +109,11 @@ func (a *App) claimTask() (*Task, error) {
 	defer tx.Rollback()
 	var t Task
 	var payload string
-	err = tx.QueryRow(`SELECT id,payload,attempts,max_attempts,status,status_stage FROM pipeline_queue WHERE status='pending' AND (created_at <= unixepoch()) ORDER BY priority DESC, created_at ASC, id ASC LIMIT 1`).Scan(&t.ID, &payload, &t.Attempts, &t.MaxAttempts, &t.Status, &t.Stage)
+	// available_at keeps a task out of the running until its retry delay has
+	// passed; among the tasks that are due, the one that arrived first goes
+	// first, so a retry waits its turn instead of jumping ahead of the upload
+	// that came in while it was backing off.
+	err = tx.QueryRow(`SELECT id,payload,attempts,max_attempts,status,status_stage FROM pipeline_queue WHERE status='pending' AND available_at <= unixepoch() ORDER BY priority DESC, created_at ASC, id ASC LIMIT 1`).Scan(&t.ID, &payload, &t.Attempts, &t.MaxAttempts, &t.Status, &t.Stage)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -131,10 +154,22 @@ func (a *App) failTask(id int64, message string) {
 	}
 	attempts++
 	if attempts < max {
-		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending', attempts=?, error_message=?, created_at=unixepoch()+? WHERE id=?`, attempts, message, min(30, 1<<min(attempts-1, 5)), id)
+		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='pending', attempts=?, error_message=?, available_at=unixepoch()+? WHERE id=?`, attempts, message, retryDelay(attempts), id)
 	} else {
 		_, _ = a.db.Exec(`UPDATE pipeline_queue SET status='failed', attempts=?, error_message=? WHERE id=?`, attempts, message, id)
 	}
+}
+
+// retryDelay is how long a failed task waits before the queue hands it out
+// again. The wait doubles with every attempt, up to half a minute, so a
+// provider that is down is not hammered once a second, and it is jittered so
+// that tasks which failed together do not come back at the same instant and
+// fail together all over again.
+func retryDelay(attempts int) int64 {
+	// One, two, four, eight, sixteen, thirty seconds.
+	delay := int64(min(30, 1<<min(attempts-1, 5)))
+	// Spread the wait by up to a quarter of itself.
+	return delay + rand.Int64N(delay/4+1)
 }
 
 func (a *App) failTaskPermanent(id int64, message string) {
