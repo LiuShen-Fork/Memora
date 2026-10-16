@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,6 +19,24 @@ type storageConfigRecord struct {
 	UpdatedAt time.Time      `json:"updatedAt"`
 }
 
+// activeStorageConfigID reads which saved configuration the site is using. A
+// site that picked its storage before this build has the id stored as a real
+// number, so the settings row can hold "3.0" where a plain integer is expected.
+// Reading the value as a number keeps that choice from being silently dropped —
+// parsing it as an integer left the server on whichever provider it had been
+// started with.
+func (a *App) activeStorageConfigID() (int64, bool) {
+	var value sql.NullString
+	if err := a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`).Scan(&value); err != nil || !value.Valid {
+		return 0, false
+	}
+	number, err := strconv.ParseFloat(strings.Trim(value.String, `"`), 64)
+	if err != nil || number < 1 || number != math.Trunc(number) {
+		return 0, false
+	}
+	return int64(number), true
+}
+
 // activeStorageProvider names the storage the site is reading and writing, in
 // the same order loadStorage resolves it: a saved configuration first, then the
 // provider the server was started with. A configuration set up from the
@@ -28,13 +47,10 @@ func (a *App) activeStorageProvider() map[string]any {
 	if provider == "" {
 		provider = "local"
 	}
-	var value sql.NullString
-	if err := a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`).Scan(&value); err == nil && value.Valid {
-		if id, err := strconv.ParseInt(strings.Trim(value.String, `"`), 10, 64); err == nil {
-			var name, savedProvider string
-			if err := a.db.QueryRow(`SELECT name,provider FROM settings_storage_providers WHERE id=?`, id).Scan(&name, &savedProvider); err == nil {
-				return map[string]any{"provider": savedProvider, "name": name}
-			}
+	if id, ok := a.activeStorageConfigID(); ok {
+		var name, savedProvider string
+		if err := a.db.QueryRow(`SELECT name,provider FROM settings_storage_providers WHERE id=?`, id).Scan(&name, &savedProvider); err == nil {
+			return map[string]any{"provider": savedProvider, "name": name}
 		}
 	}
 	return map[string]any{"provider": provider, "name": ""}
@@ -197,18 +213,14 @@ func (a *App) updateStorageConfig(w http.ResponseWriter, r *http.Request, id int
 		errorJSON(w, http.StatusInternalServerError, "Unable to update storage configuration")
 		return
 	}
-	var active string
-	_ = a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`).Scan(&active)
-	if strings.Trim(active, `"`) == strconv.FormatInt(id, 10) && a.storage != nil {
+	if activeID, ok := a.activeStorageConfigID(); ok && activeID == id && a.storage != nil {
 		a.storage = a.loadStorage()
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (a *App) deleteStorageConfig(w http.ResponseWriter, id int64) {
-	var active string
-	_ = a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`).Scan(&active)
-	if active == strconv.FormatInt(id, 10) || strings.Trim(active, `"`) == strconv.FormatInt(id, 10) {
+	if activeID, ok := a.activeStorageConfigID(); ok && activeID == id {
 		errorJSON(w, http.StatusConflict, "Cannot delete the active storage configuration")
 		return
 	}

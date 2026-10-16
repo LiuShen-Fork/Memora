@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -134,6 +135,12 @@ func serializeSetting(typ string, value any) any {
 		case int64:
 			return v
 		case float64:
+			// A JSON body delivers a whole number as a float. Storing that as
+			// it arrives makes a setting read back as "3.0", which is not the
+			// id anything else compares it against.
+			if v == math.Trunc(v) && math.Abs(v) < 1<<53 {
+				return int64(v)
+			}
 			return v
 		}
 	}

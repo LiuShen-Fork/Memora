@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -165,19 +164,13 @@ func (a *App) ensureSchema() error {
 
 func (a *App) loadStorage() Storage {
 	provider := strings.ToLower(a.cfg.Provider)
-	if row := a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`); row != nil {
-		var value sql.NullString
-		if row.Scan(&value) == nil && value.Valid && value.String != "" {
-			provider = strings.Trim(value.String, `"`)
-			if id, err := strconv.ParseInt(provider, 10, 64); err == nil {
-				var configJSON, providerName string
-				if a.db.QueryRow(`SELECT provider,config FROM settings_storage_providers WHERE id=?`, id).Scan(&providerName, &configJSON) == nil {
-					provider = providerName
-					var config map[string]any
-					if json.Unmarshal([]byte(configJSON), &config) == nil {
-						a.applyProviderConfig(provider, config)
-					}
-				}
+	if id, ok := a.activeStorageConfigID(); ok {
+		var configJSON, providerName string
+		if a.db.QueryRow(`SELECT provider,config FROM settings_storage_providers WHERE id=?`, id).Scan(&providerName, &configJSON) == nil {
+			provider = providerName
+			var config map[string]any
+			if json.Unmarshal([]byte(configJSON), &config) == nil {
+				a.applyProviderConfig(provider, config)
 			}
 		}
 	}
