@@ -81,7 +81,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 	// filtering for anonymous browsing.
 	query := photoSelect
 	if visible {
-		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
+		query += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND (al.is_hidden=1 OR (al.password_hash IS NOT NULL AND al.password_hash<>'')))`
 	}
 	query += ` ORDER BY date_taken DESC, photos.id DESC`
 	page, pageSize, paginated := paginationParams(r)
@@ -92,7 +92,7 @@ func (a *App) photos(w http.ResponseWriter, r *http.Request, visible bool) {
 		var total int
 		countQuery := `SELECT COUNT(*) FROM photos`
 		if visible {
-			countQuery += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND al.is_hidden=1)`
+			countQuery += ` WHERE NOT EXISTS (SELECT 1 FROM album_photos ap JOIN albums al ON al.id=ap.album_id WHERE ap.photo_id=photos.id AND (al.is_hidden=1 OR (al.password_hash IS NOT NULL AND al.password_hash<>'')))`
 		}
 		if err := a.db.QueryRowContext(r.Context(), countQuery).Scan(&total); err != nil {
 			errorJSON(w, http.StatusInternalServerError, "Unable to count photos")

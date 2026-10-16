@@ -36,6 +36,7 @@ type schemaStep struct {
 func (a *App) migrateSchema() error {
 	steps := []schemaStep{
 		albumPositionStep,
+		albumPasswordStep,
 	}
 	for _, step := range steps {
 		if err := a.applySchemaStep(step); err != nil {
