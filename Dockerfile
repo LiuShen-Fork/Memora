@@ -26,6 +26,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # FFmpeg gained HEIC/HEIF reading in 7.0; the 6.1 build shipped with Alpine 3.22
 # cannot open HEIC uploads at all.
 FROM alpine:3.24 AS runtime
+# The label below is the only place the published image records which release it
+# is; without it GHCR shows a digest and nothing else.
+ARG MEMORA_VERSION=dev
+LABEL org.opencontainers.image.title="Memora" \
+    org.opencontainers.image.version="$MEMORA_VERSION" \
+    org.opencontainers.image.description="Self-hosted photo gallery with EXIF, maps and Live Photos" \
+    org.opencontainers.image.source="https://github.com/LiuShen-Fork/Memora" \
+    org.opencontainers.image.licenses="MIT"
 RUN apk add --no-cache ca-certificates ffmpeg perl exiftool \
     && addgroup -S memora \
     && adduser -S -G memora -h /app memora \
