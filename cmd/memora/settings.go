@@ -20,6 +20,18 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 		a.storageConfigRoute(w, r, strings.TrimPrefix(rest, "/storage-config"))
 		return
 	}
+	if rest == "/avatar" {
+		// The site avatar is a stored picture rather than a value the form
+		// carries: it is uploaded, replaced and removed on its own.
+		switch r.Method {
+		case http.MethodPost:
+			a.uploadAvatar(w, r)
+			return
+		case http.MethodDelete:
+			a.deleteAvatar(w, r)
+			return
+		}
+	}
 	if rest == "/all" && r.Method == http.MethodGet {
 		a.allSettings(w, r)
 		return

@@ -12,7 +12,7 @@
 | NUXT_PUBLIC_APP_TITLE                    | 应用标题                                             | `Memora`                         | 否                                                                    |
 | NUXT_PUBLIC_APP_SLOGAN                   | 应用口号                                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_APP_AUTHOR                   | 应用作者                                             | 无                                    | 否                                                                    |
-| NUXT_PUBLIC_APP_AVATAR_URL               | 应用头像 URL                                         | 无                                    | 否                                                                    |
+| NUXT_PUBLIC_APP_AVATAR_URL               | 应用头像 URL（也可以在后台直接上传图片，图片会保存到当前存储提供者） | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_COLOR_MODE_PREFERENCE        | 颜色模式偏好，可选 `light`、`dark`、`system`         | system                                | 否                                                                    |
 | NUXT_PUBLIC_MAP_PROVIDER                 | 地图提供者，可选 `mapbox`、`maplibre`                | `maplibre`                            | 否                                                                    |
 | NUXT_PUBLIC_MAPBOX_ACCESS_TOKEN          | Mapbox 访问令牌(可限制 URL)，用于地图服务            | 无                                    | 当 `NUXT_PUBLIC_MAP_PROVIDER` 为 `mapbox` 时必需                      |

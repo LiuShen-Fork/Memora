@@ -11,8 +11,18 @@ const colorMode = useColorMode()
 
 const { fields, state, submit, loading } = useSettingsForm('app')
 
+// 头像自己上传、自己保存，不参与下面的表单，避免出现「已经生效却提示未保存」，
+// 也避免重置按钮把已上传的图片退回旧地址。
+const AVATAR_KEY = 'avatarUrl'
+
+const avatarField = computed(() =>
+  fields.value.find((f) => f.key === AVATAR_KEY),
+)
+
 const appFields = computed(() =>
-  fields.value.filter((f) => !f.key.startsWith('appearance.')),
+  fields.value.filter(
+    (f) => !f.key.startsWith('appearance.') && f.key !== AVATAR_KEY,
+  ),
 )
 
 const appearanceFields = computed(() =>
@@ -98,6 +108,22 @@ const handleAppearanceSettingsSubmit = async () => {
               {{ $t('title.generalSettings') }}
             </h3>
           </header>
+
+          <div
+            v-if="loading && !avatarField"
+            class="flex items-center gap-4 border-b border-neutral-200 px-5 py-5 dark:border-neutral-800"
+          >
+            <USkeleton class="size-16 rounded-full" />
+            <div class="w-full space-y-2">
+              <USkeleton class="h-4 w-24" />
+              <USkeleton class="h-10 w-full max-w-md" />
+            </div>
+          </div>
+          <SettingAvatar
+            v-else
+            v-model="state[AVATAR_KEY]"
+            class="border-b border-neutral-200 px-5 py-5 dark:border-neutral-800"
+          />
 
           <div
             v-if="loading && appFields.length === 0"

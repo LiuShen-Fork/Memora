@@ -1176,7 +1176,19 @@
       "avatarUrl": {
         "label": "头像 URL",
         "description": "所有者头像的图片链接",
-        "help": "头像显示加载页面和首页头像中"
+        "help": "头像显示加载页面和首页头像中",
+        "upload": "上传",
+        "replace": "更换",
+        "remove": "移除",
+        "uploadSuccess": "站点头像已更新",
+        "uploadFailed": "头像上传失败",
+        "removeSuccess": "已移除站点头像",
+        "removeFailed": "头像移除失败",
+        "urlSaved": "头像地址已保存",
+        "urlFailed": "头像地址保存失败",
+        "invalidType": "头像只支持 JPEG、PNG、WebP、GIF、BMP 或 AVIF 图片",
+        "tooLarge": "图片不能超过 {size} MB",
+        "placeholder": "https://example.com/avatar.png"
       },
       "footerLinkText": {
         "label": "页脚链接文本",

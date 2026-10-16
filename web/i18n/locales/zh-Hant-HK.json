@@ -1076,7 +1076,19 @@
       "avatarUrl": {
         "label": "頭像 URL",
         "description": "所有者頭像的圖片連結",
-        "help": "頭像顯示加載頁面同首頁頭像中"
+        "help": "頭像顯示加載頁面同首頁頭像中",
+        "upload": "上傳",
+        "replace": "更換",
+        "remove": "移除",
+        "uploadSuccess": "站點頭像已更新",
+        "uploadFailed": "頭像上傳失敗",
+        "removeSuccess": "已移除站點頭像",
+        "removeFailed": "頭像移除失敗",
+        "urlSaved": "頭像網址已儲存",
+        "urlFailed": "頭像網址儲存失敗",
+        "invalidType": "頭像只支援 JPEG、PNG、WebP、GIF、BMP 或 AVIF 圖片",
+        "tooLarge": "圖片不可超過 {size} MB",
+        "placeholder": "https://example.com/avatar.png"
       },
       "footerLinkText": {
         "label": "頁尾連結文字",

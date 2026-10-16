@@ -1076,7 +1076,19 @@
       "avatarUrl": {
         "label": "アバター URL",
         "description": "オーナーのアバター画像へのリンク",
-        "help": "アバターはローディングページとホームページに表示されます"
+        "help": "アバターはローディングページとホームページに表示されます",
+        "upload": "アップロード",
+        "replace": "変更",
+        "remove": "削除",
+        "uploadSuccess": "アバターを更新しました",
+        "uploadFailed": "アバターをアップロードできませんでした",
+        "removeSuccess": "アバターを削除しました",
+        "removeFailed": "アバターを削除できませんでした",
+        "urlSaved": "アバターの URL を保存しました",
+        "urlFailed": "アバターの URL を保存できませんでした",
+        "invalidType": "アバターは JPEG、PNG、WebP、GIF、BMP、AVIF のみ対応しています",
+        "tooLarge": "画像は {size} MB 以下にしてください",
+        "placeholder": "https://example.com/avatar.png"
       },
       "footerLinkText": {
         "label": "フッターリンクのテキスト",
