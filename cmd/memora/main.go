@@ -143,13 +143,18 @@ func (a *App) ensureSchema() error {
 		`CREATE INDEX IF NOT EXISTS album_photos_photo_idx ON album_photos(photo_id,album_id)`,
 		`CREATE INDEX IF NOT EXISTS pipeline_queue_pending_idx ON pipeline_queue(status,priority DESC,created_at ASC,id ASC)`,
 		`CREATE INDEX IF NOT EXISTS pipeline_queue_type_idx ON pipeline_queue(json_extract(payload,'$.type'))`,
+		schemaMigrationsTable,
 	}
+	statements = append(statements, photoAccessKeysStatements...)
 	for _, statement := range statements {
 		if _, err := a.db.Exec(statement); err != nil {
 			return fmt.Errorf("schema: %w", err)
 		}
 	}
-	return a.migrateSchema()
+	if err := a.migrateSchema(); err != nil {
+		return err
+	}
+	return a.migrateData()
 }
 
 func (a *App) loadStorage() Storage {

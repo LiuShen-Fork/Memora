@@ -1,6 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+)
+
+// schemaMigrationsTable records the one-shot data migrations that have already
+// run.
+const schemaMigrationsTable = `CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL DEFAULT (unixepoch()))`
 
 // schemaStep adds one column to an existing table, optionally backfilling the
 // rows that were already there.
@@ -49,6 +57,41 @@ func (a *App) applySchemaStep(step schemaStep) error {
 		return fmt.Errorf("backfill %s.%s: %w", step.table, step.column, err)
 	}
 	return nil
+}
+
+// migrateData runs the migrations that touch rows rather than the shape of a
+// table. They are separated from migrateSchema because they are one-shot: a
+// column has to be added to whichever databases lack it, but a derived table
+// only has to be filled in for the rows that predate it.
+func (a *App) migrateData() error {
+	return a.runOnce("photo_access_keys_backfill", photoAccessKeyBackfill)
+}
+
+// runOnce runs a data migration the first time this build starts, and records
+// its name so a later start skips it. A migration that was interrupted before
+// its transaction committed simply runs again, which is why every one of them
+// has to be safe to repeat.
+func (a *App) runOnce(name, statement string) error {
+	var applied int
+	err := a.db.QueryRow(`SELECT 1 FROM schema_migrations WHERE name=?`, name).Scan(&applied)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(statement); err != nil {
+		return fmt.Errorf("migration %s: %w", name, err)
+	}
+	if _, err := tx.Exec(`INSERT INTO schema_migrations(name) VALUES(?)`, name); err != nil {
+		return fmt.Errorf("record migration %s: %w", name, err)
+	}
+	return tx.Commit()
 }
 
 // ensureColumn adds a column that an existing table is missing and reports
