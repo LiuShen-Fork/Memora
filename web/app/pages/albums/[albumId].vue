@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { motion } from 'motion-v'
+import { motion, useAnimationControls } from 'motion-v'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,15 +14,63 @@ const {
   data: album,
   error,
   pending,
+  refresh,
 } = await useFetch(() => `/api/albums/${albumId.value}`, {
   watch: [albumId],
 })
 
-if (error.value) {
+// A locked album refuses with 403 instead of pretending not to exist, so the
+// visitor is asked for the password rather than sent to a 404.
+const lockedAlbum = computed(() => {
+  if (error.value?.statusCode !== 403) return null
+  const data = (error.value as { data?: { title?: string } }).data
+  return { title: data?.title || null }
+})
+
+if (error.value && !lockedAlbum.value) {
   throw createError({
     statusCode: 404,
     statusMessage: $t('album.notFound'),
   })
+}
+
+const password = ref('')
+const isUnlocking = ref(false)
+const unlockError = ref('')
+const showPassword = ref(false)
+const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+const unlockControls = useAnimationControls()
+
+const unlockAlbum = async () => {
+  if (isUnlocking.value || password.value === '') return
+  isUnlocking.value = true
+  unlockError.value = ''
+  try {
+    await $fetch(`/api/albums/${albumId.value}/unlock`, {
+      method: 'POST',
+      body: { password: password.value },
+    })
+    // The grant lives in a cookie, so the same request that was refused a
+    // moment ago now answers. Nothing else has to be refetched.
+    password.value = ''
+    await refresh()
+  } catch (failure: unknown) {
+    const status = (failure as { statusCode?: number })?.statusCode
+    unlockError.value =
+      status === 429
+        ? $t('album.unlock.tooManyAttempts')
+        : status === 401
+          ? $t('album.unlock.incorrectPassword')
+          : $t('album.unlock.failedToUnlock')
+    if (!prefersReducedMotion.value) {
+      void unlockControls.start({
+        x: [0, -9, 9, -6, 6, -3, 3, 0],
+        transition: { duration: 0.45, ease: 'easeInOut' },
+      })
+    }
+  } finally {
+    isUnlocking.value = false
+  }
 }
 
 const albumData = computed(() => album.value)
@@ -143,10 +191,13 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
 
-onBeforeMount(() => {
-  useHead({
-    title: albumData.value ? albumData.value.title : $t('album.notFound'),
-  })
+useHead({
+  title: computed(() => {
+    const data = albumData.value
+    if (data) return data.title
+    // The unlock screen still names the album, so the tab is not just an error.
+    return lockedAlbum.value?.title || $t('album.notFound')
+  }),
 })
 </script>
 
@@ -322,6 +373,131 @@ onBeforeMount(() => {
               />
             </template>
           </MasonryWall>
+        </motion.div>
+      </div>
+    </template>
+
+    <!-- Locked album: the browser knows it exists but not what is inside it -->
+    <template v-else-if="lockedAlbum">
+      <div class="absolute inset-0 -z-10 overflow-hidden">
+        <div
+          class="absolute left-1/2 top-0 size-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary-500/10 blur-3xl dark:bg-primary-500/15"
+        />
+        <div
+          class="absolute -bottom-1/4 right-0 size-[28rem] rounded-full bg-info-400/10 blur-3xl dark:bg-info-500/10"
+        />
+      </div>
+
+      <div class="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          icon="tabler:arrow-left"
+          size="sm"
+          :aria-label="$t('album.backToAlbums')"
+          @click="goBackToAlbums"
+        />
+      </div>
+
+      <div
+        class="relative container mx-auto flex min-h-[70vh] items-center justify-center px-4 py-10 sm:px-6 lg:px-8"
+      >
+        <motion.div
+          class="w-full max-w-sm"
+          :initial="{ opacity: 0, y: 14 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :transition="{ duration: 0.4 }"
+        >
+          <motion.div
+            :animate="unlockControls"
+            class="rounded-3xl border border-neutral-200/70 bg-white/80 p-8 shadow-xl shadow-neutral-900/5 backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/70 dark:shadow-black/20"
+          >
+            <div class="flex justify-center">
+              <div
+                class="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-info-500 text-white shadow-lg shadow-primary-500/25"
+              >
+                <Icon
+                  name="tabler:lock"
+                  class="size-8"
+                />
+              </div>
+            </div>
+
+            <div class="mt-6 text-center">
+              <h1
+                class="text-xl font-semibold tracking-tight text-balance text-neutral-900 dark:text-white"
+              >
+                {{ lockedAlbum.title || $t('album.unlock.title') }}
+              </h1>
+              <p
+                class="mt-2 text-sm text-pretty text-neutral-600 dark:text-neutral-400"
+              >
+                {{ $t('album.unlock.description') }}
+              </p>
+            </div>
+
+            <form
+              class="mt-6 space-y-3"
+              @submit.prevent="unlockAlbum"
+            >
+              <UInput
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                :placeholder="$t('album.unlock.placeholder')"
+                :aria-label="$t('album.unlock.placeholder')"
+                :ui="{ base: 'text-center tracking-[0.2em]' }"
+                size="lg"
+                class="w-full"
+                autofocus
+              >
+                <template #trailing>
+                  <UButton
+                    color="neutral"
+                    variant="link"
+                    size="xs"
+                    :icon="showPassword ? 'tabler:eye-off' : 'tabler:eye'"
+                    :aria-label="
+                      showPassword
+                        ? $t('album.unlock.hidePassword')
+                        : $t('album.unlock.showPassword')
+                    "
+                    @click="showPassword = !showPassword"
+                  />
+                </template>
+              </UInput>
+
+              <UButton
+                type="submit"
+                block
+                size="lg"
+                icon="tabler:lock-open"
+                :loading="isUnlocking"
+                :disabled="password === ''"
+              >
+                {{ $t('album.unlock.submit') }}
+              </UButton>
+            </form>
+
+            <Transition
+              enter-active-class="transition duration-200 ease-out"
+              enter-from-class="opacity-0 -translate-y-1"
+              leave-active-class="transition duration-150 ease-in"
+              leave-to-class="opacity-0"
+            >
+              <p
+                v-if="unlockError"
+                class="mt-4 flex items-center justify-center gap-1.5 text-center text-sm text-red-600 dark:text-red-400"
+                role="alert"
+                aria-live="polite"
+              >
+                <Icon
+                  name="tabler:alert-circle"
+                  class="size-4 shrink-0"
+                />
+                {{ unlockError }}
+              </p>
+            </Transition>
+          </motion.div>
         </motion.div>
       </div>
     </template>

@@ -20,6 +20,8 @@ interface AlbumFormState {
   title: string
   description: string
   isHidden: boolean
+  passwordEnabled: boolean
+  password: string
 }
 
 const albums = ref<AlbumItem[]>([])
@@ -36,7 +38,20 @@ const formData = reactive<AlbumFormState>({
   title: '',
   description: '',
   isHidden: false,
+  passwordEnabled: false,
+  password: '',
 })
+
+// A password is only as good as the media route behind it. With a provider
+// that serves objects directly, the album page stops listing the photos but
+// the files stay reachable by anyone holding the link, so the form says so
+// rather than letting the checkbox imply more than it delivers.
+const { data: albumProtection } = useFetch<{ protectsMedia: boolean }>(
+  '/api/albums/protection',
+)
+const albumPasswordProtectsMedia = computed(
+  () => albumProtection.value?.protectsMedia !== false,
+)
 
 const formRef = ref()
 const isSubmittingForm = ref(false)
@@ -78,6 +93,21 @@ const validateForm = (state: any): FormError[] => {
       message: $t('dashboard.albums.form.titleRequired'),
     })
   }
+  if (state.passwordEnabled) {
+    // An empty field on an album that already has a password means "keep the
+    // one it has", so it is only missing when there is nothing to keep.
+    if (!state.password && !currentAlbum.value?.hasPassword) {
+      errors.push({
+        name: 'password',
+        message: $t('dashboard.albums.form.passwordRequired'),
+      })
+    } else if (state.password && state.password.length < 6) {
+      errors.push({
+        name: 'password',
+        message: $t('dashboard.albums.form.passwordTooShort'),
+      })
+    }
+  }
   return errors
 }
 
@@ -108,6 +138,8 @@ const openCreateSlideover = () => {
   formData.title = ''
   formData.description = ''
   formData.isHidden = false
+  formData.passwordEnabled = false
+  formData.password = ''
   selectedPhotoIds.value = []
   coverPhotoId.value = ''
   formRef.value?.clear()
@@ -121,6 +153,8 @@ const openEditSlideover = async (album: AlbumItem) => {
     formData.title = album.title
     formData.description = album.description || ''
     formData.isHidden = album.isHidden || false
+    formData.passwordEnabled = album.hasPassword || false
+    formData.password = ''
     selectedPhotoIds.value = (albumDetail.photos || []).map((p: Photo) => p.id)
     coverPhotoId.value = album.coverPhotoId || ''
     formRef.value?.clear()
@@ -141,6 +175,11 @@ const openDeleteConfirm = (album: AlbumItem) => {
 
 const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
   isSubmittingForm.value = true
+  // On an album that already has one, a blank field keeps the password it has;
+  // switching the checkbox off is how the protection is removed.
+  const password = event.data.passwordEnabled
+    ? event.data.password || undefined
+    : ''
   try {
     if (currentAlbum.value) {
       await $fetch(`/api/albums/${currentAlbum.value.id}`, {
@@ -151,6 +190,7 @@ const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
           coverPhotoId: coverPhotoId.value || undefined,
           photoIds: selectedPhotoIds.value,
           isHidden: event.data.isHidden,
+          password,
         },
       })
 
@@ -169,6 +209,7 @@ const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
           coverPhotoId: coverPhotoId.value || undefined,
           photoIds: selectedPhotoIds.value,
           isHidden: event.data.isHidden,
+          password,
         },
       })
 
@@ -180,6 +221,9 @@ const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
       isAlbumSlideoverOpen.value = false
     }
 
+    // The password has been stored, so the copy on screen has no reason to
+    // stay there.
+    formData.password = ''
     await loadAlbums()
   } catch (error) {
     console.error('Failed to save album:', error)
@@ -509,18 +553,30 @@ const columns = computed<any[]>(() => [
             </template>
 
             <template #title-cell="{ row }">
-              <NuxtLink
-                :to="`/albums/${(row.original as unknown as AlbumItem).id}`"
-                target="_blank"
-                class="font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer inline-flex items-center gap-2"
-              >
-                {{ (row.original as unknown as AlbumItem).title }}
-                <Icon
-                  name="tabler:external-link"
-                  size="16"
-                  class="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
-                />
-              </NuxtLink>
+              <div class="flex items-center gap-2">
+                <NuxtLink
+                  :to="`/albums/${(row.original as unknown as AlbumItem).id}`"
+                  target="_blank"
+                  class="font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer inline-flex items-center gap-2"
+                >
+                  {{ (row.original as unknown as AlbumItem).title }}
+                  <Icon
+                    name="tabler:external-link"
+                    size="16"
+                    class="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                  />
+                </NuxtLink>
+                <UBadge
+                  v-if="(row.original as unknown as AlbumItem).hasPassword"
+                  color="primary"
+                  variant="subtle"
+                  size="sm"
+                  icon="tabler:lock"
+                  class="shrink-0"
+                >
+                  {{ $t('dashboard.albums.form.password') }}
+                </UBadge>
+              </div>
             </template>
 
             <template #description-cell="{ row }">
@@ -731,6 +787,57 @@ const columns = computed<any[]>(() => [
                     :label="$t('dashboard.albums.form.isHidden')"
                   />
                 </UFormField>
+
+                <!-- Password protection -->
+                <div
+                  class="space-y-3 rounded-xl border p-4 transition-colors"
+                  :class="
+                    formData.passwordEnabled
+                      ? 'border-primary-200 bg-primary-50/40 dark:border-primary-800/60 dark:bg-primary-950/20'
+                      : 'border-gray-200 dark:border-neutral-700'
+                  "
+                >
+                  <UCheckbox
+                    v-model="formData.passwordEnabled"
+                    :label="$t('dashboard.albums.form.passwordProtection')"
+                    :description="
+                      $t('dashboard.albums.form.passwordProtectionHint')
+                    "
+                  />
+
+                  <template v-if="formData.passwordEnabled">
+                    <UAlert
+                      v-if="!albumPasswordProtectsMedia"
+                      color="warning"
+                      variant="subtle"
+                      icon="tabler:alert-triangle"
+                      :title="$t('dashboard.albums.form.passwordWarningTitle')"
+                      :description="
+                        $t('dashboard.albums.form.passwordWarningDescription')
+                      "
+                    />
+
+                    <UFormField
+                      name="password"
+                      :label="$t('dashboard.albums.form.password')"
+                      :hint="
+                        currentAlbum?.hasPassword
+                          ? $t('dashboard.albums.form.passwordKeepHint')
+                          : undefined
+                      "
+                    >
+                      <UInput
+                        v-model="formData.password"
+                        type="password"
+                        class="w-full"
+                        autocomplete="new-password"
+                        :placeholder="
+                          $t('dashboard.albums.form.passwordPlaceholder')
+                        "
+                      />
+                    </UFormField>
+                  </template>
+                </div>
               </UForm>
 
               <!-- 照片选择部分 -->

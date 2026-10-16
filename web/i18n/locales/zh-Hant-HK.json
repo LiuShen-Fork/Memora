@@ -142,6 +142,7 @@
     },
     "album": {
       "noImage": "空相簿",
+      "passwordRequired": "需要密碼",
       "emptyAlbumTip": "新增相片開始啦",
       "noDescription": "無描述"
     },
@@ -166,6 +167,17 @@
     }
   },
   "album": {
+  "unlock": {
+    "title": "受保護的相簿",
+    "description": "此相簿受密碼保護，請輸入密碼後查看當中的照片。",
+    "placeholder": "相簿密碼",
+    "submit": "解鎖",
+    "incorrectPassword": "密碼不正確。",
+    "tooManyAttempts": "嘗試次數過多，請稍後再試。",
+    "failedToUnlock": "無法解鎖此相簿。",
+    "showPassword": "顯示密碼",
+    "hidePassword": "隱藏密碼"
+  },
     "notFound": "搵唔到相簿",
     "noDateInfo": "無日期資料",
     "noPhotosTip": "呢個相簿仲冇相片",
@@ -801,6 +813,15 @@
         "selectedCount": "已選擇 {count} 張相片",
         "clearAll": "全部清除",
         "isHidden": "隱藏相簿",
+        "passwordProtection": "啟用密碼保護",
+        "passwordProtectionHint": "訪客需輸入密碼後才可查看此相簿及其照片",
+        "password": "密碼",
+        "passwordPlaceholder": "至少 6 個字元",
+        "passwordKeepHint": "留空則保留目前密碼",
+        "passwordRequired": "請輸入密碼，或關閉密碼保護",
+        "passwordTooShort": "密碼至少需要 6 個字元",
+        "passwordWarningTitle": "照片本身仍然公開",
+        "passwordWarningDescription": "目前的儲存服務透過直連網址提供照片，密碼只會令此相簿不再列出照片，持有連結的人仍可開啟檔案。如需真正隱藏，請改用本機儲存。",
         "isHiddenHint": "隱藏相簿中的照片不會在首頁顯示"
       },
       "table": {

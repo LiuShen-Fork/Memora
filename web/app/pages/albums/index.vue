@@ -120,6 +120,13 @@ const getPhotoTransform = (index: number, isHover: boolean) => {
 }
 
 const hoveredAlbum = ref<number | null>(null)
+
+// A locked album cannot show what it holds, so its card says so instead of
+// pretending to be empty.
+const isLockedCard = (album: AlbumWithPhotos) => album.hasPassword === true
+
+const emptyAlbumIcon = (album: AlbumWithPhotos) =>
+  isLockedCard(album) ? 'tabler:lock' : 'tabler:library-photo'
 </script>
 
 <template>
@@ -267,25 +274,40 @@ const hoveredAlbum = ref<number | null>(null)
               />
             </motion.div>
 
-            <!-- Empty state -->
+            <!-- Empty state. A locked album is not empty — it just cannot say
+                 what it holds, so it says that instead. -->
             <div
               v-if="!album.photoIds || album.photoIds.length === 0"
-              class="absolute inset-0 rounded-xl shadow-lg bg-linear-to-br from-neutral-100 to-neutral-50 dark:from-neutral-700 dark:to-neutral-800 flex flex-col items-center justify-center gap-3 border border-neutral-200 dark:border-neutral-600 group-hover:shadow-xl dark:group-hover:shadow-neutral-900/50 transition-shadow"
+              class="absolute inset-0 rounded-xl shadow-lg flex flex-col items-center justify-center gap-3 border transition-shadow group-hover:shadow-xl"
+              :class="
+                isLockedCard(album)
+                  ? 'bg-linear-to-br from-primary-50 to-info-50 dark:from-primary-950/40 dark:to-neutral-800 border-primary-200/60 dark:border-primary-800/40'
+                  : 'bg-linear-to-br from-neutral-100 to-neutral-50 dark:from-neutral-700 dark:to-neutral-800 border-neutral-200 dark:border-neutral-600 dark:group-hover:shadow-neutral-900/50'
+              "
             >
               <Icon
-                name="tabler:library-photo"
-                class="size-10 text-neutral-400 dark:text-neutral-500"
+                :name="emptyAlbumIcon(album)"
+                class="size-10"
+                :class="
+                  isLockedCard(album)
+                    ? 'text-primary-500 dark:text-primary-400'
+                    : 'text-neutral-400 dark:text-neutral-500'
+                "
               />
-              <div class="text-center">
-                <p
-                  class="text-sm font-medium text-neutral-700 dark:text-neutral-300"
-                >
-                  {{ $t('ui.album.noImage') }}
-                </p>
-                <!-- <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  {{ $t('ui.album.emptyAlbumTip') }}
-                </p> -->
-              </div>
+              <p
+                class="text-sm font-medium"
+                :class="
+                  isLockedCard(album)
+                    ? 'text-primary-700 dark:text-primary-300'
+                    : 'text-neutral-700 dark:text-neutral-300'
+                "
+              >
+                {{
+                  isLockedCard(album)
+                    ? $t('ui.album.passwordRequired')
+                    : $t('ui.album.noImage')
+                }}
+              </p>
             </div>
           </div>
 

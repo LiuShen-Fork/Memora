@@ -43,6 +43,10 @@ export interface Album {
   description?: string | null
   coverPhotoId?: string | null
   isHidden: boolean
+  // Whether the album asks for a password. The hash itself never leaves the
+  // server, and an album the visitor has unlocked is a separate thing from one
+  // that has no password at all.
+  hasPassword?: boolean
   createdAt?: string | number | Date
   updatedAt?: string | number | Date
   photoIds?: string[]

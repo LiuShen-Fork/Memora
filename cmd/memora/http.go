@@ -159,6 +159,8 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.createAlbum(w, r)
 	case path == "/api/albums/reorder" && r.Method == http.MethodPut:
 		a.reorderAlbums(w, r)
+	case path == "/api/albums/protection" && r.Method == http.MethodGet:
+		a.albumProtection(w, r)
 	case strings.HasPrefix(path, "/api/albums/"):
 		a.albumRoute(w, r, strings.TrimPrefix(path, "/api/albums/"))
 	case strings.HasPrefix(path, "/api/queue/"):

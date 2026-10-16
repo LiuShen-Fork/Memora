@@ -229,6 +229,21 @@ func (a *App) reorderAlbums(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
+// albumProtection answers whether an album password can actually hide the
+// photos behind it. The gate lives in Memora's own media routes, so a provider
+// that hands out direct object URLs keeps serving the files to anyone holding
+// the link, and the password only stops the album page from listing them. The
+// dashboard says so before an admin comes to rely on a protection that is not
+// there.
+func (a *App) albumProtection(w http.ResponseWriter, r *http.Request) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	_, local := a.storage.(*LocalStorage)
+	writeJSON(w, http.StatusOK, map[string]any{"protectsMedia": local})
+}
+
 func decodeAlbumPayload(r *http.Request) (map[string]any, error) {
 	var body map[string]any
 	if err := decodeJSON(r, &body); err != nil || body == nil {
@@ -494,8 +509,17 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 		errorJSON(w, 404, "Album not found")
 		return
 	}
+	// A locked album says so rather than pretending not to exist: the browser
+	// has to be able to ask for the password. The title travels with the refusal
+	// because the album list already shows the title of a locked album, so the
+	// unlock screen can name what it is asking about without giving anything
+	// else away.
 	if !a.canViewAlbum(access, album) {
-		errorJSON(w, http.StatusForbidden, "Album password required")
+		writeJSON(w, http.StatusForbidden, map[string]any{
+			"error":  "Album password required",
+			"locked": true,
+			"title":  title,
+		})
 		return
 	}
 	query := photoSelect + ` INNER JOIN album_photos ap ON ap.photo_id=photos.id WHERE ap.album_id=?`

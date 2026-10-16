@@ -143,6 +143,7 @@
     "indexPanelCountCity": "等 {count} 个城市",
     "album": {
       "noImage": "空相簿",
+      "passwordRequired": "需要密码",
       "emptyAlbumTip": "添加照片开始吧",
       "noDescription": "无描述"
     },
@@ -166,6 +167,17 @@
     }
   },
   "album": {
+  "unlock": {
+    "title": "受保护的相簿",
+    "description": "该相簿受密码保护，请输入密码后查看其中的照片。",
+    "placeholder": "相簿密码",
+    "submit": "解锁",
+    "incorrectPassword": "密码不正确。",
+    "tooManyAttempts": "尝试次数过多，请稍后再试。",
+    "failedToUnlock": "无法解锁该相簿。",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码"
+  },
     "notFound": "相簿未找到",
     "noDateInfo": "无日期信息",
     "noPhotosTip": "该相簿中还没有照片",
@@ -901,6 +913,15 @@
         "selectedCount": "已选择 {count} 张照片",
         "clearAll": "全部清除",
         "isHidden": "隐藏相簿",
+        "passwordProtection": "启用密码保护",
+        "passwordProtectionHint": "访客需输入密码后才能查看该相簿及其照片",
+        "password": "密码",
+        "passwordPlaceholder": "至少 6 个字符",
+        "passwordKeepHint": "留空则保持当前密码",
+        "passwordRequired": "请输入密码，或关闭密码保护",
+        "passwordTooShort": "密码至少需要 6 个字符",
+        "passwordWarningTitle": "照片本身仍是公开的",
+        "passwordWarningDescription": "当前存储服务通过直链提供照片，密码只会让该相簿不再列出照片，持有链接的人仍可打开文件。若需真正隐藏，请改用本地存储。",
         "isHiddenHint": "隐藏的相簿中的照片不会在首页展示"
       },
       "table": {

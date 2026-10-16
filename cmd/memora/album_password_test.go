@@ -116,6 +116,18 @@ func TestLockedAlbumIsClosedUntilItIsUnlocked(t *testing.T) {
 	if locked.Code != http.StatusForbidden {
 		t.Fatalf("locked album status = %d, want 403", locked.Code)
 	}
+	// The unlock screen names what it is asking about. The album list already
+	// shows the title of a locked album, so the refusal may repeat it.
+	var refusal struct {
+		Locked bool   `json:"locked"`
+		Title  string `json:"title"`
+	}
+	if err := json.Unmarshal(locked.Body.Bytes(), &refusal); err != nil {
+		t.Fatal(err)
+	}
+	if !refusal.Locked || refusal.Title != "Private" {
+		t.Fatalf("locked album refusal = %+v", refusal)
+	}
 
 	for _, key := range []string{"photos/secret.jpg", "photos/thumbnails/secret.webp"} {
 		media := httptest.NewRecorder()
@@ -473,6 +485,23 @@ func TestUnlockOnlySpeaksForLockedAlbums(t *testing.T) {
 		if recorder.Code != http.StatusNotFound {
 			t.Fatalf("%s status = %d, want 404", target, recorder.Code)
 		}
+	}
+}
+
+// The dashboard warns before an admin relies on a protection the active
+// storage provider cannot deliver, so the answer has to come from the server
+// that knows which provider is in use.
+func TestAlbumProtectionReportsWhatTheStorageCanHide(t *testing.T) {
+	app := newTestApp(t)
+	anonymousProbe := httptest.NewRecorder()
+	app.ServeHTTP(anonymousProbe, anonymous(http.MethodGet, "/api/albums/protection", nil))
+	if anonymousProbe.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous protection probe status = %d, want 401", anonymousProbe.Code)
+	}
+	probe := httptest.NewRecorder()
+	app.ServeHTTP(probe, adminRequest(t, app, http.MethodGet, "/api/albums/protection", nil))
+	if probe.Code != http.StatusOK || !strings.Contains(probe.Body.String(), `"protectsMedia":true`) {
+		t.Fatalf("local storage probe = %d %s", probe.Code, probe.Body.String())
 	}
 }
 

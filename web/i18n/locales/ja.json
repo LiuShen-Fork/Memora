@@ -131,6 +131,7 @@
     "livePhoto": "Live Photo",
     "album": {
       "noImage": "空のアルバム",
+      "passwordRequired": "パスワードが必要です",
       "emptyAlbumTip": "写真を追加して開始しましょう",
       "noDescription": "説明がありません"
     },
@@ -155,6 +156,17 @@
     }
   },
   "album": {
+  "unlock": {
+    "title": "保護されたアルバム",
+    "description": "このアルバムはパスワードで保護されています。パスワードを入力すると写真を表示できます。",
+    "placeholder": "アルバムのパスワード",
+    "submit": "ロックを解除",
+    "incorrectPassword": "パスワードが正しくありません。",
+    "tooManyAttempts": "試行回数が多すぎます。しばらくしてからお試しください。",
+    "failedToUnlock": "このアルバムのロックを解除できませんでした。",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを隠す"
+  },
     "notFound": "アルバムが見つかりません",
     "noDateInfo": "日付情報なし",
     "noPhotosTip": "このアルバムにはまだ写真がありません",
@@ -801,6 +813,15 @@
         "selectedCount": "{count}枚の写真を選択しました",
         "clearAll": "すべてクリア",
         "isHidden": "アルバムを非表示",
+        "passwordProtection": "パスワード保護を有効にする",
+        "passwordProtectionHint": "このアルバムと写真を表示するにはパスワードの入力が必要です",
+        "password": "パスワード",
+        "passwordPlaceholder": "6 文字以上",
+        "passwordKeepHint": "空欄のままにすると現在のパスワードを維持します",
+        "passwordRequired": "パスワードを入力するか、保護を解除してください",
+        "passwordTooShort": "パスワードは 6 文字以上必要です",
+        "passwordWarningTitle": "写真そのものは公開のままです",
+        "passwordWarningDescription": "現在のストレージは写真を直接リンクで配信するため、パスワードはアルバムに写真を表示させないだけで、リンクを知っている人はファイルを開けます。本当に隠すにはローカルストレージへ移動してください。",
         "isHiddenHint": "非表示のアルバム内の写真はホームページに表示されません"
       },
       "table": {
