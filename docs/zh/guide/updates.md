@@ -6,6 +6,9 @@
 Go，前端改为生成后的静态文件；数据库和 Docker 数据挂载路径保持不变，但运行时
 的迁移机制已经不同。
 
+分叉点位于 ChronoFrame `v1.0.0-RC4` 与 `v1.0.0` 之间。只有分叉点及之前的数据库可以
+迁移，详见[不支持从新版本 ChronoFrame 迁移](#不支持从新版本-chronoframe-迁移)。
+
 ## 每次升级前
 
 1. 停止旧进程或容器，不要让两个进程同时打开同一个 SQLite 数据库。
@@ -121,6 +124,27 @@ Memora 启动时还会补充默认设置；如果数据库已有用户，会自�
 ChronoFrame 的 Drizzle 历史迁移。数据库已经通过 RC4 后，可以根据 Release Notes 的兼容
 说明直接切换到较新的 Memora 版本。先运行 Memora `1.0.0` 再逐步升级也是可行的分阶段
 方案，但它主要用于验证切换过程，并不代表每个 Memora 版本都会执行一次数据库迁移。
+
+### 不支持从新版本 ChronoFrame 迁移
+
+Memora 是 ChronoFrame 在提交
+[`ef49fed`](https://github.com/HoshinoSuzumi/chronoframe/commit/ef49fed47aebaf829254d42283744f31597ba7d6)
+（2026-08-18）上的硬分叉。此后上游发布的每一个 ChronoFrame 版本都是另一套应用，其数据库
+结构历史 Memora 并不遵循，**不能**作为迁移来源：
+
+- **ChronoFrame `v1.0.0`（2026-10-16）及更新的版本都属于分叉之后。** 没有任何 Memora
+  版本会读取它们引入的迁移，也没有任何命令能把它们的数据库转换成 Memora 数据库。
+- Memora 只创建自己认识的表和索引，并补充自己缺少的字段。它不读取 Drizzle 的迁移历史，
+  不重放不是自己写入的迁移，也绝不会删除或改写已有数据。
+- 支持的方向只有一个，且止于分叉点：ChronoFrame `v1.0.0-RC4` → Memora。Memora 无法把
+  数据库交还给 ChronoFrame，也无法接手一个已经被更新版 ChronoFrame 迁移过的数据库。
+
+因此，位于分叉之后版本上的 ChronoFrame 如果要迁移到 Memora，应当视为全新安装：保留原始
+照片文件不动，用空的 `data/` 目录启动 Memora，再重新上传图库。照片文件无论如何都还在，
+带不走的是描述它们的那个数据库。
+
+用 Memora 打开分叉之后的数据库会明确失败——缺少字段会让启动以结构错误中止，而不会损坏
+文件——但被新版 ChronoFrame 迁移过的数据库已经超出本项目的支持范围，半转换的副本不可依赖。
 
 ## Memora 常规升级
 

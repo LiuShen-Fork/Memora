@@ -6,6 +6,10 @@ Memora is a hard fork with a Go server and a generated static frontend. The
 database and Docker data mount are intentionally kept compatible, but the
 runtime migration mechanism is different.
 
+The fork sits between ChronoFrame `v1.0.0-RC4` and `v1.0.0`. Only a database at
+or before the fork point can be migrated; see
+[Migrating from a newer ChronoFrame is not supported](#migrating-from-a-newer-chronoframe-is-not-supported).
+
 ## Before Every Upgrade
 
 1. Stop the old process or container. Never open the same SQLite database from
@@ -139,6 +143,35 @@ releases and do not replay the old Drizzle migrations. After RC4 has produced
 the supported schema, you may switch directly to a later Memora tag listed as
 compatible in its release notes. Running Memora `1.0.0` first is still a valid
 staged rollout if you want to verify the hand-off before continuing.
+
+### Migrating from a newer ChronoFrame is not supported
+
+Memora is a hard fork of ChronoFrame at commit
+[`ef49fed`](https://github.com/HoshinoSuzumi/chronoframe/commit/ef49fed47aebaf829254d42283744f31597ba7d6)
+(2026-08-18). Every ChronoFrame release after that point is a different
+application with a schema history Memora does not follow, and its database is
+**not** a supported migration source:
+
+- **ChronoFrame `v1.0.0` (2026-10-16) and anything newer are post-fork.** No
+  Memora release reads the migrations they introduced, and no command converts
+  their database into a Memora one.
+- Memora creates the tables and indexes it knows about and adds the columns it
+  is missing. It does not read Drizzle's migration history, does not replay
+  migrations it did not write, and never deletes or rewrites existing data.
+- The supported direction is one way and stops at the fork: ChronoFrame
+  `v1.0.0-RC4` → Memora. Memora cannot hand a database back to ChronoFrame,
+  and it cannot adopt one that a newer ChronoFrame has already migrated.
+
+An installation on a post-fork ChronoFrame that wants to move to Memora is
+therefore a fresh install: leave the original media where it is, start Memora
+on an empty `data/` directory, and upload the library again. The media files
+survive either way; what cannot be carried across is the database that
+describes them.
+
+Pointing Memora at a post-fork database fails loudly — a missing column stops
+startup with a schema error instead of damaging the file — but a database a
+newer ChronoFrame has already migrated is outside what this project supports,
+and a half-converted copy is not something to rely on.
 
 ## Updating Memora
 
