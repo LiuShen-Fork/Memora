@@ -780,6 +780,10 @@
       "title": "相簿管理",
       "subtitle": "建立和管理您的照片相簿",
       "createButton": "建立相簿",
+      "actions": {
+        "moveUp": "上移",
+        "moveDown": "下移"
+      },
       "noAlbums": "還沒有相簿",
       "noAlbumsTip": "建立您的第一個相簿來組織您的照片",
       "form": {
@@ -790,6 +794,8 @@
         "descriptionPlaceholder": "輸入相簿描述（選填）",
         "coverPhoto": "相簿封面",
         "addCoverPhoto": "新增封面照片",
+        "movePhotoEarlier": "前移",
+        "movePhotoLater": "後移",
         "selectPhotos": "選擇照片",
         "editPhotos": "修改照片選擇",
         "selectedCount": "已選擇 {count} 張照片",
@@ -850,7 +856,8 @@
         "deleteError": "刪除相簿失敗",
         "loadError": "載入相簿失敗",
         "loadDetailError": "載入相簿詳情失敗",
-        "loadPhotosError": "載入照片失敗"
+        "loadPhotosError": "載入照片失敗",
+        "reorderError": "相簿排序失敗"
       },
       "photoCount": "{count} 張"
     },

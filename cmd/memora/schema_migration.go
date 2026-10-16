@@ -26,7 +26,9 @@ type schemaStep struct {
 // was first created, and the list below is the single place a later column is
 // declared, so a fresh install and an upgraded one cannot drift apart.
 func (a *App) migrateSchema() error {
-	steps := []schemaStep{}
+	steps := []schemaStep{
+		albumPositionStep,
+	}
 	for _, step := range steps {
 		if err := a.applySchemaStep(step); err != nil {
 			return err

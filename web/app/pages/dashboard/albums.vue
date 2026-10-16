@@ -280,6 +280,60 @@ const getDraftPhotoOrder = (photoId: string) => {
   return index >= 0 ? index + 1 : null
 }
 
+const removeDraftPhoto = (photoId: string) => {
+  const index = draftSelectedPhotoIds.value.indexOf(photoId)
+  if (index < 0) return
+  draftSelectedPhotoIds.value.splice(index, 1)
+  if (draftCoverPhotoId.value === photoId) {
+    draftCoverPhotoId.value = ''
+  }
+}
+
+// The order of draftSelectedPhotoIds is the order the album stores, so moving a
+// photo is a splice within that list rather than a separate value to keep in
+// sync.
+const moveDraftPhoto = (photoId: string, offset: number) => {
+  const ids = draftSelectedPhotoIds.value
+  const index = ids.indexOf(photoId)
+  const target = index + offset
+  if (index < 0 || target < 0 || target >= ids.length) return
+  const [moved] = ids.splice(index, 1)
+  ids.splice(target, 0, moved as string)
+}
+
+const isReorderingAlbums = ref(false)
+
+const moveAlbum = async (index: number, offset: number) => {
+  const target = index + offset
+  if (isReorderingAlbums.value || target < 0 || target >= albums.value.length) {
+    return
+  }
+
+  const previous = albums.value
+  const reordered = [...albums.value]
+  const [moved] = reordered.splice(index, 1)
+  reordered.splice(target, 0, moved as AlbumItem)
+  // Show the new order straight away; a failure puts the old one back.
+  albums.value = reordered
+  isReorderingAlbums.value = true
+
+  try {
+    await $fetch('/api/albums/reorder', {
+      method: 'PUT',
+      body: { albumIds: reordered.map((album) => album.id) },
+    })
+  } catch (error) {
+    console.error('Failed to reorder albums:', error)
+    albums.value = previous
+    useToast().add({
+      title: $t('dashboard.albums.messages.reorderError'),
+      color: 'error',
+    })
+  } finally {
+    isReorderingAlbums.value = false
+  }
+}
+
 const areAllFilteredPhotosSelected = computed(() => {
   return (
     selectorFilteredPhotos.value.length > 0 &&
@@ -473,7 +527,9 @@ const columns = computed<any[]>(() => [
               <div
                 v-if="(row.original as unknown as AlbumItem).description"
                 class="max-w-[28rem] rounded-md border border-neutral-200/70 bg-neutral-50/70 px-2.5 py-1.5 text-sm text-gray-600 line-clamp-2 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-gray-400"
-                :title="(row.original as unknown as AlbumItem).description || ''"
+                :title="
+                  (row.original as unknown as AlbumItem).description || ''
+                "
               >
                 {{ (row.original as unknown as AlbumItem).description }}
               </div>
@@ -490,7 +546,12 @@ const columns = computed<any[]>(() => [
                 variant="soft"
                 color="neutral"
               >
-                {{ $t('dashboard.albums.photoCount', { count: (row.original as unknown as AlbumItem).photoCount || 0 }) }}
+                {{
+                  $t('dashboard.albums.photoCount', {
+                    count:
+                      (row.original as unknown as AlbumItem).photoCount || 0,
+                  })
+                }}
               </UBadge>
             </template>
 
@@ -505,7 +566,28 @@ const columns = computed<any[]>(() => [
             </template>
 
             <template #actions-cell="{ row }">
-              <div class="flex gap-1">
+              <div class="flex items-center gap-1">
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  icon="tabler:chevron-up"
+                  :title="$t('dashboard.albums.actions.moveUp')"
+                  :disabled="row.index === 0 || isReorderingAlbums"
+                  @click="moveAlbum(row.index, -1)"
+                />
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  icon="tabler:chevron-down"
+                  :title="$t('dashboard.albums.actions.moveDown')"
+                  :disabled="
+                    row.index === albums.length - 1 || isReorderingAlbums
+                  "
+                  @click="moveAlbum(row.index, 1)"
+                />
+                <div class="mx-0.5 h-4 w-px bg-gray-200 dark:bg-neutral-700" />
                 <UButton
                   variant="ghost"
                   color="primary"
@@ -1019,7 +1101,11 @@ const columns = computed<any[]>(() => [
                           <p
                             class="truncate text-[10px] font-medium text-white/92"
                           >
-                            {{ photo.title || photo.storageKey || $t('ui.photo.untitled') }}
+                            {{
+                              photo.title ||
+                              photo.storageKey ||
+                              $t('ui.photo.untitled')
+                            }}
                           </p>
                           <p class="truncate text-[9px] text-white/72">
                             {{
@@ -1033,19 +1119,59 @@ const columns = computed<any[]>(() => [
 
                       <div
                         v-if="draftSelectedPhotoIds.includes(photo.id)"
-                        class="absolute left-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-white/85 bg-primary-500 px-1 text-white shadow-sm"
+                        class="absolute left-1.5 top-1.5 flex items-center gap-1"
                       >
-                        <span
-                          v-if="getDraftPhotoOrder(photo.id)"
-                          class="text-[10px] font-semibold"
+                        <div
+                          class="flex h-5 min-w-5 items-center justify-center rounded-full border border-white/85 bg-primary-500 px-1 text-white shadow-sm"
                         >
-                          {{ getDraftPhotoOrder(photo.id) }}
-                        </span>
-                        <Icon
-                          v-else
-                          name="tabler:check"
-                          size="14"
-                        />
+                          <span
+                            v-if="getDraftPhotoOrder(photo.id)"
+                            class="text-[10px] font-semibold"
+                          >
+                            {{ getDraftPhotoOrder(photo.id) }}
+                          </span>
+                          <Icon
+                            v-else
+                            name="tabler:check"
+                            size="14"
+                          />
+                        </div>
+
+                        <!-- The badge above is the album position; these step
+                             the photo one place earlier or later in it. -->
+                        <div
+                          class="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                        >
+                          <button
+                            type="button"
+                            class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-white/70 bg-black/55 text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-35"
+                            :title="
+                              $t('dashboard.albums.form.movePhotoEarlier')
+                            "
+                            :disabled="getDraftPhotoOrder(photo.id) === 1"
+                            @click.stop="moveDraftPhoto(photo.id, -1)"
+                          >
+                            <Icon
+                              name="tabler:chevron-left"
+                              size="12"
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-white/70 bg-black/55 text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-35"
+                            :title="$t('dashboard.albums.form.movePhotoLater')"
+                            :disabled="
+                              getDraftPhotoOrder(photo.id) ===
+                              draftSelectedPhotoIds.length
+                            "
+                            @click.stop="moveDraftPhoto(photo.id, 1)"
+                          >
+                            <Icon
+                              name="tabler:chevron-right"
+                              size="12"
+                            />
+                          </button>
+                        </div>
                       </div>
 
                       <UButton

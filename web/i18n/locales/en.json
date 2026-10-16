@@ -880,6 +880,10 @@
       "title": "Album Management",
       "subtitle": "Create and manage your photo albums",
       "createButton": "Create Album",
+      "actions": {
+        "moveUp": "Move up",
+        "moveDown": "Move down"
+      },
       "noAlbums": "No albums yet",
       "noAlbumsTip": "Create your first album to organize your photos",
       "form": {
@@ -890,6 +894,8 @@
         "descriptionPlaceholder": "Enter album description (optional)",
         "coverPhoto": "Album Cover",
         "addCoverPhoto": "Add cover photo",
+        "movePhotoEarlier": "Move earlier",
+        "movePhotoLater": "Move later",
         "selectPhotos": "Select Photos",
         "editPhotos": "Edit photo selection",
         "selectedCount": "Selected {count} photos",
@@ -950,7 +956,8 @@
         "deleteError": "Failed to delete album",
         "loadError": "Failed to load albums",
         "loadDetailError": "Failed to load album details",
-        "loadPhotosError": "Failed to load photos"
+        "loadPhotosError": "Failed to load photos",
+        "reorderError": "Failed to reorder albums"
       },
       "photoCount": "{count} photos"
     },

@@ -780,6 +780,10 @@
       "title": "アルバム管理",
       "subtitle": "写真アルバムを作成・管理する",
       "createButton": "アルバムを作成",
+      "actions": {
+        "moveUp": "上へ移動",
+        "moveDown": "下へ移動"
+      },
       "noAlbums": "アルバムがまだありません",
       "noAlbumsTip": "最初のアルバムを作成して、写真を整理してください",
       "form": {
@@ -790,6 +794,8 @@
         "descriptionPlaceholder": "アルバムの説明を入力（オプション）",
         "coverPhoto": "アルバムカバー",
         "addCoverPhoto": "カバー写真を追加",
+        "movePhotoEarlier": "前へ移動",
+        "movePhotoLater": "後ろへ移動",
         "selectPhotos": "写真を選択",
         "editPhotos": "写真の選択を編集",
         "selectedCount": "{count}枚の写真を選択しました",
@@ -850,7 +856,8 @@
         "deleteError": "アルバムの削除に失敗しました",
         "loadError": "アルバムの読み込みに失敗しました",
         "loadDetailError": "アルバムの詳細の読み込みに失敗しました",
-        "loadPhotosError": "写真の読み込みに失敗しました"
+        "loadPhotosError": "写真の読み込みに失敗しました",
+        "reorderError": "アルバムの並べ替えに失敗しました"
       },
       "photoCount": "{count} 枚"
     },

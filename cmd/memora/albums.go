@@ -9,12 +9,27 @@ import (
 	"time"
 )
 
+// albumPositionStep adds the user-controlled album order. Newest first is what
+// the album list did with created_at DESC, so the backfill numbers each album
+// by how many albums precede it in that order; an album made later starts above
+// the rest, and the gap of 1000 leaves room to drop one in between.
+var albumPositionStep = schemaStep{
+	table:      "albums",
+	column:     "position",
+	definition: "REAL NOT NULL DEFAULT 0",
+	backfill: `UPDATE albums SET position = (
+		SELECT COUNT(*) FROM albums AS a2
+		WHERE a2.created_at > albums.created_at
+		   OR (a2.created_at = albums.created_at AND a2.id > albums.id)
+	) * 1000`,
+}
+
 func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 	rows, err := a.db.QueryContext(r.Context(), `
-		SELECT al.id,al.title,al.description,al.cover_photo_id,al.is_hidden,al.created_at,al.updated_at,ap.photo_id
+		SELECT al.id,al.title,al.description,al.cover_photo_id,al.is_hidden,al.created_at,al.updated_at,al.position,ap.photo_id
 		FROM albums al
 		LEFT JOIN album_photos ap ON ap.album_id=al.id
-		ORDER BY al.created_at DESC,al.id DESC,ap.position ASC,ap.id ASC`)
+		ORDER BY al.position ASC,al.created_at DESC,al.id DESC,ap.position ASC,ap.id ASC`)
 	if err != nil {
 		errorJSON(w, 500, err.Error())
 		return
@@ -25,13 +40,14 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		description, cover sql.NullString
 		hidden             int
 		created, updated   int64
+		position           float64
 		photoIDs           []string
 	}
 	albumRows := []albumRow{}
 	for rows.Next() {
 		var album albumRow
 		var photoID sql.NullString
-		if err := rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated, &photoID); err != nil {
+		if err := rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated, &album.position, &photoID); err != nil {
 			_ = rows.Close()
 			errorJSON(w, http.StatusInternalServerError, "Unable to read albums")
 			return
@@ -52,7 +68,7 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 	_ = rows.Close()
 	out := []map[string]any{}
 	for _, album := range albumRows {
-		out = append(out, map[string]any{"id": album.id, "title": album.title, "description": nullString(album.description), "coverPhotoId": nullString(album.cover), "isHidden": album.hidden == 1, "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "photoIds": album.photoIDs})
+		out = append(out, map[string]any{"id": album.id, "title": album.title, "description": nullString(album.description), "coverPhotoId": nullString(album.cover), "isHidden": album.hidden == 1, "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "position": album.position, "photoIds": album.photoIDs})
 	}
 	writeJSON(w, 200, out)
 }
@@ -89,7 +105,11 @@ func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, 500, err.Error())
 		return
 	}
-	res, err := tx.Exec(`INSERT INTO albums(title,description,cover_photo_id,is_hidden) VALUES(?,?,?,?)`, title, description, coverPhotoID, boolInt(isHidden))
+	// A new album goes to the top of the list, one gap above the current first
+	// album, which is also where a freshly installed instance starts.
+	var position float64
+	_ = tx.QueryRow(`SELECT COALESCE(MIN(position),1000)-1000 FROM albums`).Scan(&position)
+	res, err := tx.Exec(`INSERT INTO albums(title,description,cover_photo_id,is_hidden,position) VALUES(?,?,?,?,?)`, title, description, coverPhotoID, boolInt(isHidden), position)
 	if err != nil {
 		tx.Rollback()
 		errorJSON(w, 500, err.Error())
@@ -110,7 +130,54 @@ func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"id": id, "title": title, "description": description, "coverPhotoId": coverPhotoID, "isHidden": isHidden, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
+	writeJSON(w, http.StatusOK, map[string]any{"id": id, "title": title, "description": description, "coverPhotoId": coverPhotoID, "isHidden": isHidden, "position": position, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
+}
+
+// reorderAlbums stores the album list order the dashboard is showing. The
+// client sends every album it displays, in visual order, and the whole list is
+// rewritten in one transaction so the stored order is exactly what was on
+// screen.
+func (a *App) reorderAlbums(w http.ResponseWriter, r *http.Request) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	var body struct {
+		AlbumIDs []int64 `json:"albumIds"`
+	}
+	if decodeJSON(r, &body) != nil || len(body.AlbumIDs) == 0 || len(body.AlbumIDs) > 1000 {
+		errorJSON(w, http.StatusBadRequest, "albumIds must contain between 1 and 1000 items")
+		return
+	}
+	tx, err := a.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to reorder albums")
+		return
+	}
+	defer tx.Rollback()
+	statement, err := tx.PrepareContext(r.Context(), `UPDATE albums SET position=? WHERE id=?`)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to reorder albums")
+		return
+	}
+	defer statement.Close()
+	seen := make(map[int64]bool, len(body.AlbumIDs))
+	for index, albumID := range body.AlbumIDs {
+		if albumID <= 0 || seen[albumID] {
+			errorJSON(w, http.StatusBadRequest, "albumIds must be unique positive album IDs")
+			return
+		}
+		seen[albumID] = true
+		if _, err := statement.ExecContext(r.Context(), float64(index)*1000, albumID); err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Failed to reorder albums")
+			return
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to reorder albums")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func decodeAlbumPayload(r *http.Request) (map[string]any, error) {
