@@ -996,7 +996,6 @@
       },
       "section": {
         "runtimeInfo": {
-          "title": "Runtime Information",
           "version": "Version",
           "uptime": "Uptime",
           "environment": "Environment",
@@ -1022,12 +1021,27 @@
           "title": "Memory Usage"
         },
         "queue": {
-          "title": "Queue Status",
-          "activeWorkers": "Active Workers",
-          "totalWorkers": "Total Workers",
+          "title": "System Status",
+          "workers": "Workers",
+          "pending": "Pending",
           "totalProcessed": "Processed",
           "totalFailed": "Failure count",
-          "avgSuccessRate": "Success rate"
+          "avgSuccessRate": "Success rate",
+          "states": {
+            "unknown": "Unknown",
+            "stopped": "Stopped",
+            "processing": "Processing",
+            "attention": "Needs attention",
+            "idle": "Idle"
+          },
+          "stoppedNotice": "{count} tasks are waiting while the workers are stopped.",
+          "waitNotice": "The oldest task has been waiting {minutes} minutes.",
+          "failedNotice": "{count} tasks failed and need review."
+        },
+        "recentActivity": {
+          "title": "Recent Activity",
+          "viewQueue": "View Queue",
+          "empty": "Nothing has been processed yet."
         }
       },
       "shareSite": {

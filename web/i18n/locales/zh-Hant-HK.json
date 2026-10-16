@@ -896,7 +896,6 @@
       },
       "section": {
         "runtimeInfo": {
-          "title": "運行信息",
           "version": "運行版本",
           "uptime": "運行時間",
           "environment": "運行環境",
@@ -922,12 +921,27 @@
           "title": "內存使用率"
         },
         "queue": {
-          "title": "隊列狀態",
-          "activeWorkers": "活躍 Workers",
-          "totalWorkers": "總 Workers",
+          "title": "系統狀態",
+          "workers": "Workers",
+          "pending": "等待中",
           "totalProcessed": "已處理",
           "totalFailed": "失敗計數",
-          "avgSuccessRate": "成功率"
+          "avgSuccessRate": "成功率",
+          "states": {
+            "unknown": "未知",
+            "stopped": "已停止",
+            "processing": "處理中",
+            "attention": "需要關注",
+            "idle": "閒置"
+          },
+          "stoppedNotice": "有 {count} 個任務在等待，但處理執行緒已停止。",
+          "waitNotice": "最早的任務已等待 {minutes} 分鐘。",
+          "failedNotice": "有 {count} 個任務處理失敗，需要檢查。"
+        },
+        "recentActivity": {
+          "title": "最近活動",
+          "viewQueue": "查看佇列",
+          "empty": "尚無處理記錄。"
         }
       },
       "shareSite": {

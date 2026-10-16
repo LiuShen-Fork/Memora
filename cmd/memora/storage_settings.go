@@ -18,6 +18,28 @@ type storageConfigRecord struct {
 	UpdatedAt time.Time      `json:"updatedAt"`
 }
 
+// activeStorageProvider names the storage the site is reading and writing, in
+// the same order loadStorage resolves it: a saved configuration first, then the
+// provider the server was started with. A configuration set up from the
+// environment has no name of its own, which the caller shows as the provider
+// alone.
+func (a *App) activeStorageProvider() map[string]any {
+	provider := strings.ToLower(a.cfg.Provider)
+	if provider == "" {
+		provider = "local"
+	}
+	var value sql.NullString
+	if err := a.db.QueryRow(`SELECT value FROM settings WHERE namespace='storage' AND key='provider'`).Scan(&value); err == nil && value.Valid {
+		if id, err := strconv.ParseInt(strings.Trim(value.String, `"`), 10, 64); err == nil {
+			var name, savedProvider string
+			if err := a.db.QueryRow(`SELECT name,provider FROM settings_storage_providers WHERE id=?`, id).Scan(&name, &savedProvider); err == nil {
+				return map[string]any{"provider": savedProvider, "name": name}
+			}
+		}
+	}
+	return map[string]any{"provider": provider, "name": ""}
+}
+
 func (a *App) storageConfigRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	if !a.requireAdmin(w, r) {
 		return

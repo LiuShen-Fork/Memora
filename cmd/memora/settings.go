@@ -419,9 +419,15 @@ func (a *App) systemStats(w http.ResponseWriter, r *http.Request) {
 		"memory":     map[string]any{"used": memoryUsed, "total": memoryTotal},
 		"photos":     map[string]any{"total": total, "today": today, "thisWeek": week, "thisMonth": month},
 		"workerPool": a.queuePoolStats(),
-		"storage":    map[string]any{"totalSize": nullFloat(totalSize), "averageSize": nullFloat(averageSize), "maxSize": nullFloat(maxSize)},
-		"trends":     trends,
-		"timestamp":  time.Now().UTC().Format(time.RFC3339Nano),
+		"queue":      a.queueSummary(),
+		"storage": map[string]any{
+			"totalSize":      nullFloat(totalSize),
+			"averageSize":    nullFloat(averageSize),
+			"maxSize":        nullFloat(maxSize),
+			"activeProvider": a.activeStorageProvider(),
+		},
+		"trends":    trends,
+		"timestamp": time.Now().UTC().Format(time.RFC3339Nano),
 	})
 }
 

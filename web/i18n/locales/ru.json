@@ -969,7 +969,6 @@
       },
       "section": {
         "runtimeInfo": {
-          "title": "Сведения о системе",
           "version": "Версия",
           "uptime": "Время работы",
           "environment": "Окружение",
@@ -995,12 +994,27 @@
           "title": "Использование памяти"
         },
         "queue": {
-          "title": "Состояние очереди",
-          "activeWorkers": "Активные обработчики",
-          "totalWorkers": "Всего обработчиков",
+          "title": "Состояние системы",
+          "workers": "Обработчики",
+          "pending": "Ожидают",
           "totalProcessed": "Обработано",
           "totalFailed": "Ошибок",
-          "avgSuccessRate": "Доля успешных задач"
+          "avgSuccessRate": "Доля успешных задач",
+          "states": {
+            "unknown": "Неизвестно",
+            "stopped": "Остановлено",
+            "processing": "Идёт обработка",
+            "attention": "Требует внимания",
+            "idle": "Простой"
+          },
+          "stoppedNotice": "{count} задач ждут, пока обработчики остановлены.",
+          "waitNotice": "Самая старая задача ждёт {minutes} мин.",
+          "failedNotice": "{count} задач завершились с ошибкой."
+        },
+        "recentActivity": {
+          "title": "Последние действия",
+          "viewQueue": "К очереди",
+          "empty": "Задач пока не было."
         }
       },
       "shareSite": {

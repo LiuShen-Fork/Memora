@@ -996,7 +996,6 @@
       },
       "section": {
         "runtimeInfo": {
-          "title": "运行信息",
           "version": "运行版本",
           "uptime": "运行时间",
           "environment": "运行环境",
@@ -1022,12 +1021,27 @@
           "title": "内存使用率"
         },
         "queue": {
-          "title": "队列状态",
-          "activeWorkers": "活跃 Workers",
-          "totalWorkers": "总 Workers",
+          "title": "系统状态",
+          "workers": "Workers",
+          "pending": "等待中",
           "totalProcessed": "已处理",
           "totalFailed": "失败计数",
-          "avgSuccessRate": "成功率"
+          "avgSuccessRate": "成功率",
+          "states": {
+            "unknown": "未知",
+            "stopped": "已停止",
+            "processing": "处理中",
+            "attention": "需要关注",
+            "idle": "空闲"
+          },
+          "stoppedNotice": "有 {count} 个任务在等待，但处理线程已停止。",
+          "waitNotice": "最早的任务已等待 {minutes} 分钟。",
+          "failedNotice": "有 {count} 个任务处理失败，需要检查。"
+        },
+        "recentActivity": {
+          "title": "最近活动",
+          "viewQueue": "查看队列",
+          "empty": "暂无处理记录。"
         }
       },
       "shareSite": {

@@ -896,7 +896,6 @@
       },
       "section": {
         "runtimeInfo": {
-          "title": "操作情報",
           "version": "ランニングバージョン",
           "uptime": "実行時間",
           "environment": "ランニング環境",
@@ -922,12 +921,27 @@
           "title": "メモリの使用"
         },
         "queue": {
-          "title": "キューステータス",
-          "activeWorkers": "アクティブワーカー",
-          "totalWorkers": "総 Workers",
+          "title": "システムステータス",
+          "workers": "ワーカー",
+          "pending": "待機中",
           "totalProcessed": "処理",
           "totalFailed": "障害カウント",
-          "avgSuccessRate": "成功率"
+          "avgSuccessRate": "成功率",
+          "states": {
+            "unknown": "不明",
+            "stopped": "停止中",
+            "processing": "処理中",
+            "attention": "要確認",
+            "idle": "待機"
+          },
+          "stoppedNotice": "ワーカーが停止している間に {count} 件のタスクが待機しています。",
+          "waitNotice": "最も古いタスクは {minutes} 分待機しています。",
+          "failedNotice": "{count} 件のタスクが失敗し、確認が必要です。"
+        },
+        "recentActivity": {
+          "title": "最近のアクティビティ",
+          "viewQueue": "キューを見る",
+          "empty": "最近のタスクはありません。"
         }
       },
       "shareSite": {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +40,10 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request, rest string) {
 			return
 		}
 		a.queueStats(w, r, id)
+		return
+	}
+	if rest == "recent" && r.Method == "GET" {
+		a.recentTasks(w, r)
 		return
 	}
 	if rest == "task/list" && r.Method == "GET" {
@@ -337,6 +342,119 @@ func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
 	pool := a.queuePoolStats()
 	writeJSON(w, 200, map[string]any{"timestamp": time.Now().UTC().Format(time.RFC3339Nano), "pool": pool, "queue": out})
 }
+
+// recentTaskLimit is how many entries the dashboard's activity list shows.
+const recentTaskLimit = 5
+
+// recentTask is one entry of that list. The photo behind a task is only
+// attached once every task has been read, so the field is filled in later.
+type recentTask struct {
+	ID           int64  `json:"id"`
+	Type         string `json:"type"`
+	Status       string `json:"status"`
+	StatusStage  any    `json:"statusStage"`
+	ErrorMessage any    `json:"errorMessage"`
+	CreatedAt    string `json:"createdAt"`
+	CompletedAt  any    `json:"completedAt"`
+	FileName     any    `json:"fileName"`
+	Photo        any    `json:"photo"`
+
+	photoID string
+}
+
+// recentPhoto is the sliver of a photo the activity list shows next to a task.
+type recentPhoto struct {
+	ID            string `json:"id"`
+	Title         string `json:"title"`
+	ThumbnailURL  string `json:"thumbnailUrl"`
+	ThumbnailHash string `json:"thumbnailHash"`
+	OriginalURL   string `json:"originalUrl"`
+}
+
+// recentTasks lists what the queue touched last, newest first. A task names the
+// photo it worked on either directly or, for an upload, by the storage key the
+// photo was named after.
+func (a *App) recentTasks(w http.ResponseWriter, r *http.Request) {
+	if _, ok := a.require(r); !ok {
+		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	rows, err := a.db.Query(`SELECT id,COALESCE(json_extract(payload,'$.type'),''),status,COALESCE(status_stage,''),COALESCE(error_message,''),created_at,completed_at,COALESCE(json_extract(payload,'$.storageKey'),''),COALESCE(json_extract(payload,'$.photoId'),'') FROM pipeline_queue ORDER BY created_at DESC, id DESC LIMIT ?`, recentTaskLimit)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Failed to fetch recent tasks")
+		return
+	}
+	tasks := make([]*recentTask, 0, recentTaskLimit)
+	photoIDs := make([]string, 0, recentTaskLimit)
+	for rows.Next() {
+		var task recentTask
+		var stage, message, storageKey, payloadPhotoID string
+		var created int64
+		var completed sql.NullInt64
+		if err := rows.Scan(&task.ID, &task.Type, &task.Status, &stage, &message, &created, &completed, &storageKey, &payloadPhotoID); err != nil {
+			_ = rows.Close()
+			errorJSON(w, http.StatusInternalServerError, "Failed to fetch recent tasks")
+			return
+		}
+		task.CreatedAt = time.Unix(created, 0).UTC().Format(time.RFC3339)
+		if completed.Valid {
+			task.CompletedAt = time.Unix(completed.Int64, 0).UTC().Format(time.RFC3339)
+		}
+		if stage != "" {
+			task.StatusStage = stage
+		}
+		if message != "" {
+			task.ErrorMessage = message
+		}
+		if storageKey != "" {
+			task.FileName = filepath.Base(storageKey)
+		}
+		task.photoID = payloadPhotoID
+		if task.photoID == "" && storageKey != "" {
+			task.photoID = safePhotoID(storageKey)
+		}
+		if task.photoID != "" {
+			photoIDs = append(photoIDs, task.photoID)
+		}
+		tasks = append(tasks, &task)
+	}
+	// A scan that fails midway leaves the list short rather than wrong; the
+	// remaining rows are already unusable.
+	_ = rows.Close()
+
+	photos := map[string]recentPhoto{}
+	if len(photoIDs) > 0 {
+		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(photoIDs)), ",")
+		args := make([]any, len(photoIDs))
+		for i, id := range photoIDs {
+			args[i] = id
+		}
+		photoRows, err := a.db.Query(photoSelect+` WHERE photos.id IN (`+placeholders+`)`, args...)
+		if err == nil {
+			for photoRows.Next() {
+				photo, scanErr := scanPhoto(photoRows)
+				if scanErr != nil {
+					break
+				}
+				photos[photo.ID] = recentPhoto{
+					ID:            photo.ID,
+					Title:         stringValue(photo.Title),
+					ThumbnailURL:  stringValue(photo.ThumbnailURL),
+					ThumbnailHash: stringValue(photo.ThumbnailHash),
+					OriginalURL:   stringValue(photo.OriginalURL),
+				}
+			}
+			_ = photoRows.Close()
+		}
+	}
+	for _, task := range tasks {
+		if photo, ok := photos[task.photoID]; ok {
+			task.Photo = photo
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"tasks": tasks})
+}
+
 func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")

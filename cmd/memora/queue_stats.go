@@ -1,9 +1,28 @@
 package main
 
 import (
+	"database/sql"
 	"strconv"
 	"time"
 )
+
+// queueSummary is what the dashboard reads at a glance: how much is waiting,
+// how much gave up, and how long the oldest waiting task has been sitting.
+func (a *App) queueSummary() map[string]any {
+	var pending, failed int
+	_ = a.db.QueryRow(`SELECT COALESCE(SUM(status='pending'),0), COALESCE(SUM(status='failed'),0) FROM pipeline_queue`).Scan(&pending, &failed)
+	var oldest sql.NullInt64
+	// A task waiting out a retry delay is not a stuck queue, so the wait is
+	// measured from the moment the task was due rather than from its creation.
+	_ = a.db.QueryRow(`SELECT MIN(MAX(created_at,available_at)) FROM pipeline_queue WHERE status='pending'`).Scan(&oldest)
+	wait := 0
+	if oldest.Valid {
+		if seconds := int(time.Now().Unix() - oldest.Int64); seconds > 0 {
+			wait = seconds
+		}
+	}
+	return map[string]any{"pending": pending, "failed": failed, "oldestWaitSeconds": wait}
+}
 
 // queuePoolStats exposes the same aggregate shape as the Nuxt worker pool.
 // Worker counters are derived from durable queue state so they survive restarts.
