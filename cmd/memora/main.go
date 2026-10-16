@@ -149,7 +149,7 @@ func (a *App) ensureSchema() error {
 			return fmt.Errorf("schema: %w", err)
 		}
 	}
-	return nil
+	return a.migrateSchema()
 }
 
 func (a *App) loadStorage() Storage {
