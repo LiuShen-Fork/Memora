@@ -87,14 +87,17 @@
           "downloadImage": "Скачать оригинал",
           "generateShareImage": "Создать изображение для публикации",
           "shareUrl": "Поделиться ссылкой",
-          "downloadOgImage": "Скачать превью",
           "downloadOriginal": "Скачать оригинал",
-          "downloadOriginalImage": "Скачать исходное изображение"
+          "downloadOriginalImage": "Скачать исходное изображение",
+          "nativeShareShort": "Поделиться",
+          "originalShort": "Оригинал",
+          "copied": "Скопировано",
+          "close": "Закрыть",
+          "otherPlatforms": "Другие способы поделиться"
         },
         "success": {
           "linkCopied": "Ссылка скопирована в буфер обмена",
           "imageCopied": "Изображение скопировано в буфер обмена",
-          "ogImageDownloaded": "Превью успешно скачано",
           "originalImageDownloaded": "Исходное изображение успешно скачано"
         },
         "error": {
@@ -102,13 +105,11 @@
           "shareFailed": "Не удалось поделиться",
           "nativeShareFailed": "Не удалось открыть системное меню «Поделиться»",
           "linkCopyFailed": "Не удалось скопировать ссылку",
-          "ogImageDownloadFailed": "Не удалось скачать превью",
           "originalImageDownloadFailed": "Не удалось скачать исходное изображение"
         },
         "ogImage": {
           "title": "Предпросмотр публикации",
           "alt": "Превью фотографии для публикации",
-          "loading": "Загрузка…",
           "loadError": "Не удалось загрузить"
         },
         "fallback": {

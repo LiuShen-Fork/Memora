@@ -14,12 +14,23 @@ const emit = defineEmits<{
 const toast = useToast()
 const { gtag } = useGtag()
 
+const linkCopied = ref(false)
+const copyingLink = ref(false)
+const downloadingOriginal = ref(false)
+const previewFailed = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+
 const shareUrl = computed(() => {
   if (typeof window !== 'undefined') {
     return `${window.location.origin}/${props.photo.id}`
   }
   return ''
 })
+
+// 分享出去后对方看到的图片，与本站在链接预览里给出的那张一致。
+const previewUrl = computed(
+  () => props.photo.thumbnailUrl || props.photo.originalUrl || '',
+)
 
 const shareText = computed(() => {
   const title = props.photo.title || $t('ui.action.share.fallback.photoTitle')
@@ -31,68 +42,29 @@ const shareTextAndUrl = computed(() => {
   return `${shareText.value}\n${shareUrl.value}`
 })
 
-// OG Image URL and loading state
-const ogImageLoading = ref(true)
-const ogImageError = ref(false)
-const loadingTimer = ref<NodeJS.Timeout | null>(null)
-const ogImageUrl = computed(() => `/_og/r/${props.photo.id}.png`)
-
-// Reset loading state when photo changes or modal opens
-const resetLoadingState = () => {
-  ogImageLoading.value = true
-  ogImageError.value = false
-
-  // Clear existing timer
-  if (loadingTimer.value) {
-    clearTimeout(loadingTimer.value)
-  }
-
-  // Set a timeout to handle cases where onload/onerror never fires
-  loadingTimer.value = setTimeout(() => {
-    if (ogImageLoading.value) {
-      ogImageLoading.value = false
-      ogImageError.value = true
-    }
-  }, 10000) // 10 second timeout
+// 重置复制与预览状态：换一张照片或重新打开时都不该带着上一次的结果。
+const resetState = () => {
+  linkCopied.value = false
+  copyingLink.value = false
+  previewFailed.value = false
+  clearTimeout(copiedTimer)
+  copiedTimer = undefined
 }
 
-// Reset loading state when photo changes
-watch(() => props.photo.id, resetLoadingState)
+watch(() => props.photo.id, resetState)
 
-// Reset loading state when modal opens
 watch(
   () => props.isOpen,
   (newValue) => {
     if (newValue) {
-      resetLoadingState()
+      resetState()
     }
   },
+  { immediate: true },
 )
 
-// Handle image load events
-const handleOgImageLoad = () => {
-  if (loadingTimer.value) {
-    clearTimeout(loadingTimer.value)
-    loadingTimer.value = null
-  }
-  ogImageLoading.value = false
-  ogImageError.value = false
-}
-
-const handleOgImageError = () => {
-  if (loadingTimer.value) {
-    clearTimeout(loadingTimer.value)
-    loadingTimer.value = null
-  }
-  ogImageLoading.value = false
-  ogImageError.value = true
-}
-
-// Cleanup on unmount
 onUnmounted(() => {
-  if (loadingTimer.value) {
-    clearTimeout(loadingTimer.value)
-  }
+  clearTimeout(copiedTimer)
 })
 
 // Social media share functions
@@ -184,8 +156,15 @@ const shareToLinkedIn = () => {
 
 // Copy functions
 const copyLink = async () => {
+  if (copyingLink.value) return
+  copyingLink.value = true
   try {
     await navigator.clipboard.writeText(shareTextAndUrl.value)
+    linkCopied.value = true
+    clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => {
+      linkCopied.value = false
+    }, 2500)
     toast.add({
       title: $t('ui.action.share.success.linkCopied'),
       color: 'success',
@@ -200,6 +179,8 @@ const copyLink = async () => {
       icon: 'tabler:x',
       duration: 3000,
     })
+  } finally {
+    copyingLink.value = false
   }
 }
 
@@ -224,45 +205,33 @@ const nativeShare = async () => {
   }
 }
 
-// Download OG Image
-const downloadOgImage = async () => {
-  try {
-    const response = await fetch(ogImageUrl.value)
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${props.photo.title || 'photo'}-og.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-
-    toast.add({
-      title: $t('ui.action.share.success.ogImageDownloaded'),
-      color: 'success',
-      icon: 'tabler:download',
-      duration: 3000,
-    })
-  } catch (error) {
-    toast.add({
-      title: $t('ui.action.share.error.ogImageDownloadFailed'),
-      description: (error as Error)?.message || $t('common.unknownError'),
-      color: 'error',
-      icon: 'tabler:x',
-      duration: 3000,
-    })
-  }
+// 上传时保存的文件类型就是原图的后缀；存储地址里的后缀在转换过的上传上
+// 并不作数，所以以响应头里的类型为准。
+const extensionByMimeType: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/avif': 'avif',
+  'image/bmp': 'bmp',
+  'image/tiff': 'tiff',
 }
 
-const downloadOriginalImage = async () => {
+const downloadOriginal = async () => {
+  const originalUrl = props.photo.originalUrl
+  if (downloadingOriginal.value || !originalUrl) return
+  downloadingOriginal.value = true
   try {
-    const response = await fetch(props.photo.originalUrl!)
+    const response = await fetch(originalUrl)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    const extension = props.photo.originalUrl!.split('.').pop() || 'jpg'
+    const extension =
+      extensionByMimeType[blob.type.toLowerCase()] ||
+      originalUrl.split('.').pop() ||
+      'jpg'
     link.download = `${props.photo.title || 'photo'}.${extension}`
     document.body.appendChild(link)
     link.click()
@@ -290,6 +259,8 @@ const downloadOriginalImage = async () => {
       icon: 'tabler:x',
       duration: 3000,
     })
+  } finally {
+    downloadingOriginal.value = false
   }
 }
 
@@ -362,7 +333,7 @@ defineShortcuts({
         :animate="{ opacity: 1 }"
         :exit="{ opacity: 0 }"
         :transition="{ duration: 0.2 }"
-        class="fixed inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        class="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
         @click="handleBackdropClick"
       >
         <motion.div
@@ -374,186 +345,185 @@ defineShortcuts({
             duration: 0.3,
             bounce: 0.1,
           }"
-          class="relative mx-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-white/90 shadow-2xl backdrop-blur-2xl dark:bg-neutral-900/90"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="$t('ui.action.share.title')"
+          class="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-white/90 shadow-2xl backdrop-blur-2xl dark:bg-neutral-900/90"
           @click.stop
         >
           <!-- Header -->
           <div
-            class="flex items-center justify-between border-b border-white/10 p-4"
+            class="flex items-center gap-2.5 border-b border-black/5 px-4 py-3 dark:border-white/10"
           >
-            <div class="flex items-center gap-2">
-              <Icon
-                name="tabler:share-3"
-                class="size-5 text-neutral-700 dark:text-neutral-300"
-              />
-              <h3
-                class="text-lg font-semibold text-neutral-900 dark:text-white"
-              >
-                {{ $t('ui.action.share.title') }}
-              </h3>
-            </div>
+            <Icon
+              name="tabler:share-3"
+              class="size-5 shrink-0 text-neutral-700 dark:text-neutral-300"
+            />
+            <h3
+              class="min-w-0 flex-1 truncate text-base font-semibold text-neutral-900 dark:text-white"
+            >
+              {{ $t('ui.action.share.title') }}
+            </h3>
             <UButton
               size="sm"
               variant="ghost"
               color="neutral"
               icon="tabler:x"
+              :aria-label="$t('ui.action.share.actions.close')"
               @click="emit('close')"
             />
           </div>
 
-          <!-- Content -->
-          <div
-            v-if="photo"
-            class="p-4"
-          >
-            <!-- Native Share (Mobile) -->
-            <div
-              v-if="canNativeShare"
-              class="mb-4 flex items-center gap-2"
-            >
-              <UButton
-                block
-                size="lg"
-                color="info"
-                variant="soft"
-                icon="tabler:share-2"
-                @click="nativeShare"
-              >
-                {{ $t('ui.action.share.actions.nativeShare') }}
-              </UButton>
-              <UButton
-                block
-                size="lg"
-                color="info"
-                variant="soft"
-                icon="tabler:download"
-                @click="downloadOriginalImage"
-              >
-                {{ $t('ui.action.share.actions.downloadOriginalImage') }}
-              </UButton>
-            </div>
-
-            <div class="space-y-4">
-              <!-- Share URL Display -->
+          <div class="max-h-[min(80vh,42rem)] overflow-y-auto p-4">
+            <section :aria-label="$t('ui.action.share.ogImage.title')">
               <div
-                class="rounded-lg border border-neutral-200/50 bg-neutral-50/50 p-3 dark:border-neutral-700/50 dark:bg-neutral-800/50"
+                class="relative aspect-2/1 overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800"
               >
-                <label
-                  class="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400"
+                <img
+                  v-if="previewUrl && !previewFailed"
+                  :src="previewUrl"
+                  :alt="$t('ui.action.share.ogImage.alt')"
+                  class="size-full object-cover"
+                  @error="previewFailed = true"
+                />
+                <div
+                  v-else
+                  class="flex size-full flex-col items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400"
                 >
-                  {{ $t('ui.action.share.actions.shareUrl') }}
-                </label>
-                <div class="flex items-center gap-2">
+                  <Icon
+                    name="tabler:photo-off"
+                    class="size-6"
+                  />
+                  <span class="text-sm">
+                    {{ $t('ui.action.share.ogImage.loadError') }}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <section class="mt-4 space-y-3">
+              <label
+                for="photo-share-url"
+                class="block text-xs font-medium text-neutral-500 dark:text-neutral-400"
+              >
+                {{ $t('ui.action.share.actions.shareUrl') }}
+              </label>
+              <div
+                class="overflow-hidden rounded-xl border border-black/10 bg-neutral-100/70 dark:border-white/10 dark:bg-neutral-800/50"
+              >
+                <div
+                  class="flex items-center gap-2 border-b border-black/5 bg-white/80 p-2 dark:border-white/10 dark:bg-neutral-800"
+                >
                   <input
+                    id="photo-share-url"
                     :value="shareUrl"
                     readonly
-                    class="flex-1 truncate bg-transparent text-sm text-neutral-800 dark:text-neutral-200 resize-none"
+                    class="min-w-0 flex-1 rounded bg-transparent px-1 py-1 text-sm text-neutral-600 outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-300"
                   />
                   <UButton
-                    size="xs"
-                    variant="ghost"
+                    size="sm"
                     color="neutral"
-                    icon="tabler:copy"
+                    variant="soft"
+                    class="shrink-0"
+                    :icon="linkCopied ? 'tabler:check' : 'tabler:copy'"
+                    :loading="copyingLink"
                     @click="copyLink"
-                  />
-                </div>
-              </div>
-
-              <!-- OG Image Preview -->
-              <div
-                class="rounded-lg border border-neutral-200/50 bg-neutral-50/50 p-3 dark:border-neutral-700/50 dark:bg-neutral-800/50"
-              >
-                <div class="flex items-center justify-between mb-2">
-                  <label
-                    class="block text-xs font-medium text-neutral-600 dark:text-neutral-400"
                   >
-                    {{ $t('ui.action.share.ogImage.title') }}
-                  </label>
-                  <UButton
-                    size="xs"
-                    variant="ghost"
-                    color="neutral"
-                    icon="tabler:download"
-                    @click="downloadOgImage"
-                  >
-                    {{ $t('ui.action.share.actions.downloadOgImage') }}
+                    {{
+                      $t(
+                        linkCopied
+                          ? 'ui.action.share.actions.copied'
+                          : 'ui.action.share.actions.copyLink',
+                      )
+                    }}
                   </UButton>
                 </div>
+                <!-- 系统分享只在浏览器提供时才出现，下载原图则一直都在。 -->
                 <div
-                  class="relative rounded-md bg-neutral-100/50 dark:bg-neutral-700/50 overflow-hidden"
+                  class="grid p-1.5 [&>div+div]:relative [&>div+div]:before:absolute [&>div+div]:before:inset-y-2 [&>div+div]:before:left-0 [&>div+div]:before:w-px [&>div+div]:before:bg-black/8 dark:[&>div+div]:before:bg-white/10"
+                  :class="canNativeShare ? 'grid-cols-2' : 'grid-cols-1'"
                 >
-                  <!-- Loading indicator -->
                   <div
-                    v-if="ogImageLoading"
-                    class="flex items-center justify-center bg-neutral-100/50 dark:bg-neutral-700/50 aspect-2/1"
+                    v-if="canNativeShare"
+                    class="min-w-0"
                   >
-                    <div class="flex flex-col items-center gap-2">
-                      <Icon
-                        name="tabler:loader-2"
-                        class="size-6 text-neutral-500 animate-spin"
-                      />
-                      <span
-                        class="text-xs text-neutral-500 dark:text-neutral-400"
+                    <UTooltip
+                      :text="$t('ui.action.share.actions.nativeShare')"
+                      :ui="{ content: 'z-[80]' }"
+                    >
+                      <UButton
+                        block
+                        size="sm"
+                        class="min-w-0 justify-center gap-1 px-1 py-2 text-xs"
+                        color="neutral"
+                        variant="ghost"
+                        icon="tabler:share-2"
+                        :aria-label="$t('ui.action.share.actions.nativeShare')"
+                        @click="nativeShare"
                       >
-                        {{ $t('ui.action.share.ogImage.loading') }}
-                      </span>
-                    </div>
+                        {{ $t('ui.action.share.actions.nativeShareShort') }}
+                      </UButton>
+                    </UTooltip>
                   </div>
-
-                  <!-- Error state -->
-                  <div
-                    v-else-if="ogImageError"
-                    class="flex items-center justify-center bg-neutral-100/50 dark:bg-neutral-700/50 aspect-2/1"
-                  >
-                    <div class="flex flex-col items-center gap-2">
-                      <Icon
-                        name="tabler:photo-off"
-                        class="size-6 text-neutral-400"
-                      />
-                      <span
-                        class="text-xs text-neutral-500 dark:text-neutral-400"
+                  <div class="min-w-0">
+                    <UTooltip
+                      :text="
+                        $t('ui.action.share.actions.downloadOriginalImage')
+                      "
+                      :ui="{ content: 'z-[80]' }"
+                    >
+                      <UButton
+                        block
+                        size="sm"
+                        class="min-w-0 justify-center gap-1 px-1 py-2 text-xs"
+                        color="neutral"
+                        variant="ghost"
+                        icon="tabler:download"
+                        :loading="downloadingOriginal"
+                        :disabled="!photo.originalUrl"
+                        :aria-label="
+                          $t('ui.action.share.actions.downloadOriginalImage')
+                        "
+                        @click="downloadOriginal"
                       >
-                        {{ $t('ui.action.share.ogImage.loadError') }}
-                      </span>
-                    </div>
+                        {{ $t('ui.action.share.actions.originalShort') }}
+                      </UButton>
+                    </UTooltip>
                   </div>
-
-                  <!-- OG Image -->
-                  <img
-                    v-show="!ogImageLoading && !ogImageError"
-                    :key="`og-image-${props.photo.id}-${Date.now()}`"
-                    :src="ogImageUrl"
-                    :alt="$t('ui.action.share.ogImage.alt')"
-                    class="w-full h-auto aspect-2/1 object-cover rounded"
-                    loading="eager"
-                    @load="handleOgImageLoad"
-                    @error="handleOgImageError"
-                  />
                 </div>
               </div>
+            </section>
 
-              <!-- Social Platforms Grid -->
-              <div class="grid grid-cols-3 gap-3">
+            <section
+              class="mt-4 border-t border-black/5 pt-4 dark:border-white/10"
+              :aria-label="$t('ui.action.share.actions.otherPlatforms')"
+            >
+              <p
+                class="mb-3 text-xs font-medium text-neutral-500 dark:text-neutral-400"
+              >
+                {{ $t('ui.action.share.actions.otherPlatforms') }}
+              </p>
+              <div class="grid grid-cols-3 gap-2.5">
                 <button
                   v-for="platform in socialPlatforms"
                   :key="platform.name"
                   type="button"
-                  class="cursor-pointer flex flex-col items-center justify-center gap-2 rounded-xl border border-neutral-200/50 bg-white/50 p-4 transition-all hover:scale-105 hover:border-neutral-300/50 hover:bg-white/70 dark:border-neutral-700/50 dark:bg-neutral-800/50 dark:hover:border-neutral-600/50 dark:hover:bg-neutral-700/50"
+                  class="flex min-h-18 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-neutral-200/70 bg-white px-2 py-3 transition-colors hover:border-neutral-300 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-primary dark:border-neutral-700/70 dark:bg-neutral-800/70 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                   @click="platform.action"
                 >
                   <Icon
                     :name="platform.icon"
-                    class="size-6"
+                    class="size-5"
                     :class="platform.color"
                   />
                   <span
-                    class="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+                    class="text-xs font-medium text-neutral-600 dark:text-neutral-300"
                   >
                     {{ platform.name }}
                   </span>
                 </button>
               </div>
-            </div>
+            </section>
           </div>
         </motion.div>
       </motion.div>

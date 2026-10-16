@@ -87,14 +87,17 @@
           "downloadImage": "Download Original",
           "generateShareImage": "Generate Share Image",
           "shareUrl": "Share URL",
-          "downloadOgImage": "Download Preview",
           "downloadOriginal": "Download Original",
-          "downloadOriginalImage": "Download Original Image"
+          "downloadOriginalImage": "Download Original Image",
+          "nativeShareShort": "Share",
+          "originalShort": "Original",
+          "copied": "Copied",
+          "close": "Close",
+          "otherPlatforms": "Other sharing options"
         },
         "success": {
           "linkCopied": "Link copied to clipboard",
           "imageCopied": "Image copied to clipboard",
-          "ogImageDownloaded": "Preview image downloaded successfully",
           "originalImageDownloaded": "Original image downloaded successfully"
         },
         "error": {
@@ -102,13 +105,11 @@
           "shareFailed": "Share failed",
           "nativeShareFailed": "Native share failed",
           "linkCopyFailed": "Failed to copy link",
-          "ogImageDownloadFailed": "Failed to download preview image",
           "originalImageDownloadFailed": "Failed to download original image"
         },
         "ogImage": {
           "title": "Share Preview",
           "alt": "Photo share preview image",
-          "loading": "Loading...",
           "loadError": "Failed to load"
         },
         "fallback": {

@@ -517,6 +517,11 @@ watch(
 
 defineShortcuts({
   escape: () => {
+    // 分享面板盖在看图器之上，Esc 先关它，否则会连着看图器一起关掉。
+    if (showShareModal.value) {
+      showShareModal.value = false
+      return
+    }
     emit('close')
   },
 })
