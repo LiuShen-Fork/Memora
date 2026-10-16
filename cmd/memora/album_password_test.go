@@ -273,21 +273,19 @@ func TestHiddenAlbumIsNotFoundRatherThanLocked(t *testing.T) {
 	}
 }
 
-// A photo in a public album and a locked one must not be reachable through the
-// public one, which is the leak the album contents are filtered to prevent.
-func TestPhotoSharedWithALockedAlbumStaysHidden(t *testing.T) {
+// A photo shared with a locked album stays reachable through the album that
+// does show it. Adding a photo to a private album must not take it away from
+// the public one it is also in, and the media routes have to agree with the
+// album list about that.
+func TestAPhotoShownByAPublicAlbumStaysPublic(t *testing.T) {
 	app := newTestApp(t)
-	if _, err := app.db.Exec(`INSERT INTO photos(id,title,storage_key) VALUES('shared','Shared','photos/shared.jpg')`); err != nil {
-		t.Fatal(err)
-	}
+	aSharedPhoto(t, app)
 	for _, body := range []string{
 		`{"title":"Public","photoIds":["shared"]}`,
 		`{"title":"Private","photoIds":["shared"],"password":"hunter2"}`,
 	} {
-		response := httptest.NewRecorder()
-		app.ServeHTTP(response, adminRequest(t, app, http.MethodPost, "/api/albums", []byte(body)))
-		if response.Code != http.StatusOK {
-			t.Fatalf("create album status = %d body = %s", response.Code, response.Body.String())
+		if id := anAlbum(t, app, body); id == 0 {
+			t.Fatal("album was not created")
 		}
 	}
 	var publicID int64
@@ -297,8 +295,13 @@ func TestPhotoSharedWithALockedAlbumStaysHidden(t *testing.T) {
 
 	media := httptest.NewRecorder()
 	app.ServeHTTP(media, anonymous(http.MethodGet, "/image/photos/shared.jpg", nil))
-	if media.Code != http.StatusNotFound {
-		t.Fatalf("shared media status = %d, want 404", media.Code)
+	if media.Code != http.StatusOK {
+		t.Fatalf("shared media status = %d, want 200", media.Code)
+	}
+	// It is still held back for a password, so it must not sit in a shared
+	// cache where the next visitor would be handed it.
+	if cache := media.Header().Get("Cache-Control"); cache != "private, no-store" {
+		t.Fatalf("shared media cache-control = %q", cache)
 	}
 
 	detail := httptest.NewRecorder()
@@ -314,9 +317,98 @@ func TestPhotoSharedWithALockedAlbumStaysHidden(t *testing.T) {
 	if err := json.Unmarshal(detail.Body.Bytes(), &album); err != nil {
 		t.Fatal(err)
 	}
-	if len(album.Photos) != 0 {
-		t.Fatalf("public album exposed a photo that is also in a locked one: %+v", album.Photos)
+	if len(album.Photos) != 1 || album.Photos[0].ID != "shared" {
+		t.Fatalf("public album = %+v", album.Photos)
 	}
+
+	// The album list says the same thing: the public album holds the photo.
+	list := httptest.NewRecorder()
+	app.ServeHTTP(list, anonymous(http.MethodGet, "/api/albums", nil))
+	var albums []struct {
+		Title    string   `json:"title"`
+		PhotoIDs []string `json:"photoIds"`
+	}
+	if err := json.Unmarshal(list.Body.Bytes(), &albums); err != nil {
+		t.Fatal(err)
+	}
+	for _, listed := range albums {
+		if listed.Title != "Public" {
+			continue
+		}
+		if len(listed.PhotoIDs) != 1 || listed.PhotoIDs[0] != "shared" {
+			t.Fatalf("public album in the list = %+v", listed)
+		}
+	}
+}
+
+// A hidden album is the one thing that does take a photo out of reach, however
+// many albums on show also hold it.
+func TestAPhotoHeldByAHiddenAlbumIsOutOfReach(t *testing.T) {
+	app := newTestApp(t)
+	aSharedPhoto(t, app)
+	anAlbum(t, app, `{"title":"Public","photoIds":["shared"]}`)
+	anAlbum(t, app, `{"title":"Hidden","photoIds":["shared"],"isHidden":true}`)
+	var publicID int64
+	if err := app.db.QueryRow(`SELECT id FROM albums WHERE title='Public'`).Scan(&publicID); err != nil {
+		t.Fatal(err)
+	}
+
+	media := httptest.NewRecorder()
+	app.ServeHTTP(media, anonymous(http.MethodGet, "/image/photos/shared.jpg", nil))
+	if media.Code != http.StatusNotFound {
+		t.Fatalf("hidden media status = %d, want 404", media.Code)
+	}
+
+	detail := httptest.NewRecorder()
+	app.ServeHTTP(detail, anonymous(http.MethodGet, "/api/albums/"+itoa(publicID), nil))
+	if detail.Code != http.StatusOK {
+		t.Fatalf("public album status = %d", detail.Code)
+	}
+	var album struct {
+		Photos []any `json:"photos"`
+	}
+	if err := json.Unmarshal(detail.Body.Bytes(), &album); err != nil {
+		t.Fatal(err)
+	}
+	if len(album.Photos) != 0 {
+		t.Fatalf("public album exposed a photo a hidden album holds: %+v", album.Photos)
+	}
+
+	list := httptest.NewRecorder()
+	app.ServeHTTP(list, anonymous(http.MethodGet, "/api/albums", nil))
+	if strings.Contains(list.Body.String(), `"shared"`) {
+		t.Fatalf("album list exposed a photo a hidden album holds: %s", list.Body.String())
+	}
+}
+
+// aSharedPhoto puts one photo in storage and in the gallery, ready to be put in
+// several albums.
+func aSharedPhoto(t *testing.T, app *App) {
+	t.Helper()
+	for _, key := range []string{"photos/shared.jpg", "photos/thumbnails/shared.jpg"} {
+		if _, err := app.storage.Create(context.Background(), key, []byte("original bytes"), "image/jpeg"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := app.db.Exec(`INSERT INTO photos(id,title,storage_key,thumbnail_key,thumbnail_url) VALUES('shared','Shared','photos/shared.jpg','photos/thumbnails/shared.jpg','/storage/photos/thumbnails/shared.jpg')`); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func anAlbum(t *testing.T, app *App, body string) int64 {
+	t.Helper()
+	response := httptest.NewRecorder()
+	app.ServeHTTP(response, adminRequest(t, app, http.MethodPost, "/api/albums", []byte(body)))
+	if response.Code != http.StatusOK {
+		t.Fatalf("create album status = %d body = %s", response.Code, response.Body.String())
+	}
+	var created struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	return created.ID
 }
 
 // A signed-in administrator is not asked for album passwords.

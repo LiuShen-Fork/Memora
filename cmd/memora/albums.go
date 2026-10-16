@@ -35,9 +35,8 @@ var albumPasswordStep = schemaStep{
 
 func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 	access := a.albumAccessFor(r)
-	// Photos that sit in a hidden or protected album are left out of the public
-	// album list even when they are also in an album that is on show, so a
-	// public album cannot be used as a window onto a private one.
+	// Photos held by a hidden album are left out of the public album list even
+	// when another album that is on show also holds them.
 	restricted := map[string]bool{}
 	if !access.admin {
 		var err error
@@ -95,8 +94,9 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		photoIDs := []string{}
 		// An album the visitor may not open shows neither the photos it holds
 		// nor which one it uses as a cover, so the list cannot be read as a
-		// summary of what is behind the password.
-		if access.admin || (!target.hidden && !target.locked()) {
+		// summary of what is behind the password. An album they have unlocked
+		// shows both, minus any photo kept out of another album.
+		if a.canViewAlbum(access, target) {
 			for _, photoID := range album.photoIDs {
 				if !restricted[photoID] {
 					photoIDs = append(photoIDs, photoID)
@@ -494,8 +494,6 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 		errorJSON(w, 404, "Album not found")
 		return
 	}
-	// A locked album says so rather than pretending not to exist: the browser
-	// has to be able to ask for the password.
 	if !a.canViewAlbum(access, album) {
 		errorJSON(w, http.StatusForbidden, "Album password required")
 		return
@@ -503,16 +501,10 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 	query := photoSelect + ` INNER JOIN album_photos ap ON ap.photo_id=photos.id WHERE ap.album_id=?`
 	args := []any{id}
 	if !access.admin {
-		// A photo kept out of another album is kept out of this one too, so a
-		// public album cannot be used as a window onto a private one. This
-		// album itself does not count against its own photos, and an unlocked
-		// visitor has already shown they may see what is inside it.
-		if album.locked() {
-			query += ` AND NOT EXISTS (SELECT 1 FROM album_photos ap2 JOIN albums al2 ON al2.id=ap2.album_id WHERE ap2.photo_id=photos.id AND al2.is_hidden=1)`
-		} else {
-			query += ` AND NOT EXISTS (SELECT 1 FROM album_photos ap2 JOIN albums al2 ON al2.id=ap2.album_id WHERE ap2.photo_id=photos.id AND (al2.is_hidden=1 OR (al2.password_hash IS NOT NULL AND al2.password_hash<>'' AND al2.id<>?)))`
-			args = append(args, id)
-		}
+		// The visitor may open this album, so it shows everything it holds —
+		// except a photo that a hidden album also holds, which is what the
+		// album list leaves out too.
+		query += ` AND NOT EXISTS (SELECT 1 FROM album_photos ap2 JOIN albums al2 ON al2.id=ap2.album_id WHERE ap2.photo_id=photos.id AND al2.is_hidden=1)`
 	}
 	query += ` ORDER BY ap.position ASC,ap.id ASC`
 	rows, err := a.db.QueryContext(r.Context(), query, args...)

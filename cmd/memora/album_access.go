@@ -229,29 +229,27 @@ func (a *App) canViewAlbum(access albumAccess, album albumAccessTarget) bool {
 }
 
 // photoAccessDenied decides the fate of a photo from the albums it belongs to.
-// A photo in a hidden album is out of reach, and a photo in a locked album is
-// out of reach unless it is also in an album the visitor unlocked or in one
-// with no password at all — so a photo shared between a public album and a
-// protected one stays visible through the public album, which is what the
-// gallery shows it as.
+// A photo kept out of sight is out of reach; otherwise it is reachable as soon
+// as one of its albums is, so a photo shared between a public album and a
+// protected one stays visible through the public album. A photo in no album at
+// all is not album business and is left alone.
 func (a *App) photoAccessDenied(access albumAccess, memberships []albumAccessTarget) bool {
-	if access.admin {
+	if access.admin || len(memberships) == 0 {
 		return false
 	}
-	locked := false
+	// A hidden album takes the photo out of reach whatever else holds it, so
+	// the whole list is searched for one before any album is allowed to decide.
 	for _, album := range memberships {
 		if album.hidden {
 			return true
 		}
-		if !album.locked() {
-			return false
-		}
-		locked = true
+	}
+	for _, album := range memberships {
 		if a.canViewAlbum(access, album) {
 			return false
 		}
 	}
-	return locked
+	return true
 }
 
 // albumMembershipsForPhotos groups the albums that hold each photo.
@@ -287,16 +285,21 @@ func (a *App) albumMembershipsForPhotos(ctx context.Context, photoIDs []string) 
 	return memberships, rows.Err()
 }
 
-// restrictedPhotoIDs lists every photo that sits in a hidden or protected
-// album. The public album list uses it to leave those photos out of the albums
-// that do show, so a photo shared with a protected album cannot be reached
-// through the public one.
+// restrictedPhotoIDs lists every photo that a hidden album holds. The public
+// album list uses it to leave those photos out of the albums that do show, so a
+// photo kept out of the gallery cannot be brought back in by adding it to a
+// public album.
+//
+// A locked album restricts nothing on its own. A photo is reachable exactly
+// when some album the visitor may open holds it, so an album that is on show
+// shows everything it holds, whichever other albums also hold it — which is the
+// same answer the media routes give.
 func (a *App) restrictedPhotoIDs(ctx context.Context) (map[string]bool, error) {
 	rows, err := a.db.QueryContext(ctx, `
 		SELECT DISTINCT ap.photo_id
 		FROM album_photos ap
 		INNER JOIN albums al ON al.id=ap.album_id
-		WHERE al.is_hidden=1 OR (al.password_hash IS NOT NULL AND al.password_hash<>'')`)
+		WHERE al.is_hidden=1`)
 	if err != nil {
 		return nil, err
 	}
