@@ -1177,11 +1177,10 @@
         "clearAriaLabel": "清除搜索内容"
       },
       "filter": {
-        "levelPlaceholder": "过滤级别",
-        "tagPlaceholder": "筛选 Tag"
+        "scopePlaceholder": "筛选来源"
       },
       "countLabel": "总条数/展示: {total}/{shown}",
-      "tagCount": "Tag: {count}",
+      "autoScroll": { "tooltip": "跟随最新" },
       "empty": {
         "waiting": "等待日志数据...",
         "noMatch": "没有匹配的日志条目"

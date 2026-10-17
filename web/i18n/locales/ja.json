@@ -1103,11 +1103,10 @@
         "clearAriaLabel": "検索入力をクリア"
       },
       "filter": {
-        "levelPlaceholder": "レベルで絞り込む",
-        "tagPlaceholder": "タグで絞り込む"
+        "scopePlaceholder": "絞り込み"
       },
       "countLabel": "合計/表示: {total}/{shown}",
-      "tagCount": "タグ: {count}",
+      "autoScroll": { "tooltip": "最新に追従" },
       "empty": {
         "waiting": "ログデータを待機中...",
         "noMatch": "一致するログエントリがありません"

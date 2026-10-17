@@ -1103,11 +1103,10 @@
         "clearAriaLabel": "清除搜尋內容"
       },
       "filter": {
-        "levelPlaceholder": "篩選等級",
-        "tagPlaceholder": "篩選 Tag"
+        "scopePlaceholder": "篩選來源"
       },
       "countLabel": "總筆數/顯示: {total}/{shown}",
-      "tagCount": "Tag: {count}",
+      "autoScroll": { "tooltip": "跟隨最新" },
       "empty": {
         "waiting": "等待日誌資料...",
         "noMatch": "沒有符合的日誌條目"

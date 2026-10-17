@@ -1177,11 +1177,10 @@
         "clearAriaLabel": "Очистить строку поиска"
       },
       "filter": {
-        "levelPlaceholder": "Уровень журнала",
-        "tagPlaceholder": "Фильтр по тегу"
+        "scopePlaceholder": "Источник"
       },
       "countLabel": "Всего / показано: {total} / {shown}",
-      "tagCount": "Тегов: {count}",
+      "autoScroll": { "tooltip": "Следовать за концом" },
       "empty": {
         "waiting": "Ожидание записей журнала…",
         "noMatch": "Подходящие записи не найдены"

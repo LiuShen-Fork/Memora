@@ -3,25 +3,34 @@ definePageMeta({
   layout: 'dashboard',
 })
 
+/**
+ * One line of the log, in the three parts the server gives it in.
+ *
+ * The server writes `2026-10-18T03:44:18.231+08:00 [queue] processed photo …`,
+ * and a line that came from somewhere else — a log file written by an older
+ * version, say — has no stamp. Such a line keeps its text and is shown without
+ * a time rather than with the time the page happened to open.
+ */
 interface LogEntry {
-  date: string
-  args: string[]
+  time: string
+  scope: string
   message: string
   messageLower: string
-  type: string
-  level: number
-  tag: string
-  tagLower: string
   raw: string
 }
 
+const STAMPED_LINE =
+  /^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2}))\s+\[([^\]]*)\]\s*([\s\S]*)$/
+const SCOPED_LINE = /^\[([^\]]*)\]\s*([\s\S]*)$/
+
 const logs = ref<LogEntry[]>([])
 const searchQuery = ref('')
-const selectedLevels = ref<string[]>([])
-const selectedTags = ref<string[]>([])
+const selectedScopes = ref<string[]>([])
 const autoScroll = ref(true)
 const isConnected = ref(false)
-const connectionState = ref<'idle' | 'connecting' | 'loadingHistory' | 'live' | 'error'>('idle')
+const connectionState = ref<
+  'idle' | 'connecting' | 'loadingHistory' | 'live' | 'error'
+>('idle')
 const logContainer = ref<HTMLElement>()
 const isInitialLoading = ref(false)
 const loadingProgress = ref(0)
@@ -42,20 +51,6 @@ const VIRTUAL_OVERSCAN = 20
 const VIRTUAL_BOTTOM_PADDING = 8
 
 let resizeObserver: ResizeObserver | null = null
-
-const logLevels = ['error', 'warn', 'info', 'success', 'debug']
-
-// 根据级别数字获取类型名称
-const getLevelType = (level: number): string => {
-  const levelMap: Record<number, string> = {
-    0: 'error',
-    1: 'warn',
-    2: 'info',
-    3: 'info',
-    4: 'debug',
-  }
-  return levelMap[level] || 'info'
-}
 
 // EventSource 连接
 let eventSource: EventSource | null = null
@@ -102,43 +97,23 @@ const processBatch = async () => {
   // 注意：初始加载完成现在由消息超时检测控制，不在这里处理
 }
 
-// 解析日志行
-const parseLogLine = (line: string): LogEntry | null => {
-  try {
-    const logData = JSON.parse(line)
-    const args = Array.isArray(logData.args)
-      ? logData.args.map((arg: unknown) =>
-          typeof arg === 'string' ? arg : JSON.stringify(arg),
-        )
-      : []
-    const message = args.join(' ')
-    const tag = String(logData.tag || '')
-
-    return {
-      date: logData.date,
-      args,
-      message,
-      messageLower: message.toLowerCase(),
-      type: logData.type || 'info',
-      level: logData.level || 3,
-      tag,
-      tagLower: tag.toLowerCase(),
-      raw: line,
-    }
-  } catch {
-    // 如果解析失败，创建一个fallback日志条目
-    const message = line
-    return {
-      date: new Date().toISOString(),
-      args: [line],
-      message,
-      messageLower: message.toLowerCase(),
-      type: 'info',
-      level: 3,
-      tag: 'fallback',
-      tagLower: 'fallback',
-      raw: line,
-    }
+/**
+ * 拆一行日志：先是时间戳（可能没有），再是方括号里的来源，最后是正文。
+ *
+ * 这个顺序不是猜的，是后端 writing 的顺序：LogBuffer.Add 写的是
+ * `<时间> [<来源>] <正文>`。认不出来的行整行当正文，宁可少一列，也不要凭空
+ * 编出一个时间。
+ */
+const parseLogLine = (line: string): LogEntry => {
+  const stamped = STAMPED_LINE.exec(line)
+  const scoped = stamped ? null : SCOPED_LINE.exec(line)
+  const message = stamped?.[3] ?? scoped?.[2] ?? line
+  return {
+    time: stamped?.[1] ?? '',
+    scope: stamped?.[2] ?? scoped?.[1] ?? '',
+    message,
+    messageLower: message.toLowerCase(),
+    raw: line,
   }
 }
 
@@ -146,44 +121,36 @@ const parseLogLine = (line: string): LogEntry | null => {
 const filteredLogs = computed(() => {
   let filtered = logs.value
 
-  // 按级别过滤
-  if (selectedLevels.value.length > 0) {
-    filtered = filtered.filter((log) => {
-      const logType = log.type || getLevelType(log.level)
-      return selectedLevels.value.includes(logType)
-    })
-  }
-
-  // 按标签过滤
-  if (selectedTags.value.length > 0) {
-    const selected = new Set(selectedTags.value)
-    filtered = filtered.filter((log) => selected.has(log.tag))
+  // 按来源过滤
+  if (selectedScopes.value.length > 0) {
+    const selected = new Set(selectedScopes.value)
+    filtered = filtered.filter((log) => selected.has(log.scope))
   }
 
   // 按搜索词过滤
   if (normalizedSearchQuery.value) {
     const query = normalizedSearchQuery.value
     filtered = filtered.filter((log) => {
-      return log.messageLower.includes(query) || log.tagLower.includes(query)
+      return log.messageLower.includes(query) || log.scope.includes(query)
     })
   }
 
   return filtered
 })
 
-const availableTags = computed(() => {
-  const tags = new Set<string>()
+const availableScopes = computed(() => {
+  const scopes = new Set<string>()
   for (const log of logs.value) {
-    if (log.tag) {
-      tags.add(log.tag)
+    if (log.scope) {
+      scopes.add(log.scope)
     }
   }
 
-  return Array.from(tags)
+  return Array.from(scopes)
     .sort((a, b) => a.localeCompare(b))
-    .map((tag) => ({
-      label: tag,
-      value: tag,
+    .map((scope) => ({
+      label: scope,
+      value: scope,
     }))
 })
 
@@ -211,61 +178,28 @@ const visibleLogs = computed(() => {
   return filteredLogs.value.slice(virtualStart.value, virtualEnd.value)
 })
 
-// 映射日志级别到 UBadge 颜色
-const getBadgeColor = (
-  level: string,
-):
-  | 'error'
-  | 'info'
-  | 'success'
-  | 'primary'
-  | 'secondary'
-  | 'warning'
-  | 'neutral' => {
-  const colorMap: Record<
-    string,
-    | 'error'
-    | 'info'
-    | 'success'
-    | 'primary'
-    | 'secondary'
-    | 'warning'
-    | 'neutral'
-  > = {
-    error: 'error',
-    warn: 'warning',
-    info: 'info',
-    success: 'success',
-    debug: 'neutral',
-  }
-  return colorMap[level] || 'info'
-}
+/**
+ * 把一行正文按搜索词切成片段，命中的那几段标记出来。
+ *
+ * 切分而不是替换成一段 HTML：日志正文里有文件名、相册名，谁都能往里写一个
+ * `<`，而 v-html 会把它们当标记渲染。这里是模板自己在插值，没有这回事。
+ */
+function highlightSegments(text: string): { text: string; hit: boolean }[] {
+  const query = normalizedSearchQuery.value
+  if (!query) return [{ text, hit: false }]
 
-// 获取日志行样式
-const getLogLineStyle = (log: LogEntry) => {
-  const baseStyle = 'hover:bg-neutral-200 dark:hover:bg-neutral-800'
-  const logType = log.type || getLevelType(log.level)
-  const levelStyles = {
-    error: 'text-red-500 dark:text-red-400 border-l-2 border-red-500 font-bold',
-    warn: 'text-yellow-500 dark:text-yellow-400 border-l-2 border-yellow-500 font-bold',
-    info: 'text-neutral-400 dark:text-neutral-300 border-l-2 border-blue-500',
-    success: 'text-green-500 dark:text-green-400 border-l-2 border-green-500',
-    debug:
-      'text-neutral-300 dark:text-neutral-400 border-l-2 border-neutral-500',
+  const lower = text.toLowerCase()
+  const segments: { text: string; hit: boolean }[] = []
+  let at = 0
+  for (;;) {
+    const hit = lower.indexOf(query, at)
+    if (hit < 0) break
+    if (hit > at) segments.push({ text: text.slice(at, hit), hit: false })
+    segments.push({ text: text.slice(hit, hit + query.length), hit: true })
+    at = hit + query.length
   }
-  return `${baseStyle} ${levelStyles[logType as keyof typeof levelStyles] || levelStyles.info} border-none`
-}
-
-// 获取连接状态样式
-const getConnectionStatusClass = () => {
-  if (connectionState.value === 'live') {
-    return 'text-success'
-  } else if (connectionState.value === 'connecting' || connectionState.value === 'loadingHistory') {
-    return 'text-info'
-  } else if (connectionState.value === 'error') {
-    return 'text-error'
-  }
-  return 'text-warning'
+  if (at < text.length) segments.push({ text: text.slice(at), hit: false })
+  return segments.length ? segments : [{ text, hit: false }]
 }
 
 const getConnectionStatusColor = ():
@@ -279,28 +213,16 @@ const getConnectionStatusColor = ():
   if (connectionState.value === 'live') {
     return 'success'
   }
-  if (connectionState.value === 'connecting' || connectionState.value === 'loadingHistory') {
+  if (
+    connectionState.value === 'connecting' ||
+    connectionState.value === 'loadingHistory'
+  ) {
     return 'info'
   }
   if (connectionState.value === 'error') {
     return 'error'
   }
   return 'warning'
-}
-
-// 高亮搜索结果
-const highlightSearch = (content: string) => {
-  if (!normalizedSearchQuery.value) return content
-
-  const query = normalizedSearchQuery.value.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    '\\$&',
-  ) // 转义特殊字符
-  const regex = new RegExp(`(${query})`, 'gi')
-  return content.replace(
-    regex,
-    '<mark class="bg-yellow-300 dark:bg-yellow-700 text-black dark:text-white rounded">$1</mark>',
-  )
 }
 
 // 切换自动滚动
@@ -372,34 +294,33 @@ const connectLogStream = () => {
     const logLine = event.data
     if (logLine && logLine.trim()) {
       const logEntry = parseLogLine(logLine)
-      if (logEntry) {
-        // 清除之前的定时器
-        if (initialLoadCompleteTimer) {
-          clearTimeout(initialLoadCompleteTimer)
-          initialLoadCompleteTimer = null
-        }
 
-        if (isInitialLoading.value) {
-          addLogEntry(logEntry)
-          loadingProgress.value = Math.min(90, loadingProgress.value + 0.2)
+      // 清除之前的定时器
+      if (initialLoadCompleteTimer) {
+        clearTimeout(initialLoadCompleteTimer)
+        initialLoadCompleteTimer = null
+      }
 
-          // 设置新的定时器，如果在指定时间内没有新消息，认为初始加载完成
-          initialLoadCompleteTimer = setTimeout(() => {
-            if (isInitialLoading.value) {
-              connectionState.value = 'live'
-              // 让加载指示器显示完成状态后再隐藏
-              setTimeout(() => {
-                isInitialLoading.value = false
-                loadingProgress.value = 100
-                autoScroll.value = true
-                scrollToBottom()
-              }, 500)
-            }
-          }, MESSAGE_TIMEOUT)
-        } else {
-          // 实时日志直接添加
-          addLogEntry(logEntry)
-        }
+      if (isInitialLoading.value) {
+        addLogEntry(logEntry)
+        loadingProgress.value = Math.min(90, loadingProgress.value + 0.2)
+
+        // 设置新的定时器，如果在指定时间内没有新消息，认为初始加载完成
+        initialLoadCompleteTimer = setTimeout(() => {
+          if (isInitialLoading.value) {
+            connectionState.value = 'live'
+            // 让加载指示器显示完成状态后再隐藏
+            setTimeout(() => {
+              isInitialLoading.value = false
+              loadingProgress.value = 100
+              autoScroll.value = true
+              scrollToBottom()
+            }, 500)
+          }
+        }, MESSAGE_TIMEOUT)
+      } else {
+        // 实时日志直接添加
+        addLogEntry(logEntry)
       }
     }
   }
@@ -412,7 +333,7 @@ const connectLogStream = () => {
 }
 
 watch(
-  [selectedLevels, selectedTags, searchQuery],
+  [selectedScopes, searchQuery],
   () => {
     if (autoScroll.value) {
       scrollToBottom()
@@ -457,57 +378,40 @@ onUnmounted(() => {
 
     <template #body>
       <div
-        class="flex flex-col flex-1 overflow-hidden bg-neutral-100 dark:bg-neutral-950 rounded-md relative"
+        class="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-default bg-default"
       >
         <div
-          class="px-4 py-3 border-b border-neutral-300/80 dark:border-neutral-900 bg-linear-to-r from-neutral-50 to-neutral-100/60 dark:from-neutral-900 dark:to-neutral-950/80"
+          class="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-default px-4 py-3"
         >
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="tabler:file-text"
-                  class="w-4 h-4 text-blue-500"
-                />
-                <h2
-                  class="text-sm sm:text-base font-semibold text-blue-600 tracking-wide"
-                >
-                  app.log
-                </h2>
-                <UBadge
-                  v-if="connectionState !== 'idle'"
-                  size="sm"
-                  variant="soft"
-                  :color="getConnectionStatusColor()"
-                >
-                  {{ $t('dashboard.logs.connectionStatus.' + connectionState) }}
-                </UBadge>
-              </div>
-              <div
-                class="mt-1 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400"
-              >
-                <span>{{ $t('dashboard.logs.countLabel', { total: logs.length, shown: filteredLogs.length }) }}</span>
-                <span v-if="availableTags.length">{{ $t('dashboard.logs.tagCount', { count: availableTags.length }) }}</span>
-              </div>
-            </div>
-            <span
-              v-if="connectionState !== 'idle'"
-              :class="[
-                'text-xs font-medium hidden sm:inline',
-                getConnectionStatusClass(),
-              ]"
-            >
-              {{ $t('dashboard.logs.connectionStatus.' + connectionState) }}
-            </span>
-          </div>
+          <Icon
+            name="tabler:file-text"
+            class="size-4 shrink-0 text-dimmed"
+          />
+          <span class="font-mono text-xs text-toned">app.log</span>
+          <UBadge
+            v-if="connectionState !== 'idle'"
+            size="sm"
+            variant="subtle"
+            :color="getConnectionStatusColor()"
+          >
+            {{ $t('dashboard.logs.connectionStatus.' + connectionState) }}
+          </UBadge>
+          <span class="text-xs text-dimmed">
+            {{
+              $t('dashboard.logs.countLabel', {
+                total: logs.length,
+                shown: filteredLogs.length,
+              })
+            }}
+          </span>
 
-          <div class="mt-3 flex flex-wrap items-center gap-2">
+          <div class="ms-auto flex flex-wrap items-center gap-2">
             <!-- Search -->
             <UInput
               v-model="searchQuery"
               :placeholder="$t('dashboard.logs.search.placeholder')"
               size="sm"
-              class="w-full sm:w-56 md:w-64"
+              class="w-44 sm:w-56"
               icon="tabler:search"
               :ui="{ trailing: 'pe-1' }"
             >
@@ -525,74 +429,55 @@ onUnmounted(() => {
                 />
               </template>
             </UInput>
-            <!-- Log level -->
+            <!-- Scope -->
             <USelect
-              v-model="selectedLevels"
-              :items="
-                logLevels.map((level) => ({
-                  label: level.toUpperCase(),
-                  value: level,
-                }))
-              "
+              v-model="selectedScopes"
+              :items="availableScopes"
               multiple
               size="sm"
-              :placeholder="$t('dashboard.logs.filter.levelPlaceholder')"
-              class="w-28"
-              :clearable="false"
-            />
-            <USelect
-              v-model="selectedTags"
-              :items="availableTags"
-              multiple
-              size="sm"
-              :placeholder="$t('dashboard.logs.filter.tagPlaceholder')"
-              class="w-40 sm:w-52"
+              :placeholder="$t('dashboard.logs.filter.scopePlaceholder')"
+              class="w-36 sm:w-44"
               :clearable="false"
             />
             <!-- Auto scroll -->
-            <UButton
-              icon="tabler:arrow-bar-to-down"
-              color="neutral"
-              size="sm"
-              :variant="autoScroll ? 'outline' : 'soft'"
-              class="ms-auto sm:ms-0"
-              @click="toggleAutoScroll"
-            />
-            <!-- Download raw log -->
-            <!-- TODO: Download raw log file -->
-            <!-- <UButton 
-            as="a"
-            target="_blank"
-            rel="noopener"
-            icon="tabler:download"
-            color="neutral"
-            size="sm"
-            variant="soft"
-          /> -->
+            <UTooltip
+              :text="$t('dashboard.logs.autoScroll.tooltip')"
+              ignore-non-keyboard-focus
+            >
+              <UButton
+                :icon="autoScroll ? 'tabler:arrow-bar-to-down' : 'tabler:arrow-bar-down'"
+                color="neutral"
+                size="sm"
+                :variant="autoScroll ? 'soft' : 'outline'"
+                :aria-label="$t('dashboard.logs.autoScroll.tooltip')"
+                @click="toggleAutoScroll"
+              />
+            </UTooltip>
           </div>
         </div>
+
         <!-- 加载进度指示器 -->
         <div
           v-if="isInitialLoading"
-          class="absolute inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-10"
+          class="absolute inset-0 z-10 flex items-center justify-center bg-default/80 backdrop-blur-sm"
         >
           <div class="text-center">
             <div class="mb-4">
-              <UIcon
+              <Icon
                 name="tabler:loader-2"
-                class="animate-spin w-8 h-8 text-blue-500"
+                class="size-8 animate-spin text-primary"
               />
             </div>
-            <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            <div class="mb-2 text-sm text-muted">
               {{ $t('dashboard.logs.connectionStatus.loadingHistory') }}
             </div>
-            <div class="w-64 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div class="h-1.5 w-64 overflow-hidden rounded-full bg-elevated">
               <div
-                class="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+                class="h-full rounded-full bg-primary transition-all duration-300 ease-out"
                 :style="{ width: `${loadingProgress}%` }"
-              ></div>
+              />
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <div class="mt-1 text-xs text-dimmed">
               {{ Math.round(loadingProgress) }}%
             </div>
           </div>
@@ -600,7 +485,7 @@ onUnmounted(() => {
 
         <div
           ref="logContainer"
-          class="flex-1 min-h-0 overflow-y-auto overflow-x-auto scroll-smooth font-mono text-sm relative"
+          class="table-scroll relative min-h-0 flex-1 overflow-y-auto scroll-smooth font-mono"
           @scroll="handleScroll"
         >
           <div
@@ -608,72 +493,68 @@ onUnmounted(() => {
             :style="{ height: `${totalVirtualHeight}px` }"
           >
             <div
-              class="absolute left-0 right-0 px-2"
+              class="absolute inset-x-0"
               :style="{ transform: `translateY(${virtualOffset}px)` }"
             >
               <div
                 v-for="(log, index) in visibleLogs"
                 :key="`${virtualStart + index}-${log.raw}`"
-                :class="[
-                  'px-2 py-0.5 rounded border-l-4',
-                  getLogLineStyle(log),
-                ]"
+                class="flex items-center gap-3 px-4 text-xs transition-colors hover:bg-elevated/60"
                 :style="{ height: `${ROW_HEIGHT}px` }"
               >
-                <div class="flex items-center space-x-3 text-sm h-full">
-                  <!-- 时间戳 -->
-                  <span
-                    class="text-neutral-400 dark:text-neutral-500 text-xs whitespace-nowrap min-w-0 shrink-0"
-                  >
-                    {{ $dayjs(log.date).format('HH:mm:ss.SSS') }}
-                  </span>
+                <!-- 时间 -->
+                <span
+                  class="w-[100px] shrink-0 whitespace-nowrap tabular text-dimmed"
+                >
+                  {{ log.time ? $dayjs(log.time).format('MM-DD HH:mm:ss') : '' }}
+                </span>
 
-                  <!-- 日志级别 -->
-                  <UBadge
-                    size="sm"
-                    :variant="log.level <= 1 ? 'solid' : 'soft'"
-                    :color="getBadgeColor(log.type || getLevelType(log.level))"
-                  >
-                    {{
-                      (log.type || getLevelType(log.level))
-                        .toUpperCase()
-                        .slice(0, 4)
-                    }}
-                  </UBadge>
+                <!-- 来源 -->
+                <span
+                  v-if="log.scope"
+                  class="w-[76px] shrink-0 truncate rounded bg-elevated px-1.5 py-0.5 text-center text-[11px] text-toned"
+                >
+                  {{ log.scope }}
+                </span>
+                <span
+                  v-else
+                  class="w-[76px] shrink-0"
+                />
 
-                  <!-- 日志内容 -->
-                  <div class="flex-1 min-w-0">
-                    <span
-                      v-if="normalizedSearchQuery"
-                      class="block whitespace-nowrap overflow-hidden text-ellipsis"
-                      v-html="highlightSearch(log.message)"
-                    ></span>
-                    <span
-                      v-else
-                      class="block whitespace-nowrap overflow-hidden text-ellipsis"
+                <!-- 正文 -->
+                <span
+                  class="min-w-0 flex-1 truncate text-default"
+                  :title="log.message"
+                >
+                  <template
+                    v-for="(segment, at) in highlightSegments(log.message)"
+                    :key="at"
+                  >
+                    <mark
+                      v-if="segment.hit"
+                      class="rounded-xs bg-warning/30 px-0.5 text-inherit"
+                      >{{ segment.text }}</mark
                     >
-                      {{ log.message }}
-                    </span>
-                  </div>
-
-                  <!-- 标签 -->
-                  <span
-                    v-if="log.tag"
-                    class="text-xs whitespace-nowrap shrink-0 truncate text-neutral-400/80"
-                  >
-                    {{ log.tag }}
-                  </span>
-                </div>
+                    <template v-else>{{ segment.text }}</template>
+                  </template>
+                </span>
               </div>
             </div>
 
             <!-- 空状态 -->
             <div
               v-if="filteredLogs.length === 0"
-              class="text-center py-8 text-gray-500 dark:text-gray-400 absolute inset-0"
+              class="absolute inset-0 flex flex-col items-center justify-center gap-2 py-8 text-center text-xs text-muted"
             >
-              <div v-if="logs.length === 0">{{ $t('dashboard.logs.empty.waiting') }}</div>
-              <div v-else>{{ $t('dashboard.logs.empty.noMatch') }}</div>
+              <Icon
+                name="tabler:file-off"
+                class="size-6 text-dimmed"
+              />
+              <span>{{
+                logs.length === 0
+                  ? $t('dashboard.logs.empty.waiting')
+                  : $t('dashboard.logs.empty.noMatch')
+              }}</span>
             </div>
           </div>
         </div>
@@ -681,28 +562,3 @@ onUnmounted(() => {
     </template>
   </UDashboardPanel>
 </template>
-
-<style scoped>
-/* 自定义滚动条样式 */
-.overflow-y-auto::-webkit-scrollbar {
-  width: 2px;
-}
-
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: color-mix(in oklab, var(--ui-color-neutral-200) 50%, transparent);
-}
-
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--ui-color-neutral-400) 50%, transparent);
-  border-radius: 0;
-}
-
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklab, var(--ui-color-neutral-600) 50%, transparent);
-}
-
-mark {
-  border-radius: 2px;
-  padding: 0 2px;
-}
-</style>

@@ -1177,11 +1177,10 @@
         "clearAriaLabel": "Clear search input"
       },
       "filter": {
-        "levelPlaceholder": "Filter level",
-        "tagPlaceholder": "Filter Tag"
+        "scopePlaceholder": "Filter source"
       },
       "countLabel": "Total/Shown: {total}/{shown}",
-      "tagCount": "Tags: {count}",
+      "autoScroll": { "tooltip": "Follow the tail" },
       "empty": {
         "waiting": "Waiting for log data...",
         "noMatch": "No matching log entries"

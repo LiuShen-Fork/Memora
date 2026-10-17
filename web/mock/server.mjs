@@ -465,34 +465,43 @@ function buildTasks() {
 
 const tasks = buildTasks()
 
+// The same scopes the Go backend writes under, and the same line shape:
+// `<RFC 3339 stamp> [<scope>] <message>`. See cmd/memora/logging.go.
 const LOG_LINES = [
-  ['INFO', 'server', 'Memora 1.2.0 starting (mock backend, not the real thing)'],
-  ['INFO', 'database', 'opened data/app.sqlite3'],
-  ['INFO', 'storage', 'provider=local basePath=./data/storage'],
-  ['INFO', 'workers', 'started 4 workers'],
-  ['INFO', 'queue', 'task completed type=thumbnail id=8ab31f'],
-  ['INFO', 'queue', 'task completed type=exif id=2c77de'],
-  ['WARN', 'queue', 'reverse geocoding skipped: no provider configured'],
-  ['INFO', 'queue', 'task completed type=metadata id=91ff02'],
-  ['ERROR', 'queue', 'task failed type=metadata id=40be71 attempts=3: exiftool exited with status 1'],
-  ['INFO', 'media', 'heic converted to jpeg, stored as photos/IMG_2043.jpg'],
-  ['INFO', 'http', 'GET /api/photos 200 12ms'],
-  ['INFO', 'queue', 'task completed type=preprocess id=77a1c9'],
-  ['WARN', 'media', 'motion photo metadata found but no matching video; keeping the still'],
-  ['INFO', 'http', 'GET /api/system/stats 200 4ms'],
-  ['INFO', 'queue', 'task completed type=thumbnail id=5dd0a4'],
+  ['server', 'Memora Go backend listening on 127.0.0.1:3000'],
+  ['storage', 'provider=local basePath=./data/storage'],
+  ['queue', 'task 63 processed photo 9f4a12'],
+  ['queue', 'task 64 processed photo 5b8c07'],
+  ['queue', 'task 65 moved to failed: exiftool exited with status 1'],
+  ['queue', 'failed to enqueue reverse geocoding 3d21aa: queue is closed'],
+  ['storage', 'removed stale photo reference 7c0e51'],
+  ['queue', 'removed 2 invalid generated Live Photo videos'],
+  ['storage', 'starting a chunked upload: incomplete body'],
+  ['queue', 'workers still busy after 10s, leaving the rest of the queue for the next start'],
+  ['og', 'link preview cards are drawn in the Go font, which has no Chinese, Japanese or Korean letters'],
+  ['server', 'received terminated, shutting down'],
 ]
+
+function stamp(at) {
+  const pad = (n, width = 2) => String(n).padStart(width, '0')
+  const offset = -at.getTimezoneOffset()
+  const sign = offset < 0 ? '-' : '+'
+  const value = Math.abs(offset)
+  return (
+    `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}` +
+    `T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}.${pad(at.getMilliseconds(), 3)}` +
+    `${sign}${pad(Math.floor(value / 60))}:${pad(value % 60)}`
+  )
+}
 
 function logLines(count) {
   const rnd = mulberry32(4242)
   const out = []
   const now = Date.now()
   for (let i = count - 1; i >= 0; i--) {
-    const [level, scope, message] = LOG_LINES[Math.floor(rnd() * LOG_LINES.length)]
+    const [scope, message] = LOG_LINES[Math.floor(rnd() * LOG_LINES.length)]
     const at = new Date(now - i * (900 + Math.floor(rnd() * 4000)))
-    out.push(
-      `${at.toISOString().slice(0, 19).replace('T', ' ')} [${level}] ${scope}: ${message}`,
-    )
+    out.push(`${stamp(at)} [${scope}] ${message}`)
   }
   return out
 }
@@ -723,14 +732,20 @@ function route(req, res, url) {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
     })
-    const initial = Number(url.searchParams.get('lines')) || 80
+    // The stream carries the line itself, after `id:` says where it ends — the
+    // page resumes a dropped connection from that number.
+    const asked = url.searchParams.get('initial')
+    const initial = asked === 'all' ? 200 : Number(asked) || 80
+    let offset = 0
     for (const line of logLines(Math.min(200, initial))) {
-      res.write(`data: ${JSON.stringify({ line })}\n\n`)
+      offset += line.length + 1
+      res.write(`id: ${offset}\ndata: ${line}\n\n`)
     }
     const timer = setInterval(() => {
-      const [level, scope, message] = LOG_LINES[Math.floor(Math.random() * LOG_LINES.length)]
-      const at = new Date().toISOString().slice(0, 19).replace('T', ' ')
-      res.write(`data: ${JSON.stringify({ line: `${at} [${level}] ${scope}: ${message}` })}\n\n`)
+      const [scope, message] = LOG_LINES[Math.floor(Math.random() * LOG_LINES.length)]
+      const line = `${stamp(new Date())} [${scope}] ${message}`
+      offset += line.length + 1
+      res.write(`id: ${offset}\ndata: ${line}\n\n`)
     }, 2500)
     req.on('close', () => clearInterval(timer))
     return
