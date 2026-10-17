@@ -79,8 +79,10 @@ const totalSelectedFilters = computed(() => {
 
 const syncAlbumCovers = () => {
   for (const album of albums.value) {
-    album.coverPhoto = album.coverPhotoId
-      ? allPhotos.value.find((photo) => photo.id === album.coverPhotoId) || null
+    // 相簿没挑封面时用它自己的第一张照片顶上，只有空相簿才没有封面。
+    const coverId = album.coverPhotoId || album.photoIds?.[0]
+    album.coverPhoto = coverId
+      ? allPhotos.value.find((photo) => photo.id === coverId) || null
       : null
   }
 }
@@ -572,7 +574,7 @@ const columns = computed<any[]>(() => [
                   class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-600"
                 >
                   <Icon
-                    name="tabler:image"
+                    name="tabler:photo"
                     size="20"
                   />
                 </div>
