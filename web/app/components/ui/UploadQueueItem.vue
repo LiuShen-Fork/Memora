@@ -1,42 +1,16 @@
 <script lang="ts" setup>
 import { motion, AnimatePresence } from 'motion-v'
 import { computed, ref, watch, nextTick, onUnmounted } from 'vue'
-
-interface UploadFile {
-  file: File
-  fileName: string
-  fileId: string
-  status:
-    | 'waiting'
-    | 'preparing'
-    | 'uploading'
-    | 'finalizing'
-    | 'processing'
-    | 'completed'
-    | 'error'
-    | 'aborted'
-    | 'skipped'
-    | 'blocked'
-  stage?: string | null
-  progress?: number
-  error?: string
-  warning?: string
-  taskId?: number
-  uploadProgress?: {
-    loaded: number
-    total: number
-    percentage: number
-    speed?: number
-    timeRemaining?: number
-    speedText?: string
-    timeRemainingText?: string
-  }
-  canAbort?: boolean
-  abortUpload?: () => void
-}
+import type { UploadingFile } from '~~/shared/types/uploading-file'
+import {
+  isAbortableUploadStatus,
+  isActiveUploadStatus,
+  isDismissibleUploadStatus,
+  isSkippedOrBlockedUploadStatus,
+} from '~~/shared/utils/upload-status'
 
 const props = defineProps<{
-  uploadingFile: UploadFile
+  uploadingFile: UploadingFile
   fileId: string
 }>()
 
@@ -366,7 +340,10 @@ const generateParticleStyle = (index: number) => {
       <div class="flex items-center gap-2 ml-2">
         <!-- 中止上传按钮 -->
         <motion.div
-          v-if="uploadingFile.status === 'uploading' && uploadingFile.canAbort"
+          v-if="
+            isAbortableUploadStatus(uploadingFile.status) &&
+            uploadingFile.canAbort
+          "
           :initial="{ opacity: 0, scale: 0.8 }"
           :animate="{ opacity: 1, scale: 1 }"
           :exit="{ opacity: 0, scale: 0.8 }"
@@ -384,13 +361,7 @@ const generateParticleStyle = (index: number) => {
 
         <!-- 清除按钮 -->
         <motion.div
-          v-if="
-            uploadingFile.status === 'completed' ||
-            uploadingFile.status === 'error' ||
-            uploadingFile.status === 'aborted' ||
-            uploadingFile.status === 'skipped' ||
-            uploadingFile.status === 'blocked'
-          "
+          v-if="isDismissibleUploadStatus(uploadingFile.status)"
           :initial="{ opacity: 0, scale: 0.8 }"
           :animate="{ opacity: 1, scale: 1 }"
           :exit="{ opacity: 0, scale: 0.8 }"
@@ -411,11 +382,7 @@ const generateParticleStyle = (index: number) => {
     <!-- 进度条区域 -->
     <AnimatePresence>
       <motion.div
-        v-if="
-          uploadingFile.status === 'uploading' ||
-          uploadingFile.status === 'finalizing' ||
-          uploadingFile.status === 'processing'
-        "
+        v-if="isActiveUploadStatus(uploadingFile.status)"
         :initial="{ opacity: 0, height: 0 }"
         :animate="{ opacity: 1, height: 'auto' }"
         :exit="{ opacity: 0, height: 0 }"
@@ -519,9 +486,8 @@ const generateParticleStyle = (index: number) => {
     <AnimatePresence>
       <motion.div
         v-if="
-          (uploadingFile.status === 'skipped' ||
-            uploadingFile.status === 'blocked') &&
-            uploadingFile.error
+          isSkippedOrBlockedUploadStatus(uploadingFile.status) &&
+          uploadingFile.error
         "
         :initial="{ opacity: 0, height: 0, y: -10 }"
         :animate="{ opacity: 1, height: 'auto', y: 0 }"

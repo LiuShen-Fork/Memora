@@ -1,40 +1,13 @@
 <script lang="ts" setup>
 import { motion, AnimatePresence } from 'motion-v'
-
-interface UploadFile {
-  file: File
-  fileName: string
-  fileId: string
-  status:
-    | 'waiting'
-    | 'preparing'
-    | 'uploading'
-    | 'finalizing'
-    | 'processing'
-    | 'completed'
-    | 'error'
-    | 'aborted'
-    | 'skipped'
-    | 'blocked'
-  stage?: string | null
-  progress?: number
-  error?: string
-  taskId?: number
-  uploadProgress?: {
-    loaded: number
-    total: number
-    percentage: number
-    speed?: number
-    timeRemaining?: number
-    speedText?: string
-    timeRemainingText?: string
-  }
-  canAbort?: boolean
-  abortUpload?: () => void
-}
+import type { UploadingFile } from '~~/shared/types/uploading-file'
+import {
+  isActiveUploadStatus,
+  isQueuedUploadStatus,
+} from '~~/shared/utils/upload-status'
 
 const props = defineProps<{
-  uploadingFiles: Map<string, UploadFile>
+  uploadingFiles: Map<string, UploadingFile>
   collapsed?: boolean
 }>()
 

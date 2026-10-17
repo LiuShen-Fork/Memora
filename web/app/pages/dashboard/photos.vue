@@ -2,6 +2,12 @@
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import type { Album, Photo, PipelineQueueItem } from '~~/shared/types/domain'
 import type { UploadPlan } from '~~/shared/types/upload'
+import type { UploadingFile } from '~~/shared/types/uploading-file'
+import {
+  isAbortableUploadStatus,
+  isClearableUploadStatus,
+  isInFlightTransportStatus,
+} from '~~/shared/utils/upload-status'
 import { h, resolveComponent } from 'vue'
 import { Icon, UBadge } from '#components'
 import ThumbImage from '~/components/ui/ThumbImage.vue'
@@ -109,49 +115,6 @@ const fetchReactions = async (photoIds: string[]) => {
   } finally {
     reactionsLoading.value = false
   }
-}
-
-interface UploadingFile {
-  file: File
-  fileName: string
-  fileId: string
-  status:
-    | 'waiting'
-    | 'preparing'
-    | 'uploading'
-    | 'finalizing'
-    | 'processing'
-    | 'completed'
-    | 'error'
-    | 'aborted'
-    | 'skipped'
-    | 'blocked'
-  stage?: PipelineQueueItem['statusStage'] | null
-  progress?: number
-  error?: string
-  warning?: string
-  taskId?: number
-  signedUrlResponse?: {
-    signedUrl: string
-    fileKey: string
-    expiresIn: number
-    /**
-     * How a large file should be sent. The server offers it in place of the
-     * single request every smaller file still uses.
-     */
-    upload?: UploadPlan
-  }
-  uploadProgress?: {
-    loaded: number
-    total: number
-    percentage: number
-    speed?: number
-    timeRemaining?: number
-    speedText?: string
-    timeRemainingText?: string
-  }
-  canAbort?: boolean
-  abortUpload?: () => void
 }
 
 const uploadingFiles = ref<Map<string, UploadingFile>>(new Map())
@@ -425,7 +388,7 @@ const uploadImage = async (
         if (status === 'aborted') {
           uploadingFile.status = 'aborted'
         }
-        uploadingFile.canAbort = status === 'uploading'
+        uploadingFile.canAbort = isInFlightTransportStatus(status)
         uploadingFiles.value = new Map(uploadingFiles.value)
       },
       onSuccess: async (_xhr: XMLHttpRequest) => {
@@ -908,11 +871,7 @@ const clearCompletedTasks = () => {
   const toRemove: string[] = []
 
   for (const [fileId, uploadingFile] of uploadingFiles.value) {
-    if (
-      uploadingFile.status === 'completed' ||
-      uploadingFile.status === 'error' ||
-      uploadingFile.status === 'aborted'
-    ) {
+    if (isClearableUploadStatus(uploadingFile.status)) {
       toRemove.push(fileId)
 
       // 清理可能存在的定时器
@@ -956,7 +915,10 @@ const clearAllUploads = () => {
     toRemove.push(fileId)
 
     // 如果是正在上传的任务，先中止
-    if (uploadingFile.status === 'uploading' && uploadingFile.abortUpload) {
+    if (
+      isAbortableUploadStatus(uploadingFile.status) &&
+      uploadingFile.abortUpload
+    ) {
       uploadingFile.abortUpload()
     }
 

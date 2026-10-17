@@ -1,4 +1,5 @@
 import type { UploadPlan } from '~~/shared/types/upload'
+import type { UploadTransportStatus } from '~~/shared/utils/upload-status'
 
 export interface UploadProgress {
   loaded: number
@@ -8,21 +9,8 @@ export interface UploadProgress {
   timeRemaining?: number // seconds
 }
 
-/**
- * `finalizing` is the wait between the last byte leaving the browser and the
- * file existing in storage, which a large upload sent in parts makes long
- * enough that it is worth showing.
- */
-export type UploadState =
-  | 'idle'
-  | 'uploading'
-  | 'finalizing'
-  | 'success'
-  | 'error'
-  | 'aborted'
-
 export interface UploadStatus {
-  status: UploadState
+  status: UploadTransportStatus
   progress: UploadProgress
   error?: string
   startTime?: number
@@ -31,7 +19,7 @@ export interface UploadStatus {
 
 export interface UploadCallbacks {
   onProgress?: (progress: UploadProgress) => void
-  onStatusChange?: (status: UploadState) => void
+  onStatusChange?: (status: UploadTransportStatus) => void
   onSuccess?: (response?: XMLHttpRequest) => void
   onError?: (error: string, xhr?: XMLHttpRequest) => void
   onAbort?: () => void
