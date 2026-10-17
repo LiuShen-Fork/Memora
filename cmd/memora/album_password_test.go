@@ -523,3 +523,84 @@ func TestAlbumPasswordsBelowTheMinimumAreRejected(t *testing.T) {
 		t.Fatalf("valid password status = %d body = %s", response.Code, response.Body.String())
 	}
 }
+
+// How a photo was received is part of what the photo holds, so an album that
+// keeps a photo out of sight keeps its counts out of sight with it. The
+// reaction routes answer for such a photo the way they answer for one that does
+// not exist, which is what keeps the answer from naming what it is hiding.
+func TestReactionsStayOutOfSightWithThePhoto(t *testing.T) {
+	resetUnlockLimits()
+	app := newTestApp(t)
+	id := aLockedAlbum(t, app, "hunter2")
+	path := "/api/albums/" + itoa(id)
+	if _, err := app.db.Exec(`INSERT INTO photos(id,storage_key) VALUES('hidden-photo','photos/hidden.jpg')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO albums(id,title,is_hidden) VALUES(99,'Hidden',1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO album_photos(album_id,photo_id) VALUES(99,'hidden-photo')`); err != nil {
+		t.Fatal(err)
+	}
+
+	// The admin sees the photo and reacts to it, which is what puts a count on
+	// it in the first place.
+	react := httptest.NewRecorder()
+	app.ServeHTTP(react, adminRequest(t, app, http.MethodPost, "/api/photos/secret/reactions", []byte(`{"reactionType":"love"}`)))
+	if react.Code != http.StatusOK {
+		t.Fatalf("reacting to the photo = %d, %s", react.Code, react.Body.String())
+	}
+
+	// A visitor without the password asks after one photo, and after a list.
+	// Neither the photo nor the id no photo answers to comes back.
+	single := httptest.NewRecorder()
+	app.ServeHTTP(single, anonymous(http.MethodGet, "/api/photos/secret/reactions", nil))
+	if single.Code != http.StatusNotFound {
+		t.Fatalf("the reactions of a locked photo = %d, want them to be absent", single.Code)
+	}
+	if body := single.Body.String(); strings.Contains(body, "love") {
+		t.Fatalf("the refusal repeated a count: %s", body)
+	}
+	list := httptest.NewRecorder()
+	app.ServeHTTP(list, anonymous(http.MethodGet, "/api/photos/reactions?ids=secret,nothing,hidden-photo", nil))
+	if counts := strings.TrimSpace(list.Body.String()); counts != "{}" {
+		t.Fatalf("counts of photos out of sight came back as %s, want them left out entirely", counts)
+	}
+	// Reacting to such a photo is refused the same way, so no count is added
+	// behind the album that hides it either.
+	write := httptest.NewRecorder()
+	app.ServeHTTP(write, anonymous(http.MethodPost, "/api/photos/secret/reactions", []byte(`{"reactionType":"fire"}`)))
+	if write.Code != http.StatusNotFound {
+		t.Fatalf("reacting to a locked photo = %d, want it to be refused as absent", write.Code)
+	}
+
+	// Unlocking the album is what brings the photo — and its counts — back.
+	unlocked := httptest.NewRecorder()
+	app.ServeHTTP(unlocked, anonymous(http.MethodPost, path+"/unlock", []byte(`{"password":"hunter2"}`)))
+	grant := unlocked.Result().Cookies()[0]
+	open := httptest.NewRequest(http.MethodGet, "/api/photos/secret/reactions", nil)
+	open.AddCookie(grant)
+	openRecorder := httptest.NewRecorder()
+	app.ServeHTTP(openRecorder, open)
+	if openRecorder.Code != http.StatusOK || !strings.Contains(openRecorder.Body.String(), `"love":1`) {
+		t.Fatalf("the reactions of an unlocked photo = %d, %s", openRecorder.Code, openRecorder.Body.String())
+	}
+	openList := httptest.NewRequest(http.MethodGet, "/api/photos/reactions?ids=secret,nothing", nil)
+	openList.AddCookie(grant)
+	listRecorder := httptest.NewRecorder()
+	app.ServeHTTP(listRecorder, openList)
+	if body := listRecorder.Body.String(); !strings.Contains(body, `"secret"`) || !strings.Contains(body, `"love":1`) {
+		t.Fatalf("the counts of an unlocked photo = %s", body)
+	}
+
+	// The dashboard keeps the whole picture, counts and all.
+	admin := httptest.NewRecorder()
+	app.ServeHTTP(admin, adminRequest(t, app, http.MethodGet, "/api/photos/reactions?ids=secret,hidden-photo,nothing", nil))
+	body := admin.Body.String()
+	if !strings.Contains(body, `"secret"`) || !strings.Contains(body, `"love":1`) || !strings.Contains(body, `"hidden-photo"`) {
+		t.Fatalf("the admin's view of the counts = %s", body)
+	}
+	if strings.Contains(body, "nothing") {
+		t.Fatalf("an id no photo answers to was answered anyway: %s", body)
+	}
+}

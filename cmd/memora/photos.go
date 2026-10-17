@@ -408,9 +408,6 @@ func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]map[string]int{}
 	uniqueIDs := uniqueStrings(ids)
-	for _, id := range uniqueIDs {
-		out[id] = newReactionCounts()
-	}
 	// Keep the request bounded by SQLite's host-parameter limit while reducing
 	// the common many-photo request to one grouped query.
 	for start := 0; start < len(uniqueIDs); start += 500 {
@@ -418,7 +415,20 @@ func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 		if end > len(uniqueIDs) {
 			end = len(uniqueIDs)
 		}
-		batch := uniqueIDs[start:end]
+		// How a photo was received is part of what the photo holds, so a photo
+		// an album keeps out of sight carries its counts nowhere either, and an
+		// id that names no photo is answered no differently.
+		batch, err := a.seenPhotoIDs(r, uniqueIDs[start:end])
+		if err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to load reactions")
+			return
+		}
+		if len(batch) == 0 {
+			continue
+		}
+		for _, id := range batch {
+			out[id] = newReactionCounts()
+		}
 		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(batch)), ",")
 		args := make([]any, len(batch))
 		for i, id := range batch {
@@ -738,6 +748,18 @@ func (a *App) deletePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	writeJSON(w, http.StatusOK, map[string]any{"statusCode": 200, "statusMessage": "Photo deleted successfully"})
 }
 func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
+	// A photo an album keeps out of sight takes neither a reaction nor a count
+	// of them, and the answer is the one a photo that does not exist gets: a
+	// refusal here would name what the visitor is not allowed to see.
+	seen, err := a.seenPhotoIDs(r, []string{id})
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to load reactions")
+		return
+	}
+	if len(seen) == 0 {
+		errorJSON(w, http.StatusNotFound, "Photo not found")
+		return
+	}
 	fingerprint := reactionFingerprint(r)
 	if r.Method == http.MethodGet {
 		rows, err := a.db.Query(`SELECT reaction_type,count(*) FROM photo_reactions WHERE photo_id=? GROUP BY reaction_type`, id)
@@ -783,11 +805,6 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	if decodeJSON(r, &body) != nil || !validReactionType(body.ReactionType) {
 		errorJSON(w, http.StatusBadRequest, "Invalid reaction type")
-		return
-	}
-	var photoExists int
-	if err := a.db.QueryRow(`SELECT 1 FROM photos WHERE id=?`, id).Scan(&photoExists); err != nil {
-		errorJSON(w, http.StatusNotFound, "Photo not found")
 		return
 	}
 	var recent int

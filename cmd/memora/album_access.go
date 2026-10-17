@@ -252,6 +252,72 @@ func (a *App) photoAccessDenied(access albumAccess, memberships []albumAccessTar
 	return true
 }
 
+// seenPhotoIDs narrows a list of photo ids to the ones this request may see. It
+// is the same question the media routes ask before they serve a photo's bytes,
+// asked of a whole list at once so that a page of photos does not pay for a
+// query each.
+//
+// An id that no photo answers to is left out along with the ones an album keeps
+// out of sight, so what comes back tells a caller which photos it may count
+// without telling anyone which of the two any missing id was.
+func (a *App) seenPhotoIDs(r *http.Request, ids []string) ([]string, error) {
+	present, err := a.existingPhotoIDs(r.Context(), ids)
+	if err != nil {
+		return nil, err
+	}
+	access := a.albumAccessFor(r)
+	if access.admin {
+		return present, nil
+	}
+	memberships, err := a.albumMembershipsForPhotos(r.Context(), present)
+	if err != nil {
+		return nil, err
+	}
+	seen := present[:0]
+	for _, id := range present {
+		if !a.photoAccessDenied(access, memberships[id]) {
+			seen = append(seen, id)
+		}
+	}
+	return seen, nil
+}
+
+// existingPhotoIDs keeps the ids a photo actually answers to, in the order they
+// were asked for.
+func (a *App) existingPhotoIDs(ctx context.Context, ids []string) ([]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := a.db.QueryContext(ctx, `SELECT id FROM photos WHERE id IN (`+placeholders+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	found := make(map[string]bool, len(ids))
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		found[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	present := make([]string, 0, len(found))
+	for _, id := range ids {
+		if found[id] {
+			present = append(present, id)
+		}
+	}
+	return present, nil
+}
+
 // albumMembershipsForPhotos groups the albums that hold each photo.
 func (a *App) albumMembershipsForPhotos(ctx context.Context, photoIDs []string) (map[string][]albumAccessTarget, error) {
 	memberships := map[string][]albumAccessTarget{}
