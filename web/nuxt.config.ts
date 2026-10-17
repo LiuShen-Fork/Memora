@@ -33,6 +33,19 @@ export default defineNuxtConfig({
     fonts: false,
   },
 
+  // Only the icons the build finds while reading the app are bundled into it,
+  // and the scan reads templates, not TypeScript. The icons Nuxt UI's own
+  // components ask for are named in app.config.ts, so the scan is told to read
+  // .ts as well; otherwise a select draws no chevron and a toast no close
+  // button, because the static frontend has no icon service to fetch from.
+  icon: {
+    clientBundle: {
+      scan: {
+        globInclude: ['**/*.{vue,jsx,tsx,ts,md,mdc,mdx,yml,yaml}'],
+      },
+    },
+  },
+
   css: ['~/assets/css/tailwind.css'],
 
   components: [{ path: '~/components/ui', pathPrefix: false }, '~/components'],
