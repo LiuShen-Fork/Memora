@@ -70,6 +70,8 @@ NUXT_PROVIDER_LOCAL_PATH=/app/data/storage
 NUXT_SESSION_PASSWORD=
 ```
 
+The setup wizard will not accept a blank or a short password, and it refuses the built-in password ChronoFrame used to create its first administrator with. An account that already has that password — created by an earlier Memora version or by ChronoFrame itself — keeps working; change it under **Settings → General Settings**, where the Password card sets a new password for the account you are signed in as. Setting `CFRAME_ADMIN_PASSWORD` only prefills the wizard and never touches an existing account.
+
 If you want to use S3 instead of local storage, replace the storage section with:
 
 ```bash

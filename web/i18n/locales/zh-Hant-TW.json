@@ -1482,6 +1482,25 @@
     "general": {
       "description": "管理站點基礎資訊與展示外觀。更改會立即影響控制台和前台展示。"
     },
+    "password": {
+      "title": "密碼",
+      "description": "修改登入本網站使用的密碼。",
+      "current": "目前密碼",
+      "currentPlaceholder": "現在使用的密碼",
+      "new": "新密碼",
+      "newPlaceholder": "至少 {count} 個字元",
+      "confirm": "再次輸入新密碼",
+      "save": "修改密碼",
+      "help": "目前登入狀態不變，下次登入時使用新密碼。",
+      "changed": "密碼已修改",
+      "changedDescription": "下次登入請使用新密碼。",
+      "failed": "密碼修改失敗",
+      "errors": {
+        "currentRequired": "請輸入目前使用的密碼",
+        "tooShort": "密碼至少需要 {count} 個字元",
+        "mismatch": "兩次輸入的密碼不一致"
+      }
+    },
     "form": {
       "loadFailed": "載入設定失敗",
       "saveSuccess": "設定已儲存",

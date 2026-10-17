@@ -241,6 +241,25 @@ const handleAppearanceSettingsSubmit = async () => {
             </div>
           </footer>
         </section>
+
+        <section
+          class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
+        >
+          <header
+            class="space-y-1 border-b border-neutral-200 px-5 py-4 dark:border-neutral-800"
+          >
+            <h3
+              class="text-base font-semibold text-neutral-900 dark:text-neutral-100"
+            >
+              {{ $t('settings.password.title') }}
+            </h3>
+            <p class="text-sm text-neutral-600 dark:text-neutral-400">
+              {{ $t('settings.password.description') }}
+            </p>
+          </header>
+
+          <SettingPassword />
+        </section>
       </div>
     </template>
   </UDashboardPanel>

@@ -278,7 +278,7 @@ func (a *App) writeMapSettings(input wizardMapInput) {
 
 func validAdmin(email, password, username string) bool {
 	parts := strings.Split(strings.TrimSpace(email), "@")
-	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= 6 && len(strings.TrimSpace(username)) >= 2
+	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= minPasswordLength && len(strings.TrimSpace(username)) >= 2
 }
 
 // formerDefaultPassword is what ChronoFrame, the project this site was forked

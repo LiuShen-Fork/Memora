@@ -1482,6 +1482,25 @@
     "general": {
       "description": "サイトの基本情報と表示外観を管理します。変更はダッシュボードと公開側の表示に即時反映されます。"
     },
+    "password": {
+      "title": "パスワード",
+      "description": "ログインに使うパスワードを変更します。",
+      "current": "現在のパスワード",
+      "currentPlaceholder": "現在使用中のパスワード",
+      "new": "新しいパスワード",
+      "newPlaceholder": "{count} 文字以上",
+      "confirm": "新しいパスワード（確認）",
+      "save": "パスワードを変更",
+      "help": "ログイン状態はそのままです。次回のログインから新しいパスワードをお使いください。",
+      "changed": "パスワードを変更しました",
+      "changedDescription": "次回のログインから新しいパスワードをお使いください。",
+      "failed": "パスワードを変更できませんでした",
+      "errors": {
+        "currentRequired": "現在のパスワードを入力してください",
+        "tooShort": "パスワードは {count} 文字以上にしてください",
+        "mismatch": "パスワードが一致しません"
+      }
+    },
     "form": {
       "loadFailed": "設定の読み込みに失敗しました",
       "saveSuccess": "設定が保存されました",

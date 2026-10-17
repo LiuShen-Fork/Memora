@@ -133,6 +133,8 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.logout(w, r)
 	case path == "/api/profile" && r.Method == http.MethodGet:
 		a.profile(w, r)
+	case path == "/api/profile/password" && r.Method == http.MethodPut:
+		a.changePassword(w, r)
 	case path == "/api/photos" && r.Method == "GET":
 		a.photos(w, r, false)
 	case path == "/api/photos/visible" && r.Method == "GET":
@@ -268,7 +270,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 
 func validLoginCredentials(email, password string) bool {
 	parts := strings.Split(strings.TrimSpace(email), "@")
-	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= 6
+	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= minPasswordLength
 }
 func verifyPassword(hash, password string) bool {
 	if strings.HasPrefix(hash, "$2") {

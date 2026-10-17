@@ -1582,6 +1582,25 @@
     "general": {
       "description": "管理站点基础信息与展示外观。更改会立即影响控制台和前台展示。"
     },
+    "password": {
+      "title": "密码",
+      "description": "修改登录本站使用的密码。",
+      "current": "当前密码",
+      "currentPlaceholder": "现在使用的密码",
+      "new": "新密码",
+      "newPlaceholder": "至少 {count} 位",
+      "confirm": "再次输入新密码",
+      "save": "修改密码",
+      "help": "当前登录状态不变，下次登录时使用新密码。",
+      "changed": "密码已修改",
+      "changedDescription": "下次登录请使用新密码。",
+      "failed": "密码修改失败",
+      "errors": {
+        "currentRequired": "请输入现在使用的密码",
+        "tooShort": "密码至少需要 {count} 位",
+        "mismatch": "两次输入的密码不一致"
+      }
+    },
     "form": {
       "loadFailed": "加载设置失败",
       "saveSuccess": "设置已保存",

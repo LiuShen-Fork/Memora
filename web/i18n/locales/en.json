@@ -1582,6 +1582,25 @@
     "general": {
       "description": "Manage the site's basic information and display appearance. Changes will immediately affect the dashboard and public-facing display."
     },
+    "password": {
+      "title": "Password",
+      "description": "Change the password you sign in with.",
+      "current": "Current password",
+      "currentPlaceholder": "The password you sign in with now",
+      "new": "New password",
+      "newPlaceholder": "At least {count} characters",
+      "confirm": "Repeat the new password",
+      "save": "Change password",
+      "help": "You stay signed in; the new password is asked for the next time you sign in.",
+      "changed": "Password changed",
+      "changedDescription": "Use the new password the next time you sign in.",
+      "failed": "The password could not be changed",
+      "errors": {
+        "currentRequired": "Enter the password you sign in with",
+        "tooShort": "Passwords need at least {count} characters",
+        "mismatch": "The two passwords are not the same"
+      }
+    },
     "form": {
       "loadFailed": "Failed to load settings",
       "saveSuccess": "Settings saved",
