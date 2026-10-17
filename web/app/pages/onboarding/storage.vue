@@ -7,6 +7,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 
 const {
   fields,
@@ -14,6 +15,10 @@ const {
   loading: fetchingSchema,
   isFieldVisible,
 } = useWizardForm('storage')
+
+// The label a field is drawn with is the label its message names.
+const requiredMessage = (field: { label?: string }) =>
+  t('onboarding.validation.required', { field: t(field.label || '') })
 
 // Dynamic schema based on visible fields
 const schema = computed(() => {
@@ -29,20 +34,14 @@ const schema = computed(() => {
     } else if (field.type === 'number') {
       validator = z.number()
       if (field.ui.required) {
-        validator = (validator as z.ZodString).min(
-          1,
-          `${field.label} is required`,
-        )
+        validator = (validator as z.ZodString).min(1, requiredMessage(field))
       } else {
         validator = (validator as z.ZodString).optional()
       }
     } else {
       validator = z.string()
       if (field.ui.required) {
-        validator = (validator as z.ZodString).min(
-          1,
-          `${field.label} is required`,
-        )
+        validator = (validator as z.ZodString).min(1, requiredMessage(field))
       } else {
         validator = (validator as z.ZodString).optional()
       }

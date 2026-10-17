@@ -1657,6 +1657,14 @@
       "next": "Next",
       "completeSetup": "Complete Setup"
     },
+    "validation": {
+      "required": "{field} is required",
+      "usernameTooShort": "Username must be at least {count} characters",
+      "passwordTooShort": "Password must be at least {count} characters",
+      "passwordMismatch": "Passwords don't match",
+      "invalidEmail": "Invalid email address",
+      "invalidUrl": "Invalid URL"
+    },
     "welcome": {
       "title": "Welcome to Memora",
       "description": "Follow the wizard to set up your gallery in a few minutes.",

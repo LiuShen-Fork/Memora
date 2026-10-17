@@ -7,6 +7,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 
 const {
   fields,
@@ -23,9 +24,12 @@ const schema = computed(() => {
 
     let validator: z.ZodTypeAny = z.string()
     if (field.ui.required) {
+      // The label the field is drawn with is the one the message names.
       validator = (validator as z.ZodString).min(
         1,
-        `${field.label} is required`,
+        t('onboarding.validation.required', {
+          field: t(field.label || ''),
+        }),
       )
     } else {
       validator = (validator as z.ZodString).optional()

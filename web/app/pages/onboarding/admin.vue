@@ -6,6 +6,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 
 // Use the wizard form composable
 const {
@@ -15,20 +16,26 @@ const {
   isFieldVisible,
 } = useWizardForm('admin')
 
-// Construct schema dynamically or keep it static?
-// For admin, static is safer for the specific password logic,
-// but we can make it partial to allow extra fields if API adds them.
-const schema = z
-  .object({
-    username: z.string().min(2, 'Username must be at least 2 characters'),
-    email: z.email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  })
+// The rules are the server's own: a username of at least two characters and a
+// password of at least six. The messages are read inside a computed so that
+// they follow a change of language rather than the language the step opened in.
+const schema = computed(() =>
+  z
+    .object({
+      username: z
+        .string()
+        .min(2, t('onboarding.validation.usernameTooShort', { count: 2 })),
+      email: z.email(t('onboarding.validation.invalidEmail')),
+      password: z
+        .string()
+        .min(6, t('onboarding.validation.passwordTooShort', { count: 6 })),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t('onboarding.validation.passwordMismatch'),
+      path: ['confirmPassword'],
+    }),
+)
 
 function onSubmit() {
   // Validation passed, data is already in the store via useWizardForm binding

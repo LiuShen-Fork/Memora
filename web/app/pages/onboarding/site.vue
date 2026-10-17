@@ -6,6 +6,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const { t } = useI18n()
 
 // Use wizard form for 'app' namespace (site settings)
 const {
@@ -15,12 +16,23 @@ const {
   isFieldVisible,
 } = useWizardForm('app')
 
-const schema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  slogan: z.string().optional(),
-  author: z.string().optional(),
-  avatarUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
-})
+const schema = computed(() =>
+  z.object({
+    title: z.string().min(
+      1,
+      t('onboarding.validation.required', {
+        field: t('settings.app.title.label'),
+      }),
+    ),
+    slogan: z.string().optional(),
+    author: z.string().optional(),
+    avatarUrl: z
+      .string()
+      .url(t('onboarding.validation.invalidUrl'))
+      .optional()
+      .or(z.literal('')),
+  }),
+)
 
 function onSubmit() {
   // Validation passed, data is already in the store via useWizardForm binding

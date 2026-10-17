@@ -1657,6 +1657,14 @@
       "next": "下一步",
       "completeSetup": "完成设置"
     },
+    "validation": {
+      "required": "请填写{field}",
+      "usernameTooShort": "用户名至少需要 {count} 个字符",
+      "passwordTooShort": "密码至少需要 {count} 个字符",
+      "passwordMismatch": "两次输入的密码不一致",
+      "invalidEmail": "无效的电子邮件地址",
+      "invalidUrl": "无效的链接"
+    },
     "welcome": {
       "title": "欢迎使用 Memora",
       "description": "跟随向导，在几分钟内设置好您的画廊。",

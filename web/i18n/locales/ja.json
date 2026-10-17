@@ -1583,6 +1583,14 @@
       "next": "次へ",
       "completeSetup": "設定を完了"
     },
+    "validation": {
+      "required": "{field}は必須です",
+      "usernameTooShort": "ユーザー名は{count}文字以上で入力してください",
+      "passwordTooShort": "パスワードは{count}文字以上で入力してください",
+      "passwordMismatch": "パスワードが一致しません",
+      "invalidEmail": "無効なメールアドレスです",
+      "invalidUrl": "無効なURLです"
+    },
     "welcome": {
       "title": "Memora へようこそ",
       "description": "ウィザードに従って、数分でギャラリーを設定できます。",
