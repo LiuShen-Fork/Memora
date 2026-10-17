@@ -12,19 +12,34 @@ useHead({
 
 const dayjs = useDayjs()
 const config = useRuntimeConfig()
-const { photos } = usePhotos()
 
 const { data: dashboardStats, refresh: refreshStats } =
   await useFetch('/api/system/stats')
 
+// The calendar counts photos by the day they were taken, which is a question
+// about the collection rather than about the photos the gallery happens to
+// have loaded. It used to be answered from the browser's copy of the
+// collection, so a cold visit to the dashboard drew an empty year, and a warm
+// one drew a year counted from a sample. One query answers it properly.
+const { data: timeline } = await useFetch<{
+  days: { date: string; count: number }[]
+}>('/api/photos/timeline')
+
+const timelineDays = computed(() => timeline.value?.days || [])
+
 // 年份选择器相关状态
 const selectedYear = ref<number | 'recent'>('recent')
 
-const refreshData = async () => {
-  await refreshStats()
-}
-
-useIntervalFn(refreshData, 5000)
+// A dashboard is left open. Re-reading every five seconds costs the server
+// twelve requests a minute for a page nobody is looking at, so the poll is
+// slower and stops while the tab is in the background.
+const visibility = useDocumentVisibility()
+useIntervalFn(
+  () => {
+    if (visibility.value === 'visible') void refreshStats()
+  },
+  10000,
+)
 
 const memoryUsage = computed(() => {
   const memory = dashboardStats.value?.memory
@@ -128,65 +143,38 @@ const activeStorage = computed(() => {
   return active.name ? `${label}(${active.name})` : label
 })
 
-// 获取所有有照片的年份
+// Every day the collection has a photo on is a day the calendar can offer.
 const availableYears = computed(() => {
-  if (!photos.value || photos.value.length === 0) return []
-
   const years = new Set<number>()
-  photos.value.forEach((photo) => {
-    if (photo.dateTaken) {
-      const year = dayjs(photo.dateTaken).year()
-      years.add(year)
-    }
-  })
-
-  return Array.from(years).sort((a, b) => b - a) // 降序排列，最新年份在前
-})
-
-const heatmapData = computed(() => {
-  if (!photos.value || photos.value.length === 0) return []
-
-  const dateCountMap = new Map<string, number>()
-
-  // 计算起止范围
-  let start, end
-  if (selectedYear.value === 'recent') {
-    start = dayjs().subtract(1, 'year')
-    end = dayjs().add(1, 'day') // 包含今天
-  } else {
-    start = dayjs(`${selectedYear.value}-01-01`).startOf('year')
-    end = dayjs(`${selectedYear.value}-01-01`).endOf('year')
+  for (const day of timelineDays.value) {
+    const year = Number(day.date.slice(0, 4))
+    if (Number.isFinite(year) && year > 0) years.add(year)
   }
-
-  photos.value.forEach((photo) => {
-    if (!photo.dateTaken) return
-    const photoDate = dayjs(photo.dateTaken)
-
-    if (photoDate.isBetween(start, end, 'day', '[]')) {
-      const date = photoDate.format('YYYY-MM-DD')
-      dateCountMap.set(date, (dateCountMap.get(date) || 0) + 1)
-    }
-  })
-
-  return Array.from(dateCountMap.entries()).map(([date, count]) => ({
-    date,
-    count,
-  }))
+  return [...years].sort((a, b) => b - a)
 })
 
-const heatmapStartDate = computed(() => {
-  if (selectedYear.value === 'recent') {
-    return dayjs().subtract(1, 'year').toDate()
-  }
-  return dayjs(`${selectedYear.value}-01-01`).startOf('year').toDate()
-})
+// Days are compared as text because that is how they are stored: YYYY-MM-DD
+// sorts the same way it reads.
+const range = computed(() =>
+  selectedYear.value === 'recent'
+    ? {
+        from: dayjs().subtract(1, 'year').format('YYYY-MM-DD'),
+        to: dayjs().add(1, 'day').format('YYYY-MM-DD'),
+      }
+    : {
+        from: `${selectedYear.value}-01-01`,
+        to: `${selectedYear.value}-12-31`,
+      },
+)
 
-const heatmapEndDate = computed(() => {
-  if (selectedYear.value === 'recent') {
-    return dayjs().add(1, 'day').toDate()
-  }
-  return dayjs(`${selectedYear.value}-01-01`).endOf('year').toDate()
-})
+const heatmapData = computed(() =>
+  timelineDays.value.filter(
+    (day) => day.date >= range.value.from && day.date <= range.value.to,
+  ),
+)
+
+const heatmapStartDate = computed(() => dayjs(range.value.from).toDate())
+const heatmapEndDate = computed(() => dayjs(range.value.to).toDate())
 
 const yearOptions = computed(() => {
   const options: Array<{ label: string; value: number | 'recent' }> = [
@@ -224,31 +212,54 @@ const onShareSite = () => {
 
     <template #body>
       <div class="flex flex-col gap-4">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <DashboardIndicator
             data-tour="dashboard-photos"
             :title="$t('dashboard.overview.indicator.totalPhotos')"
             icon="tabler:photo"
-            color="blue"
+            tone="accent"
             :value="dashboardStats?.photos?.total || 0"
+            :hint="
+              $t('dashboard.overview.indicator.todayCount', {
+                count: dashboardStats?.photos?.today || 0,
+              })
+            "
             clickable
             @click="$router.push('/dashboard/photos')"
           />
           <DashboardIndicator
             :title="$t('dashboard.overview.indicator.thisMonth')"
             icon="tabler:photo-plus"
-            color="green"
             :value="dashboardStats?.photos?.thisMonth || 0"
+            :hint="
+              $t('dashboard.overview.indicator.weekCount', {
+                count: dashboardStats?.photos?.thisWeek || 0,
+              })
+            "
           />
           <DashboardIndicator
             data-tour="dashboard-queue"
             :title="$t('dashboard.overview.indicator.queueStatus.title')"
             icon="tabler:loader"
-            color="purple"
+            :tone="
+              queueState === 'stopped'
+                ? 'negative'
+                : queueState === 'attention'
+                  ? 'attention'
+                  : queueState === 'processing'
+                    ? 'accent'
+                    : 'neutral'
+            "
             :value="
               (dashboardStats?.workerPool?.activeWorkers || 0) > 0
                 ? $t('dashboard.overview.indicator.queueStatus.processing')
                 : $t('dashboard.overview.indicator.queueStatus.pending')
+            "
+            :hint="
+              $t('dashboard.overview.indicator.queueCounts', {
+                pending: dashboardStats?.queue?.pending || 0,
+                failed: dashboardStats?.queue?.failed || 0,
+              })
             "
             clickable
             @click="$router.push('/dashboard/queue')"
@@ -256,20 +267,25 @@ const onShareSite = () => {
           <DashboardIndicator
             :title="$t('dashboard.overview.indicator.storageUsage')"
             icon="tabler:database"
-            color="blue"
             :value="formatBytes(dashboardStats?.storage?.totalSize || 0)"
+            :hint="
+              $t('dashboard.overview.indicator.averageSize', {
+                size: formatBytes(dashboardStats?.storage?.averageSize || 0),
+              })
+            "
           />
         </div>
 
-        <!-- 详细统计区域 -->
-        <div class="grid grid-cols-1 items-start lg:grid-cols-5 gap-4">
-          <!-- 左侧 -->
-          <div class="min-w-0 space-y-4 lg:col-span-3">
-            <UCard>
+        <!-- Both columns are stretched to the taller of the two, and the
+             recent-activity card takes up the slack inside the left one, so
+             the page ends on one line instead of two. -->
+        <div class="grid min-h-0 gap-4 lg:grid-cols-5">
+          <div class="flex min-w-0 flex-col gap-4 lg:col-span-3">
+            <DashboardPanel :ui="{ body: 'px-2 py-3 sm:px-3' }">
               <div class="heatmap-container">
                 <ClientOnly>
                   <CalendarHeatmap
-                    theme="blue"
+                    theme="brand"
                     :values="heatmapData"
                     :start-date="heatmapStartDate"
                     :end-date="heatmapEndDate"
@@ -331,7 +347,7 @@ const onShareSite = () => {
                     </template>
                   </CalendarHeatmap>
                   <template #placeholder>
-                    <div class="flex items-center justify-center h-[164.5px]">
+                    <div class="flex h-[164.5px] items-center justify-center">
                       <Icon
                         name="svg-spinners:180-ring-with-bg"
                         class="size-8 opacity-50"
@@ -341,43 +357,45 @@ const onShareSite = () => {
                   </template>
                 </ClientOnly>
               </div>
-            </UCard>
-            <DashboardRecentActivity />
+            </DashboardPanel>
+
+            <DashboardRecentActivity class="flex-1" />
           </div>
 
           <!-- 右侧：运行状态 -->
-          <div class="min-w-0 lg:col-span-2 w-full space-y-4">
-            <UCard class="@container">
-              <template #header>
-                <DashboardSectionHeader
-                  :title="$t('dashboard.overview.section.queue.title')"
-                  icon="tabler:server"
-                >
-                  <span class="flex items-center gap-1.5 text-xs text-muted">
-                    <span
-                      class="size-1.5 rounded-full"
-                      :class="{
-                        'bg-success': queueState === 'processing',
-                        'bg-warning': queueState === 'attention',
-                        'bg-error': queueState === 'stopped',
-                        'bg-neutral-400':
-                          queueState === 'idle' || queueState === 'unknown',
-                      }"
-                    />
-                    {{
-                      $t(
-                        'dashboard.overview.section.queue.states.' + queueState,
-                      )
-                    }}
-                  </span>
-                </DashboardSectionHeader>
+          <div class="flex min-w-0 flex-col lg:col-span-2">
+            <DashboardPanel
+              class="@container h-full"
+              :title="$t('dashboard.overview.section.queue.title')"
+              icon="tabler:server"
+              :ui="{
+                root: 'flex h-full flex-col shadow-xs',
+                body: 'flex flex-1 flex-col px-4 py-4 sm:px-4',
+              }"
+            >
+              <template #actions>
+                <span class="flex items-center gap-1.5 text-xs text-muted">
+                  <span
+                    class="size-1.5 rounded-full"
+                    :class="{
+                      'bg-success': queueState === 'processing',
+                      'bg-warning': queueState === 'attention',
+                      'bg-error': queueState === 'stopped',
+                      'bg-neutral-400':
+                        queueState === 'idle' || queueState === 'unknown',
+                    }"
+                  />
+                  {{
+                    $t('dashboard.overview.section.queue.states.' + queueState)
+                  }}
+                </span>
               </template>
 
               <div
-                class="grid grid-cols-1 @min-[440px]:grid-cols-[100px_minmax(0,1fr)] overflow-hidden rounded-lg border border-default"
+                class="grid grid-cols-1 overflow-hidden rounded-lg border border-default @min-[440px]:grid-cols-[100px_minmax(0,1fr)]"
               >
                 <div
-                  class="flex items-center justify-center gap-3 border-b border-default bg-elevated/50 px-3 py-3 @min-[440px]:flex-col @min-[440px]:gap-1 @min-[440px]:border-b-0 @min-[440px]:border-r"
+                  class="flex items-center justify-center gap-3 border-b border-default px-3 py-3 @min-[440px]:flex-col @min-[440px]:gap-1 @min-[440px]:border-r @min-[440px]:border-b-0"
                 >
                   <div class="relative h-12 w-20">
                     <svg
@@ -410,7 +428,7 @@ const onShareSite = () => {
                       />
                     </svg>
                     <span
-                      class="absolute inset-x-0 bottom-0 text-center text-base font-semibold leading-5 tabular-nums"
+                      class="absolute inset-x-0 bottom-0 text-center text-base leading-5 font-semibold tabular"
                       :class="{ 'text-muted': !hasQueueActivity }"
                       >{{
                         hasQueueActivity
@@ -437,13 +455,14 @@ const onShareSite = () => {
                       metric.label
                     }}</span>
                     <span
-                      class="col-span-2 min-w-0 break-all text-base font-semibold tabular-nums @min-[440px]:col-span-1 @min-[440px]:text-right"
+                      class="col-span-2 min-w-0 break-all text-base font-semibold tabular @min-[440px]:col-span-1 @min-[440px]:text-right"
                       :class="{ 'text-error': metric.isError }"
                       >{{ metric.value }}</span
                     >
                   </div>
                 </div>
               </div>
+
               <NuxtLink
                 v-if="queueNotice"
                 to="/dashboard/queue"
@@ -460,9 +479,7 @@ const onShareSite = () => {
                 />
               </NuxtLink>
 
-              <div
-                class="mt-4 space-y-2 rounded-lg border border-default bg-elevated/50 p-3"
-              >
+              <div class="mt-4 space-y-2 rounded-lg border border-default p-3">
                 <div class="flex items-center justify-between gap-3">
                   <span class="flex items-center gap-2 text-xs text-muted">
                     <UIcon
@@ -471,7 +488,7 @@ const onShareSite = () => {
                     />
                     {{ $t('dashboard.overview.section.memory.title') }}
                   </span>
-                  <span class="text-sm font-semibold tabular-nums">
+                  <span class="text-sm font-semibold tabular">
                     {{
                       memoryUsage === null ? '—' : `${Math.round(memoryUsage)}%`
                     }}
@@ -490,7 +507,7 @@ const onShareSite = () => {
                   "
                   class="w-full"
                 />
-                <p class="text-xs text-muted tabular-nums">
+                <p class="text-xs text-muted tabular">
                   {{
                     memoryUsage === null
                       ? $t('dashboard.overview.memoryUnavailable')
@@ -533,7 +550,7 @@ const onShareSite = () => {
                     />
                     {{ $t('dashboard.overview.section.runtimeInfo.uptime') }}
                   </dt>
-                  <dd class="text-right text-xs tabular-nums">
+                  <dd class="text-right text-xs tabular">
                     {{
                       dashboardStats?.uptime != null
                         ? $dayjs
@@ -571,12 +588,29 @@ const onShareSite = () => {
                     />
                     {{ $t('settings.storage.form.typeLabel') }}
                   </dt>
-                  <dd class="min-w-0 break-words text-right text-xs">
+                  <dd class="min-w-0 text-right text-xs break-words">
                     {{ activeStorage }}
                   </dd>
                 </div>
+                <div class="flex items-center justify-between gap-3 py-3">
+                  <dt class="flex items-center gap-2 text-xs text-muted">
+                    <UIcon
+                      name="tabler:refresh"
+                      class="size-4 shrink-0"
+                    />
+                    {{ $t('dashboard.overview.section.runtimeInfo.lastUpdate') }}
+                  </dt>
+                  <dd class="text-right text-xs tabular">
+                    {{
+                      dashboardStats?.timestamp
+                        ? $dayjs(dashboardStats.timestamp).fromNow()
+                        : '—'
+                    }}
+                  </dd>
+                </div>
               </dl>
-              <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+
+              <div class="mt-auto flex flex-wrap items-center justify-end gap-2 pt-4">
                 <UButton
                   data-tour="dashboard-share"
                   variant="subtle"
@@ -588,7 +622,7 @@ const onShareSite = () => {
                   {{ $t('dashboard.overview.shareSite.button') }}
                 </UButton>
               </div>
-            </UCard>
+            </DashboardPanel>
           </div>
         </div>
       </div>
@@ -597,44 +631,18 @@ const onShareSite = () => {
 </template>
 
 <style>
+/* The calendar is wider than a phone and scrolls inside its card rather than
+ * pushing the card wider than the page. */
 .heatmap-container {
+  min-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  min-width: 100%;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: var(--ui-color-neutral-300) transparent;
 }
 
 .heatmap-container::-webkit-scrollbar {
   height: 2px;
-}
-
-.heatmap-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 0;
-}
-
-.heatmap-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 0;
-}
-
-.heatmap-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* 暗色模式下的滚动条样式 */
-.dark .heatmap-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.dark .heatmap-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.dark .heatmap-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 
 .heatmap-container .vch__container {
@@ -646,11 +654,6 @@ const onShareSite = () => {
 .vch__legend {
   font-size: var(--text-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-neutral-500);
-}
-
-.vch__day__label,
-.vch__month__label {
-  font-size: var(--text-xs);
+  color: var(--ui-color-neutral-500);
 }
 </style>

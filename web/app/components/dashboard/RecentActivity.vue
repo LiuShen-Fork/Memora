@@ -27,7 +27,13 @@ const { data, refresh } = useFetch<{ tasks: ActivityItem[] }>(
   '/api/queue/recent',
 )
 
-useIntervalFn(refresh, 5000)
+const visibility = useDocumentVisibility()
+useIntervalFn(
+  () => {
+    if (visibility.value === 'visible') void refresh()
+  },
+  10000,
+)
 
 const items = computed<ActivityItem[]>(() => data.value?.tasks || [])
 
@@ -78,27 +84,29 @@ const getItemMeta = (item: ActivityItem) => {
 </script>
 
 <template>
-  <UCard :ui="{ body: 'px-4 py-4 sm:px-6 sm:py-4' }">
-    <template #header>
-      <DashboardSectionHeader
-        :title="$t('dashboard.overview.section.recentActivity.title')"
-        icon="tabler:activity"
+  <DashboardPanel
+    :title="$t('dashboard.overview.section.recentActivity.title')"
+    icon="tabler:activity"
+    :ui="{
+      root: 'flex h-full flex-col shadow-xs',
+      body: 'flex-1 px-4 py-4 sm:px-4',
+    }"
+  >
+    <template #actions>
+      <UButton
+        to="/dashboard/queue"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        trailing-icon="tabler:arrow-right"
       >
-        <UButton
-          to="/dashboard/queue"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          trailing-icon="tabler:arrow-right"
-        >
-          {{ $t('dashboard.overview.section.recentActivity.viewQueue') }}
-        </UButton>
-      </DashboardSectionHeader>
+        {{ $t('dashboard.overview.section.recentActivity.viewQueue') }}
+      </UButton>
     </template>
 
     <div
       v-if="items.length === 0"
-      class="flex flex-col items-center justify-center gap-2 py-6 text-center"
+      class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center"
     >
       <UIcon
         name="tabler:inbox"
@@ -168,5 +176,5 @@ const getItemMeta = (item: ActivityItem) => {
         />
       </li>
     </ul>
-  </UCard>
+  </DashboardPanel>
 </template>

@@ -70,6 +70,11 @@ export const COLOR_THEMES = {
     light: ['#ebedf0', '#fff6c2', '#ffe680', '#ffda4d', '#e6b800', '#7f6a00'],
     dark: ['#1f1f22', '#4a421e', '#6c5e1d', '#8c781d', '#b08f14', '#e6b825'],
   },
+  // 品牌主题：与仪表板的粉色主色一致，空格子取自同一套暖灰，避免默认的冷灰在暖色页面上发蓝。
+  brand: {
+    light: ['#e9e6e2', '#fbcfe8', '#f9a8d4', '#ec4899', '#be185d', '#831843'],
+    dark: ['#2a2825', '#5b1d3d', '#8f2a5f', '#c53a80', '#ec4899', '#f472b6'],
+  },
 } as const
 
 export class Heatmap {
