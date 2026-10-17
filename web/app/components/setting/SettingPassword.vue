@@ -77,70 +77,87 @@ const changePassword = async () => {
 </script>
 
 <template>
-  <UForm
-    :schema="schema"
-    :state="state"
-    @submit="changePassword"
+  <DashboardPanel
+    :title="$t('settings.password.title')"
+    :description="$t('settings.password.description')"
+    icon="tabler:lock"
+    :ui="{ body: 'px-4 py-0 sm:px-4' }"
   >
-    <div class="grid gap-5 px-5 py-5 md:grid-cols-3">
-      <UFormField
-        :label="$t('settings.password.current')"
-        name="currentPassword"
-      >
-        <UInput
-          v-model="state.currentPassword"
-          type="password"
-          autocomplete="current-password"
-          class="w-full"
-          icon="tabler:lock"
-          :placeholder="$t('settings.password.currentPlaceholder')"
-        />
-      </UFormField>
-
-      <UFormField
-        :label="$t('settings.password.new')"
-        name="newPassword"
-      >
-        <UInput
-          v-model="state.newPassword"
-          type="password"
-          autocomplete="new-password"
-          class="w-full"
-          icon="tabler:key"
-          :placeholder="newPlaceholder"
-        />
-      </UFormField>
-
-      <UFormField
-        :label="$t('settings.password.confirm')"
-        name="confirmPassword"
-      >
-        <UInput
-          v-model="state.confirmPassword"
-          type="password"
-          autocomplete="new-password"
-          class="w-full"
-          icon="tabler:key"
-        />
-      </UFormField>
-    </div>
-
-    <div
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 px-5 py-4 dark:border-neutral-800"
+    <UForm
+      id="passwordSettingsForm"
+      class="divide-y divide-default"
+      :schema="schema"
+      :state="state"
+      @submit="changePassword"
     >
-      <p class="text-xs text-neutral-500 dark:text-neutral-500">
-        {{ $t('settings.password.help') }}
-      </p>
-      <UButton
-        type="submit"
-        :loading="saving"
-        :disabled="!filled"
-        icon="tabler:key"
+      <!-- UFormField 只用来挂校验信息，标签在左边那一列，所以这里不给它 label。 -->
+      <SettingRow
+        :label="$t('settings.password.current')"
+        html-for="password-current"
       >
-        {{ $t('settings.password.save') }}
-      </UButton>
-    </div>
-  </UForm>
-</template>
+        <UFormField name="currentPassword">
+          <UInput
+            id="password-current"
+            v-model="state.currentPassword"
+            type="password"
+            autocomplete="current-password"
+            class="w-full max-w-lg"
+            icon="tabler:lock"
+            :placeholder="$t('settings.password.currentPlaceholder')"
+          />
+        </UFormField>
+      </SettingRow>
 
-<style scoped></style>
+      <SettingRow
+        :label="$t('settings.password.new')"
+        html-for="password-new"
+      >
+        <UFormField name="newPassword">
+          <UInput
+            id="password-new"
+            v-model="state.newPassword"
+            type="password"
+            autocomplete="new-password"
+            class="w-full max-w-lg"
+            icon="tabler:key"
+            :placeholder="newPlaceholder"
+          />
+        </UFormField>
+      </SettingRow>
+
+      <SettingRow
+        :label="$t('settings.password.confirm')"
+        html-for="password-confirm"
+      >
+        <UFormField name="confirmPassword">
+          <UInput
+            id="password-confirm"
+            v-model="state.confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            class="w-full max-w-lg"
+            icon="tabler:key"
+          />
+        </UFormField>
+      </SettingRow>
+    </UForm>
+
+    <template #footer>
+      <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <p class="text-xs text-muted">
+          {{ $t('settings.password.help') }}
+        </p>
+        <UButton
+          type="submit"
+          size="sm"
+          form="passwordSettingsForm"
+          :loading="saving"
+          :disabled="!filled"
+          icon="tabler:key"
+        >
+          {{ $t('settings.password.save') }}
+        </UButton>
+      </div>
+    </template>
+  </DashboardPanel>
+</template>

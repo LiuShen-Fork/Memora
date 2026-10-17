@@ -131,43 +131,37 @@ const saveUrl = async () => {
 </script>
 
 <template>
-  <div
+  <SettingRow
     data-tour-setting="app:avatarUrl"
-    class="flex flex-col gap-4 sm:flex-row sm:items-start"
+    :label="$t('settings.app.avatarUrl.label')"
+    :description="$t('settings.app.avatarUrl.description')"
   >
-    <div
-      class="relative size-16 shrink-0 overflow-hidden rounded-full border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
-    >
-      <img
-        v-if="showPreview"
-        :src="current"
-        class="size-full object-cover"
-        :alt="$t('ui.photo.avatarAlt')"
-        @error="previewFailed = true"
-      />
+    <!-- 窄屏上头像另起一行：横着排的话，输入框只剩不到两百像素，
+         连占位的那串地址都显示不全。 -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
       <div
-        v-else
-        class="flex size-full items-center justify-center text-neutral-400 dark:text-neutral-500"
+        class="relative size-16 shrink-0 overflow-hidden rounded-full border border-default bg-elevated"
       >
-        <UIcon
-          name="tabler:user"
-          class="size-7"
+        <img
+          v-if="showPreview"
+          :src="current"
+          class="size-full object-cover"
+          :alt="$t('ui.photo.avatarAlt')"
+          @error="previewFailed = true"
         />
-      </div>
-    </div>
-
-    <div class="min-w-0 flex-1 space-y-3">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div class="space-y-1">
-          <p class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-            {{ $t('settings.app.avatarUrl.label') }}
-          </p>
-          <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            {{ $t('settings.app.avatarUrl.description') }}
-          </p>
+        <div
+          v-else
+          class="flex size-full items-center justify-center text-dimmed"
+        >
+          <UIcon
+            name="tabler:user"
+            class="size-7"
+          />
         </div>
+      </div>
 
-        <div class="flex shrink-0 items-center gap-2">
+      <div class="min-w-0 flex-1 space-y-2.5">
+        <div class="flex flex-wrap items-center gap-2">
           <UButton
             type="button"
             color="neutral"
@@ -196,33 +190,36 @@ const saveUrl = async () => {
             {{ $t('settings.app.avatarUrl.remove') }}
           </UButton>
         </div>
-      </div>
 
-      <div class="flex items-center gap-2">
-        <UInput
-          v-model="urlDraft"
-          type="url"
-          icon="tabler:link"
-          class="w-full"
-          :placeholder="$t('settings.app.avatarUrl.placeholder')"
-          @keyup.enter.prevent="saveUrl"
-        />
-        <UButton
-          type="button"
-          color="primary"
-          variant="soft"
-          icon="tabler:check"
-          :disabled="!isUrlDirty"
-          :loading="savingUrl"
-          @click="saveUrl"
-        >
-          {{ $t('common.actions.save') }}
-        </UButton>
-      </div>
+        <!-- 图片地址也可以直接填：左边让出空间，右边那颗按钮才不会被压成一列字。 -->
+        <div class="flex items-center gap-2">
+          <UInput
+            v-model="urlDraft"
+            type="url"
+            icon="tabler:link"
+            class="min-w-0 max-w-sm flex-1"
+            :placeholder="$t('settings.app.avatarUrl.placeholder')"
+            @keyup.enter.prevent="saveUrl"
+          />
+          <UButton
+            type="button"
+            color="primary"
+            variant="soft"
+            size="sm"
+            class="shrink-0"
+            icon="tabler:check"
+            :disabled="!isUrlDirty"
+            :loading="savingUrl"
+            @click="saveUrl"
+          >
+            {{ $t('common.actions.save') }}
+          </UButton>
+        </div>
 
-      <p class="text-xs text-neutral-500 dark:text-neutral-500">
-        {{ $t('settings.app.avatarUrl.help') }}
-      </p>
+        <p class="text-xs leading-relaxed text-dimmed">
+          {{ $t('settings.app.avatarUrl.help') }}
+        </p>
+      </div>
     </div>
 
     <input
@@ -232,7 +229,7 @@ const saveUrl = async () => {
       :accept="ACCEPTED_TYPES.join(',')"
       @change="onFilePicked"
     />
-  </div>
+  </SettingRow>
 </template>
 
 <style scoped></style>
