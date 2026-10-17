@@ -845,6 +845,8 @@
           "waiting": "Waiting",
           "preparing": "Preparing",
           "uploading": "Uploading {0}%",
+          "finalizing": "Saving to storage",
+          "aborted": "Cancelled",
           "pendingProcessing": "Waiting to process",
           "completed": "Completed",
           "error": "Error",

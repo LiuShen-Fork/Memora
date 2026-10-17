@@ -9,9 +9,11 @@ interface UploadFile {
     | 'waiting'
     | 'preparing'
     | 'uploading'
+    | 'finalizing'
     | 'processing'
     | 'completed'
     | 'error'
+    | 'aborted'
     | 'skipped'
     | 'blocked'
   stage?: string | null
@@ -59,7 +61,10 @@ const stats = computed(() => {
     skipped: files.filter((f) => f.status === 'skipped').length,
     blocked: files.filter((f) => f.status === 'blocked').length,
     active: files.filter(
-      (f) => f.status === 'uploading' || f.status === 'processing',
+      (f) =>
+        f.status === 'uploading' ||
+        f.status === 'finalizing' ||
+        f.status === 'processing',
     ).length,
     pending: files.filter(
       (f) => f.status === 'waiting' || f.status === 'preparing',
@@ -80,8 +85,8 @@ const overallProgress = computed(() => {
     } else if (file.status === 'uploading' && file.progress !== undefined) {
       // 上传中：上传进度 * 0.7（上传占总进度的70%）
       totalProgress += file.progress * 0.7
-    } else if (file.status === 'processing') {
-      // 处理中：上传完成(70%)
+    } else if (file.status === 'finalizing' || file.status === 'processing') {
+      // 保存到存储或处理中：上传已完成(70%)
       totalProgress += 70
     } else if (file.status === 'preparing') {
       // 准备中：0%

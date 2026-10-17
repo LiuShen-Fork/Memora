@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import type { Album, Photo, PipelineQueueItem } from '~~/shared/types/domain'
+import type { UploadPlan } from '~~/shared/types/upload'
 import { h, resolveComponent } from 'vue'
 import { Icon, UBadge } from '#components'
 import ThumbImage from '~/components/ui/ThumbImage.vue'
@@ -118,9 +119,11 @@ interface UploadingFile {
     | 'waiting'
     | 'preparing'
     | 'uploading'
+    | 'finalizing'
     | 'processing'
     | 'completed'
     | 'error'
+    | 'aborted'
     | 'skipped'
     | 'blocked'
   stage?: PipelineQueueItem['statusStage'] | null
@@ -128,7 +131,16 @@ interface UploadingFile {
   error?: string
   warning?: string
   taskId?: number
-  signedUrlResponse?: { signedUrl: string; fileKey: string; expiresIn: number }
+  signedUrlResponse?: {
+    signedUrl: string
+    fileKey: string
+    expiresIn: number
+    /**
+     * How a large file should be sent. The server offers it in place of the
+     * single request every smaller file still uses.
+     */
+    upload?: UploadPlan
+  }
   uploadProgress?: {
     loaded: number
     total: number
@@ -333,6 +345,8 @@ const uploadImage = async (
       body: {
         fileName: file.name,
         contentType: file.type,
+        // The size is what the server decides the way to send a file on.
+        size: file.size,
       },
     })
 
@@ -378,7 +392,12 @@ const uploadImage = async (
     uploadingFiles.value = new Map(uploadingFiles.value)
 
     // 第二步：使用 composable 上传文件到存储
-    await uploadManager.uploadFile(file, signedUrlResponse.signedUrl, {
+    // A large file carries a plan for sending it in parts; everything else, and
+    // every storage that cannot take parts, is the single signed request.
+    const uploadTarget: string | UploadPlan =
+      signedUrlResponse.upload ?? signedUrlResponse.signedUrl
+
+    await uploadManager.uploadFile(file, uploadTarget, {
       onProgress: (progress: UploadProgress) => {
         uploadingFile.progress = progress.percentage
         uploadingFile.uploadProgress = {
@@ -395,6 +414,17 @@ const uploadImage = async (
         uploadingFiles.value = new Map(uploadingFiles.value)
       },
       onStatusChange: (status: string) => {
+        // Once every part is in, the file is the server's to finish. That wait
+        // is shown as its own state, and there is nothing left to abort.
+        if (status === 'finalizing') {
+          uploadingFile.status = 'finalizing'
+          uploadingFile.progress = 100
+        }
+        // Giving up part way leaves the file where it was, and the row says so
+        // instead of going on claiming it is still uploading.
+        if (status === 'aborted') {
+          uploadingFile.status = 'aborted'
+        }
         uploadingFile.canAbort = status === 'uploading'
         uploadingFiles.value = new Map(uploadingFiles.value)
       },
@@ -470,6 +500,15 @@ const uploadImage = async (
       },
     })
   } catch (error: any) {
+    // Giving up on an upload ends the await with the decision that was already
+    // reported, so the row keeps saying it was cancelled rather than turning
+    // into a failure the person did not have.
+    if (uploadingFile.status === 'aborted') {
+      uploadingFile.canAbort = false
+      uploadingFiles.value = new Map(uploadingFiles.value)
+      return
+    }
+
     uploadingFile.status = 'error'
     uploadingFile.canAbort = false
 
@@ -871,7 +910,8 @@ const clearCompletedTasks = () => {
   for (const [fileId, uploadingFile] of uploadingFiles.value) {
     if (
       uploadingFile.status === 'completed' ||
-      uploadingFile.status === 'error'
+      uploadingFile.status === 'error' ||
+      uploadingFile.status === 'aborted'
     ) {
       toRemove.push(fileId)
 

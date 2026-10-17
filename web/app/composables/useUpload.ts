@@ -1,3 +1,5 @@
+import type { UploadPlan } from '~~/shared/types/upload'
+
 export interface UploadProgress {
   loaded: number
   total: number
@@ -6,8 +8,21 @@ export interface UploadProgress {
   timeRemaining?: number // seconds
 }
 
+/**
+ * `finalizing` is the wait between the last byte leaving the browser and the
+ * file existing in storage, which a large upload sent in parts makes long
+ * enough that it is worth showing.
+ */
+export type UploadState =
+  | 'idle'
+  | 'uploading'
+  | 'finalizing'
+  | 'success'
+  | 'error'
+  | 'aborted'
+
 export interface UploadStatus {
-  status: 'idle' | 'uploading' | 'success' | 'error' | 'aborted'
+  status: UploadState
   progress: UploadProgress
   error?: string
   startTime?: number
@@ -16,9 +31,9 @@ export interface UploadStatus {
 
 export interface UploadCallbacks {
   onProgress?: (progress: UploadProgress) => void
-  onStatusChange?: (status: UploadStatus['status']) => void
-  onSuccess?: (response: XMLHttpRequest) => void
-  onError?: (error: string, xhr: XMLHttpRequest) => void
+  onStatusChange?: (status: UploadState) => void
+  onSuccess?: (response?: XMLHttpRequest) => void
+  onError?: (error: string, xhr?: XMLHttpRequest) => void
   onAbort?: () => void
   onRetry?: (attempt: number, maxAttempts: number) => void
 }
@@ -82,6 +97,13 @@ export function useUpload(options: UseUploadOptions = {}) {
 
   // 当前的 XMLHttpRequest 实例
   let currentXHR: XMLHttpRequest | null = null
+
+  // The requests of an upload sent in parts: the parts in flight, and whether
+  // the upload should stop (the person gave up) or has already failed.
+  const partXHRs = new Set<XMLHttpRequest>()
+  let partsRunning = false
+  let cancelled = false
+  let halted = false
 
   // 用于计算速度的数据点
   const speedSamples: Array<{ timestamp: number; loaded: number }> = []
@@ -160,8 +182,8 @@ export function useUpload(options: UseUploadOptions = {}) {
     })
   }
 
-  // 主要的上传函数
-  const uploadFile = async (
+  // 主要的上传函数：单次请求发送整个文件
+  const uploadAlone = async (
     file: File,
     signedUrl: string,
     callbacks: UploadCallbacks = {},
@@ -170,6 +192,8 @@ export function useUpload(options: UseUploadOptions = {}) {
     // 重置状态（仅在第一次尝试时）
     if (attempt === 1) {
       resetStatus()
+      cancelled = false
+      halted = false
     }
 
     return new Promise((resolve, reject) => {
@@ -245,7 +269,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
           // 延迟后重试
           setTimeout(() => {
-            uploadFile(file, signedUrl, callbacks, attempt + 1)
+            uploadAlone(file, signedUrl, callbacks, attempt + 1)
               .then(resolve)
               .catch(reject)
           }, retryDelay * attempt) // 指数退避
@@ -279,7 +303,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
           // 延迟后重试
           setTimeout(() => {
-            uploadFile(file, signedUrl, callbacks, attempt + 1)
+            uploadAlone(file, signedUrl, callbacks, attempt + 1)
               .then(resolve)
               .catch(reject)
           }, retryDelay * attempt) // 指数退避
@@ -391,10 +415,270 @@ export function useUpload(options: UseUploadOptions = {}) {
     })
   }
 
+  // How many parts of one file travel at the same time. Three keeps a fast
+  // connection busy without turning one upload into a flood of requests.
+  const partConcurrency = 3
+
+  /**
+   * Sends a file the server asked to receive in parts. The parts go out a few
+   * at a time and each one is retried on its own, so a connection that drops
+   * one part does not restart the file. Only once every part is in does the
+   * upload finish — the wait for that is what `finalizing` reports.
+   */
+  const uploadInParts = async (
+    file: File,
+    plan: UploadPlan,
+    callbacks: UploadCallbacks,
+  ): Promise<XMLHttpRequest | undefined> => {
+    resetStatus()
+    const size = file.size
+    const partUrls = plan.partUrls ?? []
+    const sent = Array.from({ length: plan.partCount }, () => 0)
+    const pending = Array.from({ length: plan.partCount }, (_, index) => index)
+    let reported = 0
+
+    // Progress is measured from the bytes of every part together, and reported
+    // at most a few times a second: three streams of events would otherwise
+    // re-render the queue on every chunk.
+    const report = (now = false) => {
+      const stamp = Date.now()
+      if (!now && stamp - reported < 250) return
+      reported = stamp
+      const loaded = sent.reduce((total, bytes) => total + bytes, 0)
+      updateProgress(Math.min(loaded, size), size)
+      callbacks.onProgress?.(uploadStatus.value.progress)
+    }
+
+    const send = (index: number, attempt: number): Promise<void> =>
+      new Promise((resolve, reject) => {
+        const partUrl =
+          plan.mode === 'multipart'
+            ? partUrls[index]
+            : `${plan.url}?index=${index}`
+        if (!partUrl) {
+          reject(new Error(t('upload.error.uploadFailed.message')))
+          return
+        }
+        const start = index * plan.partSize
+        const body = file.slice(start, Math.min(start + plan.partSize, size))
+        const xhr = new XMLHttpRequest()
+        partXHRs.add(xhr)
+
+        const retry = (message: string) => {
+          partXHRs.delete(xhr)
+          if (attempt < maxRetries && !cancelled) {
+            // The part starts over, so what it had sent no longer counts.
+            sent[index] = 0
+            report(true)
+            setTimeout(() => {
+              send(index, attempt + 1)
+                .then(resolve)
+                .catch(reject)
+            }, retryDelay * attempt)
+            return
+          }
+          reject(new Error(message))
+        }
+
+        if (timeout > 0) {
+          xhr.timeout = timeout
+        }
+        xhr.withCredentials = withCredentials
+
+        xhr.upload.addEventListener('progress', (event) => {
+          sent[index] = event.loaded
+          report()
+        })
+
+        xhr.addEventListener('load', () => {
+          partXHRs.delete(xhr)
+          if (xhr.status >= 200 && xhr.status < 300) {
+            sent[index] = body.size
+            report(true)
+            resolve()
+            return
+          }
+          const message = responseErrorMessage(
+            xhr,
+            t('upload.runtimeError.clientError', { status: xhr.status }),
+          )
+          if (xhr.status >= 500 || xhr.status === 429) {
+            retry(message)
+            return
+          }
+          reject(new Error(message))
+        })
+
+        xhr.addEventListener('error', () => {
+          retry(t('upload.runtimeError.networkFailed'))
+        })
+
+        xhr.addEventListener('timeout', () => {
+          retry(t('upload.runtimeError.timeout', { timeout }))
+        })
+
+        xhr.addEventListener('abort', () => {
+          partXHRs.delete(xhr)
+          reject(new Error(t('upload.runtimeError.aborted')))
+        })
+
+        xhr.open('PUT', partUrl)
+        if (plan.mode === 'chunks') {
+          // The parts of a file the server assembles carry no content type of
+          // their own; the file's own type is what the finished upload is
+          // stored under.
+          xhr.setRequestHeader('Content-Type', 'application/octet-stream')
+        }
+        xhr.send(body)
+      })
+
+    // Finishing asks the server (or the object store, through it) to join the
+    // parts. Nothing is left to send, so a failure here is worth retrying.
+    const finish = (attempt: number): Promise<XMLHttpRequest | undefined> =>
+      new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        partXHRs.add(xhr)
+        if (timeout > 0) {
+          xhr.timeout = timeout
+        }
+        xhr.withCredentials = withCredentials
+
+        const settle = () => {
+          partXHRs.delete(xhr)
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(xhr)
+            return
+          }
+          const message = responseErrorMessage(
+            xhr,
+            xhr.status === 0
+              ? t('upload.runtimeError.networkFailed')
+              : t('upload.runtimeError.serverError', { status: xhr.status }),
+          )
+          if (
+            attempt < maxRetries &&
+            (xhr.status === 0 || xhr.status >= 500 || xhr.status === 429)
+          ) {
+            setTimeout(() => {
+              finish(attempt + 1)
+                .then(resolve)
+                .catch(reject)
+            }, retryDelay * attempt)
+            return
+          }
+          reject(new Error(message))
+        }
+
+        xhr.addEventListener('load', settle)
+        xhr.addEventListener('error', settle)
+        xhr.addEventListener('timeout', settle)
+        xhr.addEventListener('abort', () => {
+          partXHRs.delete(xhr)
+          reject(new Error(t('upload.runtimeError.aborted')))
+        })
+
+        xhr.open('POST', plan.url)
+        xhr.send()
+      })
+
+    // Giving up tells the server to throw away the parts it is holding. The
+    // server collects an upload nobody is sending any more on its own, so a
+    // failure here is not worth troubling the person who gave up.
+    const discard = async () => {
+      try {
+        await $fetch(plan.url, { method: 'DELETE' })
+      } catch {
+        /* the server will collect the abandoned upload by itself */
+      }
+    }
+
+    const startTime = Date.now()
+    updateProgress(0, size)
+    updateStatus({ status: 'uploading', startTime })
+    callbacks.onStatusChange?.('uploading')
+    partsRunning = true
+    cancelled = false
+    halted = false
+
+    try {
+      await Promise.all(
+        Array.from(
+          { length: Math.min(partConcurrency, plan.partCount) },
+          async () => {
+            while (pending.length > 0 && !cancelled && !halted) {
+              const index = pending.shift()
+              if (index === undefined) return
+              await send(index, 1)
+            }
+          },
+        ),
+      )
+      if (cancelled) {
+        throw new Error(t('upload.runtimeError.aborted'))
+      }
+
+      partsRunning = false
+      updateStatus({ status: 'finalizing' })
+      callbacks.onStatusChange?.('finalizing')
+      const finished = await finish(1)
+
+      updateStatus({ status: 'success', endTime: Date.now() })
+      callbacks.onStatusChange?.('success')
+      callbacks.onSuccess?.(finished)
+      return finished
+    } catch (error) {
+      const endTime = Date.now()
+      partsRunning = false
+      // Stop the parts that are still in flight and the ones not started yet;
+      // an upload that failed on one part is not helped by the rest.
+      halted = !cancelled
+      pending.length = 0
+      for (const xhr of partXHRs) xhr.abort()
+      partXHRs.clear()
+      void discard()
+
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t('upload.error.uploadFailed.message')
+      if (cancelled) {
+        updateStatus({ status: 'aborted', endTime })
+        callbacks.onStatusChange?.('aborted')
+        callbacks.onAbort?.()
+        throw new Error(t('upload.runtimeError.aborted'))
+      }
+      updateStatus({ status: 'error', error: message, endTime })
+      callbacks.onStatusChange?.('error')
+      callbacks.onError?.(message)
+      throw new Error(message)
+    }
+  }
+
+  /**
+   * Uploads a file the way the server asked for it: in one request when the
+   * response carried no plan, otherwise in parts.
+   */
+  const uploadFile = async (
+    file: File,
+    target: string | UploadPlan,
+    callbacks: UploadCallbacks = {},
+    attempt: number = 1,
+  ): Promise<XMLHttpRequest | undefined> => {
+    if (typeof target === 'string') {
+      return uploadAlone(file, target, callbacks, attempt)
+    }
+    return uploadInParts(file, target, callbacks)
+  }
+
   // 中止上传
   const abortUpload = () => {
-    if (currentXHR && uploadStatus.value.status === 'uploading') {
+    if (uploadStatus.value.status !== 'uploading') return
+    if (currentXHR) {
       currentXHR.abort()
+    }
+    if (partsRunning) {
+      cancelled = true
+      for (const xhr of partXHRs) xhr.abort()
     }
   }
 
@@ -430,7 +714,9 @@ export function useUpload(options: UseUploadOptions = {}) {
   const isSuccess = computed(() => uploadStatus.value.status === 'success')
   const isError = computed(() => uploadStatus.value.status === 'error')
   const isAborted = computed(() => uploadStatus.value.status === 'aborted')
-  const canAbort = computed(() => isUploading.value && currentXHR !== null)
+  const canAbort = computed(
+    () => isUploading.value && (currentXHR !== null || partsRunning),
+  )
 
   // 格式化的进度信息
   const formattedProgress = computed(() => {

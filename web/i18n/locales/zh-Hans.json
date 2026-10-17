@@ -845,6 +845,8 @@
           "waiting": "等待上传",
           "preparing": "准备中",
           "uploading": "上传中 {0}%",
+          "finalizing": "正在保存到存储",
+          "aborted": "已取消",
           "pendingProcessing": "等待处理",
           "completed": "完成",
           "error": "错误",

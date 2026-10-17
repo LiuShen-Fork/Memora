@@ -745,6 +745,8 @@
           "waiting": "アップロード待機",
           "preparing": "準備中",
           "uploading": "アップロード中 {0}%",
+          "finalizing": "ストレージに保存中",
+          "aborted": "キャンセル",
           "pendingProcessing": "処理待ち",
           "completed": "完了",
           "error": "エラー",

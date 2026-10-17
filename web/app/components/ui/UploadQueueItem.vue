@@ -10,9 +10,11 @@ interface UploadFile {
     | 'waiting'
     | 'preparing'
     | 'uploading'
+    | 'finalizing'
     | 'processing'
     | 'completed'
     | 'error'
+    | 'aborted'
     | 'skipped'
     | 'blocked'
   stage?: string | null
@@ -60,12 +62,16 @@ const statusColor = computed(() => {
       return 'primary'
     case 'uploading':
       return 'primary'
+    case 'finalizing':
+      return 'primary'
     case 'processing':
       return 'info'
     case 'completed':
       return 'success'
     case 'error':
       return 'error'
+    case 'aborted':
+      return 'neutral'
     case 'skipped':
       return 'warning'
     case 'blocked':
@@ -85,6 +91,8 @@ const statusText = computed(() => {
       return $t('dashboard.photos.uploadQueueItem.status.uploading', [
         props.uploadingFile.progress || 0,
       ])
+    case 'finalizing':
+      return $t('dashboard.photos.uploadQueueItem.status.finalizing')
     case 'processing':
       return props.uploadingFile.stage
         ? getStageText(props.uploadingFile.stage)
@@ -93,6 +101,8 @@ const statusText = computed(() => {
       return $t('dashboard.photos.uploadQueueItem.status.completed')
     case 'error':
       return $t('dashboard.photos.uploadQueueItem.status.error')
+    case 'aborted':
+      return $t('dashboard.photos.uploadQueueItem.status.aborted')
     case 'skipped':
       return $t('dashboard.photos.uploadQueueItem.status.skipped')
     case 'blocked':
@@ -209,8 +219,18 @@ const generateParticleStyle = (index: number) => {
         <motion.div
           class="relative shrink-0"
           :transition="{
-            duration: uploadingFile.status === 'processing' ? 2 : 0.3,
-            repeat: uploadingFile.status === 'processing' ? Infinity : 0,
+            // The icon keeps turning while the file is still being worked on,
+            // whether that is the server processing it or saving it.
+            duration:
+              uploadingFile.status === 'processing' ||
+              uploadingFile.status === 'finalizing'
+                ? 2
+                : 0.3,
+            repeat:
+              uploadingFile.status === 'processing' ||
+              uploadingFile.status === 'finalizing'
+                ? Infinity
+                : 0,
             ease: 'linear',
           }"
         >
@@ -367,6 +387,7 @@ const generateParticleStyle = (index: number) => {
           v-if="
             uploadingFile.status === 'completed' ||
             uploadingFile.status === 'error' ||
+            uploadingFile.status === 'aborted' ||
             uploadingFile.status === 'skipped' ||
             uploadingFile.status === 'blocked'
           "
@@ -392,6 +413,7 @@ const generateParticleStyle = (index: number) => {
       <motion.div
         v-if="
           uploadingFile.status === 'uploading' ||
+          uploadingFile.status === 'finalizing' ||
           uploadingFile.status === 'processing'
         "
         :initial="{ opacity: 0, height: 0 }"
@@ -435,6 +457,14 @@ const generateParticleStyle = (index: number) => {
             {{ $t('dashboard.photos.uploadQueueItem.progress.remainingTime', [uploadingFile.uploadProgress.timeRemainingText]) }}
           </div>
         </div>
+
+        <!-- 保存进度：分片已全部送达，等待服务器合并并写入存储 -->
+        <UProgress
+          v-if="uploadingFile.status === 'finalizing'"
+          :model-value="null"
+          animation="swing"
+          color="primary"
+        />
 
         <!-- 处理进度 -->
         <div

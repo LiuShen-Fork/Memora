@@ -818,6 +818,8 @@
           "waiting": "Ожидание",
           "preparing": "Подготовка",
           "uploading": "Загрузка: {0}%",
+          "finalizing": "Сохранение в хранилище",
+          "aborted": "Отменено",
           "pendingProcessing": "Ожидание обработки",
           "completed": "Завершено",
           "error": "Ошибка",
