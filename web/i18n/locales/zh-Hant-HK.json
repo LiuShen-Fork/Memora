@@ -3,6 +3,12 @@
     "description": "相簿密碼無法保護 S3、OpenList 或 CDN 的公開相片直連網址：持有網址的人仍可無需密碼存取檔案。受保護相簿請使用本機儲存。修改密碼或預設儲存不會撤銷既有網址或快取副本。若相片已經公開，還需在儲存/CDN 端關閉公開存取、清除快取並更換物件網址。"
   },
   "map": {
+    "setupNotice": {
+      "title": "地圖服務尚未設定",
+      "description": "此地圖需要 MapTiler 或 Mapbox 存取權杖、或高德地圖 Key 才能載入。管理員可以在「地圖和位置」設定中新增。也可以使用自訂 MapLibre 樣式 URL 代替 MapTiler 權杖。",
+      "openSettings": "開啟地圖設定",
+      "dismiss": "關閉"
+    },
     "amap": {
       "missingKey": "請設定高德地圖 Key 以顯示地圖"
     },
@@ -1633,7 +1639,8 @@
     },
     "map": {
       "title": "地圖服務",
-      "description": "為地球儀檢視與照片詳情小地圖設定地圖服務"
+      "description": "為地球儀檢視與照片詳情小地圖設定地圖服務",
+      "tokenOptional": "存取權杖（高德地圖為 Key）為選填。你可以稍後在「地圖和位置」設定中新增。在此之前，地球儀、照片小地圖和位置選擇器會保持空白。自訂 MapLibre 樣式 URL 可以在沒有 MapTiler 權杖的情況下使用。"
     },
     "complete": {
       "title": "即將完成！",

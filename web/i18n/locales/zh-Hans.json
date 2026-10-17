@@ -3,6 +3,12 @@
     "description": "相簿密码无法保护 S3、OpenList 或 CDN 的公开照片直链：持有直链的人仍可无需密码访问文件。受保护相簿请使用本地存储。修改密码或默认存储不会撤销已有直链或缓存副本。若照片已经公开，还需在存储/CDN 侧关闭公开访问、清理缓存并更换对象地址。"
   },
   "map": {
+    "setupNotice": {
+      "title": "地图服务尚未配置",
+      "description": "此地图需要 MapTiler 或 Mapbox 访问令牌、或高德地图 Key 才能加载。管理员可以在“地图和位置”设置中添加。也可以使用自定义 MapLibre 样式 URL 代替 MapTiler 令牌。",
+      "openSettings": "打开地图设置",
+      "dismiss": "关闭"
+    },
     "amap": {
       "missingKey": "请配置高德地图 Key 以显示地图"
     },
@@ -1707,7 +1713,8 @@
     },
     "map": {
       "title": "地图服务",
-      "description": "为地球仪视图以及照片详情中的小地图配置地图服务"
+      "description": "为地球仪视图以及照片详情中的小地图配置地图服务",
+      "tokenOptional": "访问令牌（高德地图为 Key）是可选的。你可以稍后在“地图和位置”设置中添加。在此之前，地球仪、照片小地图和位置选择器会保持空白。自定义 MapLibre 样式 URL 可以在没有 MapTiler 令牌的情况下使用。"
     },
     "complete": {
       "title": "即将完成！",

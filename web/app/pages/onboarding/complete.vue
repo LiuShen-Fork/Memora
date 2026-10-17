@@ -42,12 +42,14 @@ async function onComplete() {
     const mapTokenKey = `${mapProvider}.token`
     const mapStyleKey = `${mapProvider}.style`
 
+    // The map token is optional: an empty one leaves whatever is stored alone,
+    // and the globe explains that maps stay blank until it is filled in.
     const mapData = {
       provider: mapProvider,
-      token: mapState[mapTokenKey],
+      token: mapState[mapTokenKey] || '',
       style: mapState[mapStyleKey],
-      amapKey: mapState['amap.key'],
-      amapSecurityCode: mapState['amap.securityCode'],
+      amapKey: mapState['amap.key'] || '',
+      amapSecurityCode: mapState['amap.securityCode'] || '',
     }
 
     // 5. Submit All

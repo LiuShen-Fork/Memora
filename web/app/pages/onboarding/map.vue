@@ -77,6 +77,10 @@ function onSubmit() {
         />
       </template>
 
+      <p class="text-sm text-neutral-400">
+        {{ $t('onboarding.map.tokenOptional') }}
+      </p>
+
       <UForm
         id="map-form"
         :state="state"

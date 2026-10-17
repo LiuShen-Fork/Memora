@@ -107,11 +107,11 @@ func wizardFields(namespace string) []map[string]any {
 		}
 		return []map[string]any{
 			field("provider", "string", "settings.map.provider.label", env("NUXT_PUBLIC_MAP_PROVIDER", "maplibre"), map[string]any{"type": "custom", "required": true, "options": providerOptions}),
-			field("mapbox.token", "string", "settings.map.mapbox.token.label", env("NUXT_MAPBOX_ACCESS_TOKEN", ""), visible("mapbox", "password", true)),
+			field("mapbox.token", "string", "settings.map.mapbox.token.label", env("NUXT_MAPBOX_ACCESS_TOKEN", ""), visible("mapbox", "password", false)),
 			field("mapbox.style", "string", "settings.map.mapbox.style.label", env("NUXT_PUBLIC_MAP_MAPBOX_STYLE", ""), visible("mapbox", "input", false)),
-			field("maplibre.token", "string", "settings.map.maplibre.token.label", "", visible("maplibre", "password", true)),
+			field("maplibre.token", "string", "settings.map.maplibre.token.label", "", visible("maplibre", "password", false)),
 			field("maplibre.style", "string", "settings.map.maplibre.style.label", env("NUXT_PUBLIC_MAP_MAPLIBRE_STYLE", ""), visible("maplibre", "input", false)),
-			field("amap.key", "string", "settings.map.amap.key.label", env("NUXT_PUBLIC_MAP_AMAP_KEY", ""), visible("amap", "input", true)),
+			field("amap.key", "string", "settings.map.amap.key.label", env("NUXT_PUBLIC_MAP_AMAP_KEY", ""), visible("amap", "input", false)),
 			field("amap.securityCode", "string", "settings.map.amap.securityCode.label", env("NUXT_PUBLIC_MAP_AMAP_SECURITY_CODE", ""), visible("amap", "password", false)),
 		}
 	default:
@@ -259,20 +259,30 @@ func (a *App) writeSiteSettings(site map[string]any) {
 	}
 }
 
+// writeMapSettings stores what was given and leaves the rest as it was: the
+// token and the key are optional, so setting a site up again without typing one
+// keeps the one already stored instead of wiping it.
 func (a *App) writeMapSettings(input wizardMapInput) {
 	a.setSetting("map", "provider", input.Provider)
 	if input.Provider == "amap" {
-		a.setSetting("map", "amap.key", input.AmapKey)
-		a.setSetting("map", "amap.securityCode", input.AmapSecurityCode)
-		// Use the same AMap key for server-side reverse geocoding unless the
-		// administrator later overrides it in Location settings.
-		a.setSetting("location", "provider", "amap")
-		a.setSetting("location", "amap.key", input.AmapKey)
-	} else {
-		a.setSetting("map", input.Provider+".token", input.Token)
-		if input.Style != "" {
-			a.setSetting("map", input.Provider+".style", input.Style)
+		key := strings.TrimSpace(input.AmapKey)
+		if key != "" {
+			a.setSetting("map", "amap.key", key)
+			// Use the same AMap key for server-side reverse geocoding unless the
+			// administrator later overrides it in Location settings.
+			a.setSetting("location", "provider", "amap")
+			a.setSetting("location", "amap.key", key)
 		}
+		if code := strings.TrimSpace(input.AmapSecurityCode); code != "" {
+			a.setSetting("map", "amap.securityCode", code)
+		}
+		return
+	}
+	if token := strings.TrimSpace(input.Token); token != "" {
+		a.setSetting("map", input.Provider+".token", token)
+	}
+	if style := strings.TrimSpace(input.Style); style != "" {
+		a.setSetting("map", input.Provider+".style", style)
 	}
 }
 
@@ -298,11 +308,12 @@ func setupPasswordProblem(password string) string {
 	return ""
 }
 
+// validMap is about the provider alone: a map service is optional, so setup can
+// be finished without a token, and the globe says that maps stay blank until an
+// administrator adds one. A token that is left out here does not take away one
+// that is already stored.
 func validMap(input wizardMapInput) bool {
-	if input.Provider == "amap" {
-		return strings.TrimSpace(input.AmapKey) != ""
-	}
-	return (input.Provider == "mapbox" || input.Provider == "maplibre") && strings.TrimSpace(input.Token) != ""
+	return input.Provider == "mapbox" || input.Provider == "maplibre" || input.Provider == "amap"
 }
 
 func stringValue(value any) string {
