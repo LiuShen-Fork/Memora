@@ -1,6 +1,57 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+/* Rubik is the face this app declares, so it is served from the app rather
+ * than asked of a font service at runtime: a self-hosted gallery should not
+ * need someone else's server to draw its own words. Four subsets, 80KB
+ * together, and a page only fetches the ones its characters fall into. The
+ * Cyrillic pair is here because the interface is translated into Russian.
+ * Chinese, Japanese and Thai glyphs come from the reader's system fonts.
+ *
+ * The dashboard asks for Rubik; the public gallery keeps the stack it has
+ * today (see .app-dashboard below), so adding the files cannot change how the
+ * gallery renders. */
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F,
+    U+FE2E-FE2F;
+}
+
 /* Self-hosted Google Fonts asset used by the gallery slogan. */
 @font-face {
   font-family: 'Pacifico';
@@ -8,9 +59,9 @@
   font-weight: 400;
   font-display: swap;
   src: url('/fonts/pacifico-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
-    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
-    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 :root {
@@ -55,6 +106,83 @@
   --ui-border-muted: var(--ui-color-neutral-700);
   --ui-border-accented: var(--ui-color-neutral-700);
   --ui-border-inverted: var(--color-white);
+}
+
+/* ==========================================================================
+ * The dashboard
+ *
+ * Everything below is scoped to .app-dashboard, which the dashboard layout and
+ * the sign-in page put on <body>. The public gallery is deliberately left
+ * alone: it is a different surface with its own design, and it should not
+ * change because the admin was reworked. Because the scope sits on <body>,
+ * anything Nuxt UI teleports — popovers, dropdowns, toasts — lands inside it
+ * and picks the same tokens up.
+ * ========================================================================== */
+
+.app-dashboard {
+  /* The neutral ramp is the Tailwind one warmed by a few thousandths of
+   * chroma at a hue between yellow and orange. Eleven steps of pure grey read
+   * as "no opinion", and the whole interface is built out of them; a warm grey
+   * reads as paper and ink, which is what a photo archive is made of. The
+   * shift is small enough that nobody sees sepia. */
+  --ui-color-neutral-50: oklch(0.984 0.003 80);
+  --ui-color-neutral-100: oklch(0.968 0.005 80);
+  --ui-color-neutral-200: oklch(0.928 0.006 80);
+  --ui-color-neutral-300: oklch(0.872 0.007 78);
+  --ui-color-neutral-400: oklch(0.712 0.009 76);
+  --ui-color-neutral-500: oklch(0.56 0.011 74);
+  --ui-color-neutral-600: oklch(0.442 0.011 72);
+  --ui-color-neutral-700: oklch(0.374 0.01 70);
+  --ui-color-neutral-800: oklch(0.272 0.008 70);
+  --ui-color-neutral-900: oklch(0.212 0.007 72);
+  --ui-color-neutral-950: oklch(0.152 0.006 72);
+
+  --font-sans: Rubik, 'Noto Sans SC', system-ui, sans-serif;
+
+  /* A corner is a size, so it is decided once and everything follows. */
+  --ui-radius: 0.5rem;
+
+  /* Paper: the page is the deepest surface and cards are cut out of it. */
+  --ui-bg: var(--color-white);
+  --ui-bg-muted: oklch(0.966 0.004 80);
+  --ui-bg-elevated: oklch(0.945 0.006 80);
+  --ui-bg-accented: oklch(0.912 0.007 80);
+
+  --ui-border: oklch(0.9 0.006 80);
+  --ui-border-muted: oklch(0.928 0.006 80);
+  --ui-border-accented: oklch(0.845 0.008 78);
+
+  /* Three semantic colours carry the meaning that colour is allowed to carry,
+   * and they never fill a whole card. */
+  --ui-success: oklch(0.56 0.13 155);
+  --ui-warning: oklch(0.63 0.13 72);
+  --ui-error: oklch(0.58 0.18 22);
+
+  /* The page itself is the muted step; cards stand on it. */
+  background-color: var(--ui-bg-muted);
+}
+
+.dark .app-dashboard {
+  --ui-bg: oklch(0.247 0.007 74);
+  --ui-bg-muted: oklch(0.193 0.006 74);
+  --ui-bg-elevated: oklch(0.298 0.008 74);
+  --ui-bg-accented: oklch(0.365 0.009 74);
+
+  --ui-border: oklch(0.316 0.008 74);
+  --ui-border-muted: oklch(0.272 0.008 74);
+  --ui-border-accented: oklch(0.408 0.01 74);
+
+  --ui-success: oklch(0.72 0.12 155);
+  --ui-warning: oklch(0.79 0.12 78);
+  --ui-error: oklch(0.69 0.15 22);
+}
+
+/* Numbers in a table, a statistic or a date line are read by comparing them
+ * with the numbers above and below, which only works if a digit is always the
+ * same width. */
+.app-dashboard table,
+.app-dashboard .tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 @theme {
@@ -137,13 +265,16 @@ body::-webkit-scrollbar-thumb:hover {
   width: 2px;
   height: 2px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 0;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.38);
 }
