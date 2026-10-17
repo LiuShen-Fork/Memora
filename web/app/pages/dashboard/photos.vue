@@ -647,6 +647,38 @@ watch(
 // 列可见性状态：选了哪些列记在本地，刷新后照旧
 const columnVisibility = useDashboardPhotoColumnVisibility()
 
+// 全站对「窄屏」的说法就是这个断点，这里跟着用。
+const isMobile = useMediaQuery('(max-width: 768px)')
+
+// 手机上只留下认得出这张照片的几列。其余的不是被谁关掉的，是摆不下——一张十三列
+// 的表缩到三百多像素里，看得到的只有头一列，剩下的都要横着拖。
+const mobilePhotoColumns = ['thumbnailUrl', 'title', 'actions']
+
+const mobileColumnVisibility = computed(
+  () =>
+    Object.fromEntries(
+      Object.keys(columnVisibility.value).map((id) => [
+        id,
+        mobilePhotoColumns.includes(id),
+      ]),
+    ) as DashboardPhotoColumnVisibility,
+)
+
+/**
+ * 交给表格的可见性：桌面上是用户自己挑的那份，手机上是收起来的那份。
+ * 写成可写的 computed 是因为列菜单点勾时要能改回桌面那份偏好——手机上不会走到
+ * 这里，那颗按钮在窄屏上不出现。
+ */
+const tableColumnVisibility = computed({
+  get: () =>
+    isMobile.value ? mobileColumnVisibility.value : columnVisibility.value,
+  set: (value) => {
+    // 窄屏上那份是屏幕定的，不该被写回本地——窗口一放大，桌面上挑过的列就没了。
+    if (isMobile.value) return
+    columnVisibility.value = value
+  },
+})
+
 // 挑列这件事只有必要的时候才想起来，所以它藏在工具栏的一颗按钮后面。表头那一行
 // 是拿来扫的，不是拿来点的，因此不把复选框直接摆上去。
 const columnMenuItems = computed(() => [
@@ -1054,15 +1086,24 @@ const columns = computed<TableColumn<Photo>[]>(() => [
     // run past its cell, so it is cut off with the whole value kept in the
     // tooltip. This is also the only cell that carries emphasis: it is what
     // tells one row from another.
-    cell: ({ row }) =>
-      h(
+    cell: ({ row }) => {
+      // 桌面上标题空着不要紧，旁边的关键词和拍摄日期还认得出这一行；手机上
+      // 那些列都收起来了，空出来的就是一片空，所以退回去显示文件名。
+      const title = row.original.title?.trim()
+      const label =
+        title ||
+        (isMobile.value
+          ? (row.original.storageKey?.split('/').pop() ?? row.original.id)
+          : '')
+      return h(
         'span',
         {
           class: 'block truncate font-medium text-highlighted',
-          title: row.original.title,
+          title: label,
         },
-        row.original.title,
-      ),
+        label,
+      )
+    },
   },
   {
     accessorKey: 'tags',
@@ -2692,8 +2733,12 @@ onUnmounted(() => {
               </template>
             </UPopover>
 
-            <!-- 列可见性按钮 -->
-            <UDropdownMenu :items="columnMenuItems" :content="{ align: 'end' }">
+            <!-- 列可见性按钮：窄屏上摆哪几列是屏幕说了算，没得挑 -->
+            <UDropdownMenu
+              v-if="!isMobile"
+              :items="columnMenuItems"
+              :content="{ align: 'end' }"
+            >
               <UButton
                 label=""
                 color="neutral"
@@ -2717,7 +2762,7 @@ onUnmounted(() => {
           <UTable
             ref="table"
             v-model:row-selection="rowSelection"
-            v-model:column-visibility="columnVisibility"
+            v-model:column-visibility="tableColumnVisibility"
             :get-row-id="getPhotoRowId"
             :column-pinning="{
               right: ['actions'],

@@ -274,6 +274,9 @@ const typeOptions = computed(() => [
   },
 ])
 
+// 全站对「窄屏」的说法就是这个断点，这里跟着用。
+const isMobile = useMediaQuery('(max-width: 768px)')
+
 // 展开行状态
 const expanded = ref<Record<string, boolean>>({})
 
@@ -332,7 +335,53 @@ const columns = computed<TableColumn<any>[]>(() => [
     id: 'actions',
     header: $t('dashboard.queue.table.actions'),
   },
-])
+].filter(
+  // 窄屏上只留下认得出这个任务的那几列：类型、状态和操作。编号、优先级、阶段
+  // 和创建时间硬挤进来只会把表撑出卡片边缘，排到看不见的地方去——编号在展开行
+  // 里本来就有。
+  (column) =>
+    !isMobile.value ||
+    ['expand', 'type', 'status', 'actions'].includes(
+      String(column.id ?? column.accessorKey ?? ''),
+    ),
+))
+
+/**
+ * 窄屏上这几列各自占多宽。桌面上列宽交给内容，几百像素的窗口里得先分好：
+ * 状态和操作是固定的两小块，类型拿去剩下的。三列都不带宽度的话，各占三分之一，
+ * 类型那格就装不下"照片元数据更新"和后面那枚状态徽章了。
+ */
+const mobileColumnWidths: Record<string, string> = {
+  expand: '36px',
+  status: '86px',
+  actions: '64px',
+}
+
+const sizedColumns = computed<TableColumn<any>[]>(() =>
+  columns.value.map((column) => {
+    const width = isMobile.value
+      ? mobileColumnWidths[String(column.id ?? column.accessorKey ?? '')]
+      : undefined
+    if (!width) return column
+    return { ...column, meta: { ...column.meta, style: { th: { width } } } }
+  }),
+)
+
+// 表格自己的那身衣服也随宽度换：桌面上列宽随内容，窄屏上先分好再截断，
+// 内边距也让一格少占几个像素。
+const tableUi = computed(() => ({
+  root: 'table-scroll overflow-auto',
+  base: isMobile.value ? 'min-w-full table-fixed' : 'min-w-full',
+  thead: 'bg-muted whitespace-nowrap',
+  tr: 'data-[selected=true]:bg-primary/5',
+  th: isMobile.value
+    ? 'px-2 py-2.5 text-xs font-medium text-muted'
+    : 'px-3 py-2.5 text-xs font-medium text-muted',
+  td: isMobile.value
+    ? 'px-2 py-2.5 text-sm text-default'
+    : 'px-3 py-2.5 text-sm text-default',
+  empty: 'py-12 text-sm text-muted',
+}))
 
 /**
  * 每十秒拉一次队列，标签页在后台时不动。
@@ -357,31 +406,42 @@ useIntervalFn(
     <template #header>
       <UDashboardNavbar :title="$t('dashboard.queue.title')">
         <template #right>
+          <!-- 窄屏上只留图标：三颗按钮带着全称排不下，最后一颗会被推出屏幕。
+               名字挪到 title 里，指上去还在。 -->
           <UButton
             icon="tabler:refresh"
             variant="soft"
             :loading="isLoading"
+            :title="$t('dashboard.queue.actions.refresh')"
             @click="refreshData"
           >
-            {{ $t('dashboard.queue.actions.refresh') }}
+            <span class="hidden sm:inline">
+              {{ $t('dashboard.queue.actions.refresh') }}
+            </span>
           </UButton>
           <UButton
             icon="tabler:refresh"
             color="warning"
             variant="soft"
             :loading="isLoading"
+            :title="$t('dashboard.queue.actions.retryAll')"
             @click="retryAllFailedTasks"
           >
-            {{ $t('dashboard.queue.actions.retryAll') }}
+            <span class="hidden sm:inline">
+              {{ $t('dashboard.queue.actions.retryAll') }}
+            </span>
           </UButton>
           <UButton
             icon="tabler:trash"
             color="error"
             variant="soft"
             :loading="isLoading"
+            :title="$t('dashboard.queue.actions.clearNonActive')"
             @click="clearNonActiveTasks"
           >
-            {{ $t('dashboard.queue.actions.clearNonActive') }}
+            <span class="hidden sm:inline">
+              {{ $t('dashboard.queue.actions.clearNonActive') }}
+            </span>
           </UButton>
         </template>
       </UDashboardNavbar>
@@ -518,22 +578,14 @@ useIntervalFn(
             <UTable
               v-model:expanded="expanded"
               :data="queueData?.data || []"
-              :columns="columns"
+              :columns="sizedColumns"
               :loading="isLoading"
               :empty-state="{
                 icon: 'tabler:inbox',
                 label: $t('dashboard.queue.messages.noTasks'),
               }"
               class="w-full"
-              :ui="{
-                root: 'table-scroll overflow-auto',
-                base: 'min-w-full',
-                thead: 'bg-muted whitespace-nowrap',
-                tr: 'data-[selected=true]:bg-primary/5',
-                th: 'px-3 py-2.5 text-xs font-medium text-muted',
-                td: 'px-3 py-2.5 text-sm text-default',
-                empty: 'py-12 text-sm text-muted',
-              }"
+              :ui="tableUi"
             >
               <!-- 任务类型：一列里一个颜色只说明"这是哪种任务"，而这张表里颜色已经
                    被状态用掉了，所以类型一律素色。 -->
@@ -610,24 +662,34 @@ useIntervalFn(
                    队列接口本来就只收这一种（DELETE /api/queue/failed/<id>）。 -->
               <template #actions-cell="{ row }">
                 <div class="flex items-center gap-1">
+                  <!-- 窄屏上这两颗只剩图标：一格里的两个词排出来比整列还宽，
+                       表就被撑得横着滚动，为的是看两个谁都知道是什么的图标。 -->
                   <template v-if="row.original.status === 'failed'">
                     <UButton
                       icon="tabler:refresh"
                       size="xs"
                       variant="soft"
                       color="warning"
+                      :square="isMobile"
+                      :title="$t('dashboard.queue.buttons.retry')"
                       @click="retryTask(row.original.id)"
                     >
-                      {{ $t('dashboard.queue.buttons.retry') }}
+                      <span class="hidden sm:inline">
+                        {{ $t('dashboard.queue.buttons.retry') }}
+                      </span>
                     </UButton>
                     <UButton
                       icon="tabler:trash"
                       size="xs"
                       variant="ghost"
                       color="error"
+                      :square="isMobile"
+                      :title="$t('dashboard.queue.buttons.delete')"
                       @click="deleteTask(row.original.id)"
                     >
-                      {{ $t('dashboard.queue.buttons.delete') }}
+                      <span class="hidden sm:inline">
+                        {{ $t('dashboard.queue.buttons.delete') }}
+                      </span>
                     </UButton>
                   </template>
                   <span
@@ -643,7 +705,7 @@ useIntervalFn(
                 <div class="px-2">
                   <div class="space-y-3">
                     <!-- 任务ID和类型 -->
-                    <div class="flex gap-4">
+                    <div class="flex flex-wrap gap-4">
                       <div>
                         <p class="text-xs text-dimmed">{{ $t('dashboard.queue.table.detail.photoId') }}</p>
                         <p class="text-sm capitalize">
