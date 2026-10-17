@@ -1653,6 +1653,7 @@
       "logoAlt": "Memora Logo"
     },
     "actions": {
+      "previous": "Previous",
       "next": "Next",
       "completeSetup": "Complete Setup"
     },

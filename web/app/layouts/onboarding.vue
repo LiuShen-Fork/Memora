@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NuxtLink } from '#components'
 import { motion } from 'motion-v'
 
 const route = useRoute()
@@ -15,6 +16,15 @@ const steps = computed(() => [
 const currentStepIndex = computed(() => {
   return steps.value.findIndex((s) => s.route === route.name)
 })
+
+// The steps are walked through in order, so every step before this one has
+// been visited and can be gone back to from here.
+const stepPaths = computed(() =>
+  steps.value.map((step, index) => {
+    const name = step.route.replace('onboarding-', '')
+    return index === 0 ? '/onboarding' : `/onboarding/${name}`
+  }),
+)
 </script>
 
 <template>
@@ -137,10 +147,13 @@ const currentStepIndex = computed(() => {
               </div>
             </div>
 
-            <div
+            <component
+              :is="index < currentStepIndex ? NuxtLink : 'div'"
               v-for="(step, index) in steps"
               :key="step.route"
+              :to="index < currentStepIndex ? stepPaths[index] : undefined"
               class="relative flex items-center gap-4 py-3 pl-2 group"
+              :class="{ 'cursor-pointer': index < currentStepIndex }"
             >
               <!-- Active Indicator Background -->
               <motion.div
@@ -188,7 +201,7 @@ const currentStepIndex = computed(() => {
                   {{ $t('onboarding.layout.current') }}
                 </span>
               </div>
-            </div>
+            </component>
           </div>
         </div>
 

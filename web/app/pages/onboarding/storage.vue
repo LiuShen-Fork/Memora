@@ -139,6 +139,15 @@ function onSubmit() {
 
     <template #actions>
       <WizardButton
+        to="/onboarding/site"
+        variant="outline"
+        color="primary"
+        size="lg"
+        leading-icon="tabler:arrow-left"
+      >
+        {{ $t('onboarding.actions.previous') }}
+      </WizardButton>
+      <WizardButton
         type="submit"
         form="storage-form"
         color="primary"

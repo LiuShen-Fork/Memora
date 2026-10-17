@@ -1553,6 +1553,7 @@
       "logoAlt": "Memora ロゴ"
     },
     "actions": {
+      "previous": "戻る",
       "next": "次へ",
       "completeSetup": "設定を完了"
     },

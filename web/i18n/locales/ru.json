@@ -1613,6 +1613,7 @@
       "logoAlt": "Логотип Memora"
     },
     "actions": {
+      "previous": "Назад",
       "next": "Далее",
       "completeSetup": "Завершить настройку"
     },
