@@ -142,11 +142,16 @@
   /* A corner is a size, so it is decided once and everything follows. */
   --ui-radius: 0.5rem;
 
+  /* Preflight puts the family on <html>, which is outside this scope, so the
+   * element that carries the class has to name it again for the rest of the
+   * page to inherit it. */
+  font-family: var(--font-sans);
+
   /* Paper: the page is the deepest surface and cards are cut out of it. */
   --ui-bg: var(--color-white);
   --ui-bg-muted: oklch(0.966 0.004 80);
-  --ui-bg-elevated: oklch(0.945 0.006 80);
-  --ui-bg-accented: oklch(0.912 0.007 80);
+  --ui-bg-elevated: oklch(0.936 0.006 80);
+  --ui-bg-accented: oklch(0.9 0.008 80);
 
   --ui-border: oklch(0.9 0.006 80);
   --ui-border-muted: oklch(0.928 0.006 80);
@@ -186,7 +191,12 @@
 }
 
 @theme {
-  --font-sans: Rubik, 'Noto Sans SC', sans-serif;
+  /* Rubik is asked for by the dashboard and by nothing else; see
+   * .app-dashboard below. The stack here is the one the public gallery has
+   * always rendered in — it named Rubik, but the font was never shipped, so
+   * every page has been drawn by the system fallback. Leaving the gallery
+   * stack alone means shipping the font cannot change how it looks. */
+  --font-sans: 'Noto Sans SC', sans-serif;
 
   --leading-normal: normal;
 }
