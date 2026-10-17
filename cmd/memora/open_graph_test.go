@@ -75,14 +75,21 @@ func TestLinkPreviewDescribesASharedPhoto(t *testing.T) {
 	assertPageHas(t, page, `<meta property="og:site_name" content="Memora Test">`)
 	assertPageHas(t, page, `<meta property="og:type" content="article">`)
 	assertPageHas(t, page, `<meta property="og:url" content="http://example.com/sunset">`)
-	assertPageHas(t, page, `<meta property="og:image" content="http://example.com/storage/photos/thumbnails/sunset.webp">`)
+	// The picture the preview shows is the card the server draws for this photo,
+	// not the stored thumbnail: the card carries the photo's own text, and a
+	// thumbnail address is a bare picture a chat client would show without any.
+	assertPageHas(t, page, `<meta property="og:image" content="http://example.com/_og/photo/sunset.jpg">`)
+	assertPageHas(t, page, `<meta property="og:image:width" content="1200">`)
+	assertPageHas(t, page, `<meta property="og:image:height" content="630">`)
+	assertPageHas(t, page, `<meta property="og:image:alt" content="Sunset over the bay">`)
+	assertPageHas(t, page, `<meta name="twitter:image" content="http://example.com/_og/photo/sunset.jpg">`)
 	assertPageHas(t, page, `<meta name="twitter:card" content="summary_large_image">`)
 	// A photo the viewer cannot name is still described by its picture rather
 	// than left to the site's own title.
 	insertTestPhoto(t, app, "untitled", "", "")
 	page = servedShell(t, app, "/untitled")
 	assertPageHas(t, page, "<title>Memora Test</title>")
-	assertPageHas(t, page, `<meta property="og:image" content="http://example.com/storage/photos/thumbnails/untitled.webp">`)
+	assertPageHas(t, page, `<meta property="og:image" content="http://example.com/_og/photo/untitled.jpg">`)
 	assertPageHas(t, page, `<meta property="og:description" content="Every frame counts">`)
 }
 
@@ -111,6 +118,7 @@ func TestLinkPreviewKeepsPrivatePhotosOutOfThePage(t *testing.T) {
 			t.Fatalf("%s is named in the page:\n%s", protected.name, page)
 		}
 		assertPageLacks(t, page, "thumbnails/secret.webp")
+		assertPageLacks(t, page, "/_og/photo/secret.jpg")
 		assertPageLacks(t, page, "Nobody else should see this")
 		assertPageHas(t, page, `<meta property="og:title" content="Memora Test">`)
 		// The gallery keeps the photo out of the same list, so the two cannot
@@ -133,17 +141,13 @@ func TestLinkPreviewDescribesTheSite(t *testing.T) {
 		assertPageHas(t, page, `<meta property="og:title" content="Memora Test">`)
 		assertPageHas(t, page, `<meta property="og:description" content="Every frame counts">`)
 		assertPageHas(t, page, `<meta property="og:type" content="website">`)
-		assertPageHas(t, page, `<meta property="og:image" content="http://example.com/storage/photos/avatars/avatar-0123456789abcdef.webp">`)
-		assertPageHas(t, page, `<meta name="twitter:card" content="summary">`)
+		// Every page that is not a photo is the site, and the site is shown as
+		// the card drawn for it. The picture is drawn from what the settings say
+		// at the moment the card is asked for, so an avatar changed a minute ago
+		// is in the preview a minute later.
+		assertPageHas(t, page, `<meta property="og:image" content="http://example.com/_og/site.jpg">`)
+		assertPageHas(t, page, `<meta name="twitter:card" content="summary_large_image">`)
 	}
-	// With no avatar of its own the preview falls back to the picture that ships
-	// with the client, and an outside avatar is left as it is.
-	app.setSetting("app", "avatarUrl", "")
-	page := servedShell(t, app, "/")
-	assertPageHas(t, page, `<meta property="og:image" content="http://example.com`+defaultSocialImage+`">`)
-	app.setSetting("app", "avatarUrl", "https://cdn.example.com/me.png")
-	page = servedShell(t, app, "/")
-	assertPageHas(t, page, `<meta property="og:image" content="https://cdn.example.com/me.png">`)
 }
 
 // A title is whatever the uploader wrote, and it is written into the page

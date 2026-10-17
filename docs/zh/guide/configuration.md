@@ -43,6 +43,7 @@
 | NUXT_OAUTH_GITHUB_CLIENT_SECRET          | GitHub OAuth 应用的 Client Secret                    | 无                                    | 否(可选,用于 GitHub 登录)                                             |
 | NUXT_SESSION_PASSWORD                    | 用于加密会话的密码，32 位随机字符串                  | 无                                    | 是                                                                    |
 | CFRAME_WORKERS                           | 进程启动时队列同时处理的任务数（1-8）。后台队列页面可以在运行中修改同一个数值。 | `5` | 否 |
+| CFRAME_OG_FONT                           | 绘制链接预览卡片所使用的字体文件。留空则使用 Go 字体，中日韩文字改用系统自带字体 | 无 | 否 |
 | NUXT_PUBLIC_GTAG_ID                      | Google Analytics 追踪 ID                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_ENABLED     | 是否启用 Matomo 分析追踪                             | `false`                               | 否                                                                    |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_URL         | Matomo 实例 URL 地址(如: https://matomo.example.com) | 无                                    | 否(启用 Matomo 时必需)                                                |
@@ -50,6 +51,35 @@
 | NUXT_UPLOAD_MIME_WHITELIST_ENABLED       | 是否启用上传文件 MIME 类型白名单验证                 | `true`                                | 否                                                                    |
 | NUXT_UPLOAD_MIME_WHITELIST               | 上传文件允许的 MIME 类型列表（逗号分隔）             | 见下方说明                            | 否                                                                    |
 | ALLOW_INSECURE_COOKIE                    | 是否允许非安全 Cookie（仅在开发环境使用）            | `false`                               | 否                                                                    |
+
+## 链接预览卡片
+
+把本站链接贴到聊天软件或动态里时，显示的是一张卡片：由服务端按需绘制的
+1200×630 JPEG 图片，而不是碰巧排在最前面的那张照片。站点卡片包含站点标题、
+标语和头像；照片卡片包含照片本身、标题、描述，以及文件里记录的拍摄参数。
+尺寸也会写进页面（`og:image:width` 与 `og:image:height`），客户端不必等到
+拿到图片就能先把排版定下来。
+
+| 地址                  | 绘制内容                             |
+| --------------------- | ------------------------------------ |
+| `/_og/site.jpg`       | 站点：标题、标语、头像               |
+| `/_og/photo/<id>.jpg` | 该照片，且匿名访客有权查看时才有     |
+
+卡片缓存十分钟（`Cache-Control: public, max-age=600`），到期后重新绘制，因此
+改了标题或头像无需重启即可在预览中生效。隐藏相册或带密码相册中的照片没有
+卡片：该地址返回 `404`，与照片本身不出现在页面上是同一个道理。
+
+卡片默认使用 Go 字体，它随 Go 图像库一起发布，包含拉丁、希腊和西里尔字母，
+但没有中日韩文字。遇到它写不出的文字时，卡片会改用系统自带的字体
+（微软雅黑、苹方、Noto Sans CJK 等）。若想自行指定字体——例如两种都不支持的
+语言，或希望字体与你的设计一致——请指定一个 `.ttf`、`.otf` 或 `.ttc` 文件：
+
+```bash
+CFRAME_OG_FONT=/app/data/fonts/NotoSansSC-Regular.otf
+```
+
+指定的字体会用于整张卡片，包括粗体行。若该文件读取失败，服务端会在系统日志
+中说明原因，并改用 Go 字体绘制卡片，链接依然有预览图。
 
 ## 上传文件类型白名单
 

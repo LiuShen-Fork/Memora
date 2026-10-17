@@ -47,6 +47,10 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.serveThumb(w, r)
 		return
 	}
+	if strings.HasPrefix(r.URL.Path, "/_og/") {
+		a.ogCard(w, r)
+		return
+	}
 	a.serveWeb(w, r)
 }
 

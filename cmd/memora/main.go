@@ -43,6 +43,10 @@ type App struct {
 	// and the multipart uploads an object store is holding for them.
 	uploadsMu sync.Mutex
 	uploads   map[string]*uploadSession
+	// ogFontOnce loads the type a link preview card is drawn in, the first time
+	// a card is asked for.
+	ogFontOnce sync.Once
+	ogFonts    ogCardFonts
 }
 
 func main() {

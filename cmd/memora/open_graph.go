@@ -10,10 +10,6 @@ import (
 	"strings"
 )
 
-// defaultSocialImage is what a link preview falls back to when the site has no
-// avatar of its own. It ships with the client bundle.
-const defaultSocialImage = "/web-app-manifest-512x512.png"
-
 // defaultSiteTitle stands in when the settings cannot be read at all. It is the
 // same title the settings table ships with.
 const defaultSiteTitle = "Memora"
@@ -73,7 +69,16 @@ func (a *App) socialHead(r *http.Request) string {
 	writeMetaTag(&head, "property", "og:description", preview.description)
 	writeMetaTag(&head, "property", "og:type", preview.kind)
 	writeMetaTag(&head, "property", "og:url", absoluteURL(origin, r.URL.Path))
-	writeMetaTag(&head, "property", "og:image", absoluteURL(origin, preview.image))
+	image := absoluteURL(origin, preview.image)
+	writeMetaTag(&head, "property", "og:image", image)
+	// Every card is drawn at the one size the large card is read at, and a
+	// client told the size lays the preview out before it has the picture.
+	writeMetaTag(&head, "name", "twitter:image", image)
+	writeMetaTag(&head, "property", "og:image:width", fmt.Sprint(ogCardWidth))
+	writeMetaTag(&head, "property", "og:image:height", fmt.Sprint(ogCardHeight))
+	writeMetaTag(&head, "property", "og:image:type", "image/jpeg")
+	writeMetaTag(&head, "property", "og:image:alt", preview.title)
+	writeMetaTag(&head, "name", "twitter:image:alt", preview.title)
 	writeMetaTag(&head, "name", "twitter:card", preview.card)
 	return head.String()
 }
@@ -82,18 +87,17 @@ func (a *App) socialHead(r *http.Request) string {
 // the address names a photo an anonymous visitor may see, the site itself
 // otherwise.
 func (a *App) socialPreviewFor(ctx context.Context, r *http.Request) socialPreview {
-	site, slogan, avatar := a.siteIdentity(ctx)
+	site, slogan, _ := a.siteIdentity(ctx)
 	preview := socialPreview{
 		title:       site,
 		site:        site,
 		description: slogan,
-		image:       avatar,
-		kind:        "website",
-		// A site avatar is square, which is the shape the small card shows.
-		card: "summary",
-	}
-	if preview.image == "" {
-		preview.image = defaultSocialImage
+		// The picture a preview shows is drawn per request by the server, so
+		// that a shared link arrives as a card of the site rather than as
+		// whichever picture happens to be first.
+		image: siteCardAddress,
+		kind:  "website",
+		card:  "summary_large_image",
 	}
 	id := photoIDFromPath(r.URL.Path)
 	if id == "" {
@@ -109,11 +113,8 @@ func (a *App) socialPreviewFor(ctx context.Context, r *http.Request) socialPrevi
 	if description := stringValue(photo.Description); description != "" {
 		preview.description = description
 	}
-	if image := firstNonEmpty(stringValue(photo.ThumbnailURL), stringValue(photo.OriginalURL)); image != "" {
-		preview.image = image
-	}
+	preview.image = photoCardAddress(id)
 	preview.kind = "article"
-	preview.card = "summary_large_image"
 	return preview
 }
 

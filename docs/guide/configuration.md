@@ -43,6 +43,7 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 | NUXT_OAUTH_GITHUB_CLIENT_SECRET          | GitHub OAuth app Client Secret                                  | None                                  | No (optional, for GitHub login)                      |
 | NUXT_SESSION_PASSWORD                    | Password for encrypting sessions, 32-character random string    | None                                  | Yes                                                  |
 | CFRAME_WORKERS                           | How many tasks the queue runs at once (1-8) when the process starts. The queue page in the dashboard changes the same number while the server is running. | `5` | No |
+| CFRAME_OG_FONT                           | Font file a link preview card is drawn in. Empty draws it in the Go font, and in a font the machine keeps for Chinese, Japanese and Korean | None | No |
 | NUXT_PUBLIC_GTAG_ID                      | Google Analytics Tracking ID                                    | None                                  | No                                                   |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_ENABLED     | Enable Matomo analytics tracking                                | `false`                               | No                                                   |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_URL         | Matomo instance URL (e.g., https://matomo.example.com)          | None                                  | No (required when Matomo is enabled)                 |
@@ -50,6 +51,41 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 | NUXT_UPLOAD_MIME_WHITELIST_ENABLED       | Enable MIME type whitelist validation for uploads               | `true`                                | No                                                   |
 | NUXT_UPLOAD_MIME_WHITELIST               | Allowed MIME types for uploads (comma-separated)                | See below                             | No                                                   |
 | ALLOW_INSECURE_COOKIE                    | Allow insecure cookies (only for development environment)       | `false`                               | No                                                   |
+
+## Link Preview Cards
+
+A link to this site pasted into a chat client or a timeline is shown as a card:
+a 1200×630 JPEG the server draws when the client asks for it, rather than
+whichever photo happens to be first. The card of the site carries its title, its
+slogan and its avatar; the card of a photo carries the photo, its title, its
+description and what the file says about the camera. The size is declared in the
+page as well (`og:image:width` and `og:image:height`), so a client can lay the
+preview out before it has the picture.
+
+| Address             | What it draws                                   |
+| ------------------- | ----------------------------------------------- |
+| `/_og/site.jpg`     | The site: title, slogan and avatar              |
+| `/_og/photo/<id>.jpg` | That photo, when an anonymous visitor may see it |
+
+Cards are kept for ten minutes (`Cache-Control: public, max-age=600`) and drawn
+again after that, so a change to the title or the avatar reaches a preview
+without a restart. A photo in a hidden or password-protected album has no card:
+the address answers `404`, the same way the photo is kept out of the page.
+
+Cards are set in the Go font, which ships inside the Go image library and has
+Latin, Greek and Cyrillic letters but no Chinese, Japanese or Korean ones. For
+text it cannot write, a card is set in a font the machine already keeps
+(Microsoft YaHei, PingFang, Noto Sans CJK and friends). To choose the type
+yourself — for a language neither of those has, or for a font that matches your
+design — name a `.ttf`, `.otf` or `.ttc` file:
+
+```bash
+CFRAME_OG_FONT=/app/data/fonts/NotoSansSC-Regular.otf
+```
+
+A named font sets the whole card, including the heavy lines. If the file cannot
+be read, the server says so in the system log and draws the card in the Go font
+instead: a link still arrives with a preview.
 
 ## Upload File Type Whitelist
 

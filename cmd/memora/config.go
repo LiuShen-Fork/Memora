@@ -20,19 +20,22 @@ const (
 // Config contains all process-level configuration. Provider-specific values
 // are kept here only until an active provider is resolved from SQLite.
 type Config struct {
-	DBPath             string
-	DataDir            string
-	WebDir             string
-	Addr               string
-	DBMaxOpenConns     int
-	SessionKey         []byte
-	WorkerCount        int
-	MediaConcurrency   int
-	MediaMaxBytes      int64
-	MediaTimeout       time.Duration
-	FFmpeg             string
-	FFprobe            string
-	ExifTool           string
+	DBPath           string
+	DataDir          string
+	WebDir           string
+	Addr             string
+	DBMaxOpenConns   int
+	SessionKey       []byte
+	WorkerCount      int
+	MediaConcurrency int
+	MediaMaxBytes    int64
+	MediaTimeout     time.Duration
+	FFmpeg           string
+	FFprobe          string
+	ExifTool         string
+	// OGFont is the font a link preview card is drawn in. Empty draws it in the
+	// Go family, which has no letters outside Latin and Greek.
+	OGFont             string
 	NominatimURL       string
 	GithubClientID     string
 	GithubClientSecret string
@@ -130,6 +133,7 @@ func loadConfig() Config {
 		FFmpeg:             env("CFRAME_FFMPEG_PATH", "ffmpeg"),
 		FFprobe:            env("CFRAME_FFPROBE_PATH", "ffprobe"),
 		ExifTool:           env("EXIFTOOL_PATH", "exiftool"),
+		OGFont:             env("CFRAME_OG_FONT", ""),
 		NominatimURL:       env("NUXT_NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org"),
 		GithubClientID:     env("NUXT_OAUTH_GITHUB_CLIENT_ID", ""),
 		GithubClientSecret: env("NUXT_OAUTH_GITHUB_CLIENT_SECRET", ""),
