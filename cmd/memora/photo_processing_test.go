@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func writeTestJPEG(t *testing.T, path string, width, height int) {
@@ -86,5 +87,38 @@ func TestTransferPhotoMetadataResetsOrientation(t *testing.T) {
 
 	if got := exifTag(t, exiftool, target, "Orientation"); got != "Horizontal (normal)" {
 		t.Errorf("Orientation = %q, want Horizontal (normal)", got)
+	}
+}
+
+// The metadata tool writes dates its own way, and the interface parses them with
+// the browser's own date parser, which reads none of those forms. Whatever comes
+// out of here has to be a date the browser understands.
+func TestTheDateOfAPhotoIsReadable(t *testing.T) {
+	readable := func(value string) bool {
+		_, err := time.Parse(time.RFC3339, value)
+		return err == nil
+	}
+	cases := []struct{ reported, want string }{
+		{"2024:05:06 07:08:09", "2024-05-06T07:08:09Z"},
+		{"2024:05:06 07:08:09+02:00", "2024-05-06T05:08:09Z"},
+		{"2024:05:06 07:08:09.123", "2024-05-06T07:08:09Z"},
+		{"2024:05:06T07:08:09Z", "2024-05-06T07:08:09Z"},
+		{"2024:05:06", "2024-05-06T00:00:00Z"},
+		{"2024-05-06", "2024-05-06T00:00:00Z"},
+		// A date the tool could not read either, and a file name that only looks
+		// like one.
+		{"0000:00:00 00:00:00", ""},
+		{"", ""},
+		{"not a date", ""},
+	}
+	for _, test := range cases {
+		got := normalizeDate(test.reported)
+		if got != test.want {
+			t.Errorf("normalizeDate(%q) = %q, want %q", test.reported, got, test.want)
+			continue
+		}
+		if got != "" && !readable(got) {
+			t.Errorf("normalizeDate(%q) = %q, which is not a date the browser reads", test.reported, got)
+		}
 	}
 }

@@ -557,15 +557,30 @@ func extractExifContext(ctx context.Context, tool string, data []byte, ext strin
 	}
 	return result, date
 }
+
+// normalizeDate writes what the metadata tool reports in the one date format the
+// rest of Memora reads: the interface parses dates with the browser's own date
+// parser, which reads the colon-separated form the tool writes as nothing at
+// all. A timezone offset, a fraction of a second and a date without a time are
+// read as well; a value that is no date, such as the zeroed one many videos and
+// some cameras carry, is dropped rather than stored, since a date nothing can
+// show, sort or filter by is worse than no date.
 func normalizeDate(value string) string {
 	value = strings.TrimSpace(strings.ReplaceAll(value, " ", "T"))
-	if t, err := time.Parse(time.RFC3339, value); err == nil {
-		return t.UTC().Format(time.RFC3339)
+	for _, layout := range []string{
+		time.RFC3339,
+		"2006:01:02T15:04:05",
+		"2006:01:02T15:04:05Z07:00",
+		"2006:01:02T15:04:05.999999999",
+		"2006:01:02T15:04:05.999999999Z07:00",
+		"2006:01:02",
+		"2006-01-02",
+	} {
+		if t, err := time.Parse(layout, value); err == nil {
+			return t.UTC().Format(time.RFC3339)
+		}
 	}
-	if t, err := time.Parse("2006:01:02T15:04:05", value); err == nil {
-		return t.UTC().Format(time.RFC3339)
-	}
-	return value
+	return ""
 }
 func stripGPS(m map[string]any) map[string]any {
 	for _, key := range []string{"GPSAltitude", "GPSCoordinates", "GPSAltitudeRef", "GPSLatitude", "GPSLatitudeRef", "GPSLongitude", "GPSLongitudeRef", "GPSPosition", "GPSDateStamp", "GPSTimeStamp"} {
