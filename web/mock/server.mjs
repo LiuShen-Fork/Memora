@@ -395,8 +395,20 @@ const albums = ALBUMS.map(([title, description, locked], index) => {
   }
 })
 
+// The vocabulary the queue is written in. A task's type says what kind of
+// work it is; the stage is which step of it is running, and the interface has
+// a separate set of names for each. Sending a stage as a type renders as a
+// raw translation key.
 const QUEUE_TYPES = [
-  'preprocess',
+  'photo',
+  'photo-metadata-update',
+  'photo-reverse-geocoding',
+  'photo-erase-location',
+  'live-photo-video',
+]
+
+const QUEUE_STAGES = [
+  'preprocessing',
   'metadata',
   'thumbnail',
   'exif',
@@ -432,7 +444,10 @@ function buildTasks() {
       attempts: status === 'failed' ? 3 : 1,
       maxAttempts: 3,
       status,
-      statusStage: status === 'in-stages' ? QUEUE_TYPES[Math.floor(rnd() * 4)] : null,
+      statusStage:
+        status === 'in-stages'
+          ? QUEUE_STAGES[Math.floor(rnd() * QUEUE_STAGES.length)]
+          : null,
       errorMessage:
         status === 'failed'
           ? rnd() < 0.5
@@ -648,7 +663,9 @@ function route(req, res, url) {
     const workers = 4
     return send(res, 200, {
       uptime: 86400 * 2 + 5400,
-      runningOn: 'linux',
+      // Must be one of the names the interface has a translation for; the
+      // dashboard renders the raw key when it is not.
+      runningOn: 'docker',
       memory: { used: 412 * 1024 * 1024, total: 2048 * 1024 * 1024 },
       photos: {
         total: photos.length,
@@ -659,6 +676,9 @@ function route(req, res, url) {
       workerPool: {
         totalWorkers: workers,
         activeWorkers: 2,
+        totalProcessed: completed,
+        totalErrors: failed,
+        averageSuccessRate: (completed / (completed + failed)) * 100,
         workers: Array.from({ length: workers }, (_, i) => ({
           workerId: `worker-${i + 1}`,
           isProcessing: i < 2,
@@ -676,7 +696,7 @@ function route(req, res, url) {
         totalSize,
         averageSize: totalSize / photos.length,
         maxSize: Math.max(...photos.map((photo) => photo.fileSize)),
-        activeProvider: 'local',
+        activeProvider: { provider: 'local', name: '' },
       },
       trends,
       timestamp: new Date().toISOString(),
@@ -728,6 +748,23 @@ function route(req, res, url) {
       })
     }
     return fail(res, 405, 'Method Not Allowed')
+  }
+
+  if (path === '/api/photos/timeline' && method === 'GET') {
+    const from = url.searchParams.get('from') || ''
+    const to = url.searchParams.get('to') || ''
+    const counts = new Map()
+    for (const photo of photos) {
+      const day = String(photo.dateTaken || photo.lastModified || '').slice(0, 10)
+      if (!day) continue
+      if (from && day < from) continue
+      if (to && day > to) continue
+      counts.set(day, (counts.get(day) || 0) + 1)
+    }
+    const days = [...counts.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }))
+    return send(res, 200, { days })
   }
 
   if (path === '/api/photos/reactions' && method === 'GET') {
@@ -787,10 +824,10 @@ function route(req, res, url) {
     })
   }
   if (path === '/api/queue/recent' && method === 'GET') {
-    return send(
-      res,
-      200,
-      tasks.slice(0, 20).map((task) => ({
+    // {tasks: [...]}, not a bare array, and the photo behind a task travels
+    // with it: the list names each entry after the photo it worked on.
+    return send(res, 200, {
+      tasks: tasks.slice(0, 5).map((task) => ({
         id: task.id,
         type: task.payload.type,
         status: task.status,
@@ -798,10 +835,12 @@ function route(req, res, url) {
         errorMessage: task.errorMessage,
         createdAt: task.createdAt,
         completedAt: task.completedAt,
-        storageKey: task.payload.storageKey,
-        photoId: task.payload.photoId,
+        fileName: task.payload.fileName ?? null,
+        photo: task.payload.photoId
+          ? (photoById.get(task.payload.photoId) ?? null)
+          : null,
       })),
-    )
+    })
   }
   if (path === '/api/queue/concurrency' && method === 'GET') {
     return send(res, 200, { concurrency: 4 })
