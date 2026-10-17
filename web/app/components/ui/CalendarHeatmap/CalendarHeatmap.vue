@@ -128,16 +128,16 @@ const tippyInstances = new Map<HTMLElement, Instance>()
 let tippySingleton: CreateSingletonInstance
 
 function initTippy() {
+  // Dispose the singleton before its references when the calendar changes.
+  // Updating an active singleton with an empty list leaves Popper with no rect.
+  tippySingleton?.destroy()
+  tippyInstances.forEach((item) => item.destroy())
   tippyInstances.clear()
-  if (tippySingleton) {
-    tippySingleton.setInstances(Array.from(tippyInstances.values()))
-  } else {
-    tippySingleton = createSingleton(Array.from(tippyInstances.values()), {
-      overrides: [],
-      moveTransition: 'transform 0.1s ease-out',
-      allowHTML: true,
-    })
-  }
+  tippySingleton = createSingleton([], {
+    overrides: [],
+    moveTransition: 'transform 0.1s ease-out',
+    allowHTML: true,
+  })
 }
 
 function tooltipOptions(day: CalendarItem): string | undefined {
@@ -254,8 +254,8 @@ watch(
 )
 
 watch(
-  () => props.vertical,
-  (v) => {
+  [() => props.vertical, () => heatmap.value.weekCount],
+  ([v]) => {
     if (v) {
       width.value =
         LEFT_SECTION_WIDTH + SQUARE_SIZE * DAYS_IN_WEEK + RIGHT_SECTION_WIDTH
@@ -326,7 +326,6 @@ watch(
       props.max,
       props.startDate as Date,
     )
-    tippyInstances.forEach((item) => item.destroy())
     nextTick(initTippy)
   },
 )
