@@ -48,7 +48,11 @@ const cardUi = computed(() => ({
       #header
     >
       <slot name="header">
-        <div class="flex items-center justify-between gap-3">
+        <!-- 宽屏上标题在左、控件在右，一行；窄屏上没那么多地方并排，
+             标题占头一行，控件另起一行横着铺开。 -->
+        <div
+          class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+        >
           <div class="flex min-w-0 items-center gap-2.5">
             <UIcon
               v-if="icon"
@@ -67,7 +71,12 @@ const cardUi = computed(() => ({
               </p>
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-1.5">
+          <!-- 右边这一组要让得开也折得下：窄屏上它的宽度是内容撑出来的，
+               不让它缩，父行又换不了行，里面那几颗控件就被推出卡片外面。
+               桌面上它照旧占满剩下的位置、贴右排。 -->
+          <div
+            class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5"
+          >
             <slot name="actions" />
           </div>
         </div>
