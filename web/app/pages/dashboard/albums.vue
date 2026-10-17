@@ -491,37 +491,60 @@ const submitButtonLabel = computed(() => {
     : $t('dashboard.albums.slideover.submitCreate')
 })
 
-const columns = computed<any[]>(() => [
-  {
-    id: 'coverPhoto',
-    accessorKey: 'coverPhoto',
-    header: $t('dashboard.albums.table.columns.cover'),
-  },
-  {
-    id: 'title',
-    accessorKey: 'title',
-    header: $t('dashboard.albums.table.columns.title'),
-  },
-  {
-    id: 'description',
-    accessorKey: 'description',
-    header: $t('dashboard.albums.table.columns.description'),
-  },
-  {
-    id: 'photoCount',
-    accessorKey: 'photoCount',
-    header: $t('dashboard.albums.table.columns.photoCount'),
-  },
-  {
-    id: 'createdAt',
-    accessorKey: 'createdAt',
-    header: $t('dashboard.albums.table.columns.createdAt'),
-  },
-  {
-    id: 'actions',
-    header: $t('dashboard.albums.table.columns.actions'),
-  },
-])
+/**
+ * How much room each column gets, in pixels.
+ *
+ * The widths are written down rather than left to the content, because the
+ * content is an album title and an album description and those are as long as
+ * whoever wrote them felt like. The description is the one column left without
+ * a width: it is the one that reads better the more room it is given, so it
+ * takes whatever the others leave.
+ */
+const columnWidths: Record<string, string> = {
+  coverPhoto: '68px',
+  title: '220px',
+  photoCount: '92px',
+  createdAt: '104px',
+  actions: '152px',
+}
+
+const columns = computed<any[]>(() =>
+  [
+    {
+      id: 'coverPhoto',
+      accessorKey: 'coverPhoto',
+      header: $t('dashboard.albums.table.columns.cover'),
+    },
+    {
+      id: 'title',
+      accessorKey: 'title',
+      header: $t('dashboard.albums.table.columns.title'),
+    },
+    {
+      id: 'description',
+      accessorKey: 'description',
+      header: $t('dashboard.albums.table.columns.description'),
+    },
+    {
+      id: 'photoCount',
+      accessorKey: 'photoCount',
+      header: $t('dashboard.albums.table.columns.photoCount'),
+    },
+    {
+      id: 'createdAt',
+      accessorKey: 'createdAt',
+      header: $t('dashboard.albums.table.columns.createdAt'),
+    },
+    {
+      id: 'actions',
+      header: $t('dashboard.albums.table.columns.actions'),
+    },
+  ].map((column) => {
+    const width = columnWidths[column.id]
+    if (!width) return column
+    return { ...column, meta: { style: { th: { width } } } }
+  }),
+)
 </script>
 
 <template>
@@ -543,22 +566,24 @@ const columns = computed<any[]>(() => [
 
     <template #body>
       <div class="flex flex-col gap-6">
-        <div
-          v-if="albums.length > 0"
-          class="bg-white dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-neutral-800"
-        >
+        <div v-if="albums.length > 0">
           <UTable
             :data="albums"
             :columns="columns"
             class="table-scroll w-full"
             :ui="{
-              wrapper: 'relative overflow-auto',
-              base: 'min-w-[720px] table-fixed',
+              root: 'overflow-hidden rounded-lg border border-default bg-default',
+              base: 'min-w-full table-fixed',
+              thead: 'bg-muted whitespace-nowrap',
+              tr: 'data-[selected=true]:bg-primary/5',
+              th: 'px-3 py-2.5 text-xs font-medium text-muted',
+              td: 'px-3 py-2.5 text-sm text-default',
+              empty: 'py-12 text-sm text-muted',
             }"
           >
             <template #coverPhoto-cell="{ row }">
               <div
-                class="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-neutral-800 shrink-0"
+                class="size-11 shrink-0 overflow-hidden rounded bg-elevated"
               >
                 <img
                   v-if="(row.original as unknown as AlbumItem).coverPhoto"
@@ -571,7 +596,7 @@ const columns = computed<any[]>(() => [
                 />
                 <div
                   v-else
-                  class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-600"
+                  class="flex size-full items-center justify-center text-dimmed"
                 >
                   <Icon
                     name="tabler:photo"
@@ -582,48 +607,50 @@ const columns = computed<any[]>(() => [
             </template>
 
             <template #title-cell="{ row }">
-              <div class="flex items-center gap-2">
+              <div class="group flex items-center gap-2">
                 <NuxtLink
                   :to="`/albums/${(row.original as unknown as AlbumItem).id}`"
                   target="_blank"
-                  class="font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer inline-flex items-center gap-2"
+                  class="inline-flex cursor-pointer items-center gap-1.5 font-medium text-highlighted hover:text-primary"
                 >
-                  {{ (row.original as unknown as AlbumItem).title }}
+                  <span class="truncate">{{
+                    (row.original as unknown as AlbumItem).title
+                  }}</span>
                   <Icon
                     name="tabler:external-link"
-                    size="16"
-                    class="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+                    size="14"
+                    class="shrink-0 text-dimmed opacity-0 transition-opacity group-hover:opacity-100"
                   />
                 </NuxtLink>
-                <UBadge
+                <UTooltip
                   v-if="(row.original as unknown as AlbumItem).hasPassword"
-                  color="primary"
-                  variant="subtle"
-                  size="sm"
-                  icon="tabler:lock"
-                  class="shrink-0"
+                  :text="$t('dashboard.albums.form.password')"
+                  ignore-non-keyboard-focus
                 >
-                  {{ $t('dashboard.albums.form.password') }}
-                </UBadge>
+                  <Icon
+                    name="tabler:lock"
+                    class="size-3.5 shrink-0 text-dimmed"
+                    :aria-label="$t('dashboard.albums.form.password')"
+                  />
+                </UTooltip>
               </div>
             </template>
 
             <template #description-cell="{ row }">
               <div
                 v-if="(row.original as unknown as AlbumItem).description"
-                class="max-w-[28rem] rounded-md border border-neutral-200/70 bg-neutral-50/70 px-2.5 py-1.5 text-sm text-gray-600 line-clamp-2 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-gray-400"
+                class="line-clamp-2 text-sm text-muted"
                 :title="
                   (row.original as unknown as AlbumItem).description || ''
                 "
               >
                 {{ (row.original as unknown as AlbumItem).description }}
               </div>
-              <div
+              <span
                 v-else
-                class="text-sm text-gray-400 dark:text-gray-600"
+                class="text-xs text-dimmed"
+                >—</span
               >
-                -
-              </div>
             </template>
 
             <template #photoCount-cell="{ row }">
@@ -641,13 +668,13 @@ const columns = computed<any[]>(() => [
             </template>
 
             <template #createdAt-cell="{ row }">
-              <div class="text-sm text-gray-600 dark:text-gray-400">
+              <span class="text-xs tabular text-muted">
                 {{
                   dayjs(
                     (row.original as unknown as AlbumItem).createdAt,
                   ).format('YYYY-MM-DD')
                 }}
-              </div>
+              </span>
             </template>
 
             <template #actions-cell="{ row }">
@@ -675,12 +702,13 @@ const columns = computed<any[]>(() => [
                   "
                   @click="moveAlbum(row.index, 1)"
                 />
-                <div class="mx-0.5 h-4 w-px bg-gray-200 dark:bg-neutral-700" />
+                <span class="mx-0.5 h-4 w-px bg-border" />
                 <UButton
                   variant="ghost"
-                  color="primary"
+                  color="neutral"
                   size="xs"
                   icon="tabler:edit"
+                  :title="$t('common.actions.edit')"
                   @click="
                     openEditSlideover(row.original as unknown as AlbumItem)
                   "
@@ -690,6 +718,7 @@ const columns = computed<any[]>(() => [
                   color="error"
                   size="xs"
                   icon="tabler:trash"
+                  :title="$t('common.actions.delete')"
                   @click="
                     openDeleteConfirm(row.original as unknown as AlbumItem)
                   "
@@ -699,19 +728,19 @@ const columns = computed<any[]>(() => [
           </UTable>
         </div>
 
-        <div
+        <DashboardPanel
           v-else-if="!isLoadingAlbums"
-          class="flex flex-col items-center justify-center py-12 text-center"
+          class="items-center text-center"
+          :ui="{ body: 'flex flex-col items-center gap-2 px-4 py-16 sm:px-4' }"
         >
           <Icon
             name="tabler:album"
-            size="48"
-            class="text-gray-400 dark:text-gray-600 mb-4"
+            class="size-10 text-dimmed"
           />
-          <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+          <h3 class="text-sm font-semibold text-highlighted">
             {{ $t('dashboard.albums.noAlbums') }}
           </h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 mb-4">
+          <p class="mb-2 max-w-md text-sm text-muted">
             {{ $t('dashboard.albums.noAlbumsTip') }}
           </p>
           <UButton
@@ -720,15 +749,14 @@ const columns = computed<any[]>(() => [
           >
             {{ $t('dashboard.albums.createButton') }}
           </UButton>
-        </div>
+        </DashboardPanel>
         <div
           v-else
           class="flex items-center justify-center py-12"
         >
           <Icon
             name="tabler:loader"
-            size="32"
-            class="animate-spin text-primary-500"
+            class="size-8 animate-spin text-primary"
           />
         </div>
 
