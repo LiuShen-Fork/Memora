@@ -42,7 +42,8 @@ Below is the minimal configuration for running with local storage. For the compl
 CFRAME_ADMIN_EMAIL=
 # Admin username (optional, default Memora)
 CFRAME_ADMIN_NAME=
-# Admin password (optional, default CF1234@!)
+# Admin password (prefills the setup wizard; there is no default, and the
+# password ChronoFrame used to ship with is refused)
 CFRAME_ADMIN_PASSWORD=
 
 # Site metadata (all optional)

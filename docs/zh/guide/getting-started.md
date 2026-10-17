@@ -42,7 +42,7 @@ docker pull ghcr.io/liushen-fork/memora:latest
 CFRAME_ADMIN_EMAIL=
 # 管理员用户名（可选，默认 Memora）
 CFRAME_ADMIN_NAME=
-# 管理员密码（可选，默认 CF1234@!）
+# 管理员密码（预填到首次设置向导；没有默认值，且会拒绝 ChronoFrame 曾内置的密码）
 CFRAME_ADMIN_PASSWORD=
 
 # 站点信息（均可选）

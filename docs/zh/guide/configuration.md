@@ -8,7 +8,7 @@
 | ---------------------------------------- | ---------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
 | CFRAME_ADMIN_EMAIL                       | 初始管理员用户的邮箱                                 | `admin@memora.com`               | 是                                                                    |
 | CFRAME_ADMIN_NAME                        | 初始管理员用户的用户名                               | `Memora`                              | 否                                                                    |
-| CFRAME_ADMIN_PASSWORD                    | 初始管理员用户的密码                                 | `CF1234@!`                            | 否                                                                    |
+| CFRAME_ADMIN_PASSWORD                    | 初始管理员密码，请设置独有密码。没有默认值，且会拒绝 ChronoFrame 曾内置的密码 | 无                                    | 创建首个管理员时必需                                                  |
 | NUXT_PUBLIC_APP_TITLE                    | 应用标题                                             | `Memora`                         | 否                                                                    |
 | NUXT_PUBLIC_APP_SLOGAN                   | 应用口号                                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_APP_AUTHOR                   | 应用作者                                             | 无                                    | 否                                                                    |

@@ -125,6 +125,10 @@ func (a *App) wizardAdmin(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusBadRequest, "Invalid administrator details")
 		return
 	}
+	if problem := setupPasswordProblem(body.Password); problem != "" {
+		errorJSON(w, http.StatusBadRequest, problem)
+		return
+	}
 	if err := a.upsertWizardAdmin(body.Email, body.Password, body.Username); err != nil {
 		errorJSON(w, http.StatusBadRequest, err.Error())
 		return
@@ -202,6 +206,10 @@ func (a *App) wizardSubmit(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusBadRequest, "Invalid setup data")
 		return
 	}
+	if problem := setupPasswordProblem(body.Admin.Password); problem != "" {
+		errorJSON(w, http.StatusBadRequest, problem)
+		return
+	}
 	provider := stringValue(body.Storage.Config["provider"])
 	if strings.TrimSpace(body.Storage.Name) == "" || !validStorageConfig(provider, body.Storage.Config) || !validMap(body.Map) {
 		errorJSON(w, http.StatusBadRequest, "Invalid setup data")
@@ -271,6 +279,23 @@ func (a *App) writeMapSettings(input wizardMapInput) {
 func validAdmin(email, password, username string) bool {
 	parts := strings.Split(strings.TrimSpace(email), "@")
 	return len(parts) == 2 && parts[0] != "" && strings.Contains(parts[1], ".") && len(password) >= 6 && len(strings.TrimSpace(username)) >= 2
+}
+
+// formerDefaultPassword is what ChronoFrame, the project this site was forked
+// from, created its first administrator with when no password was given. It is
+// in every deployment guide of that project, so a site set up with it can be
+// opened by anybody who has read one — setting it up again is refused rather
+// than left to be noticed.
+const formerDefaultPassword = "CF1234@!"
+
+// setupPasswordProblem says why a password cannot be used to set a site up, or
+// nothing when it is fine. It is about new setups only: an account that already
+// has this password keeps working and can be given another one afterwards.
+func setupPasswordProblem(password string) string {
+	if password == formerDefaultPassword {
+		return "Choose a password of your own: " + formerDefaultPassword + " was shipped as the default administrator password and is publicly known"
+	}
+	return ""
 }
 
 func validMap(input wizardMapInput) bool {
