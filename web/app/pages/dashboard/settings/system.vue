@@ -211,6 +211,8 @@ const handleSectionSettingsSubmit = async (
             </div>
           </footer>
         </section>
+
+        <TourControls />
       </div>
     </template>
   </UDashboardPanel>

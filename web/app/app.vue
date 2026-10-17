@@ -343,6 +343,7 @@ provide(
         <NuxtPage />
       </NuxtLayout>
       <ClientOnly>
+        <AdminTours />
         <PhotoViewer
           v-if="route.path !== '/globe'"
           :photos="viewerPhotos"

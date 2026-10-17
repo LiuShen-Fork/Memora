@@ -50,6 +50,9 @@ importers:
       dayjs-nuxt:
         specifier: 2.1.11
         version: 2.1.11(magicast@0.5.3)
+      driver.js:
+        specifier: ^1.10.1
+        version: 1.10.1
       es-toolkit:
         specifier: ^1.47.0
         version: 1.47.0
@@ -4724,6 +4727,9 @@ packages:
   dotenv@17.4.0:
     resolution: {integrity: sha512-kCKF62fwtzwYm0IGBNjRUjtJgMfGapII+FslMHIjMR5KTnwEmBmWLDRSnc3XSNP8bNy34tekgQyDT0hr7pERRQ==}
     engines: {node: '>=12'}
+
+  driver.js@1.10.1:
+    resolution: {integrity: sha512-mpcJ15eIRWnGMykeIWjr0CdQF00/JzImFOEXy/VponYgMbP/y46t24MPBDO3PV/rH6CjdSe3T7WQ9cP3GvEPdQ==}
 
   drizzle-orm@0.45.2:
     resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
@@ -12726,6 +12732,8 @@ snapshots:
       type-fest: 5.1.0
 
   dotenv@17.4.0: {}
+
+  driver.js@1.10.1: {}
 
   drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260402.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0):
     optionalDependencies:

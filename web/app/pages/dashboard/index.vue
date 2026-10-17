@@ -226,6 +226,7 @@ const onShareSite = () => {
       <div class="flex flex-col gap-4">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <DashboardIndicator
+            data-tour="dashboard-photos"
             :title="$t('dashboard.overview.indicator.totalPhotos')"
             icon="tabler:photo"
             color="blue"
@@ -240,6 +241,7 @@ const onShareSite = () => {
             :value="dashboardStats?.photos?.thisMonth || 0"
           />
           <DashboardIndicator
+            data-tour="dashboard-queue"
             :title="$t('dashboard.overview.indicator.queueStatus.title')"
             icon="tabler:loader"
             color="purple"
@@ -576,6 +578,7 @@ const onShareSite = () => {
               </dl>
               <div class="mt-4 flex flex-wrap items-center justify-end gap-2">
                 <UButton
+                  data-tour="dashboard-share"
                   variant="subtle"
                   size="xs"
                   color="neutral"

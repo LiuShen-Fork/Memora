@@ -2275,6 +2275,7 @@ onUnmounted(() => {
         <template #right>
           <div class="flex gap-2 items-center">
             <UButton
+              data-tour="photo-queue"
               variant="soft"
               color="neutral"
               icon="tabler:list-check"
@@ -2285,6 +2286,7 @@ onUnmounted(() => {
               }}</span>
             </UButton>
             <UButton
+              data-tour="photo-upload"
               icon="tabler:cloud-upload"
               @click="openUploadSlideover"
             >
@@ -2529,6 +2531,7 @@ onUnmounted(() => {
             <!-- 过滤器 -->
             <USelectMenu
               v-model="photoFilter"
+              data-tour="photo-filter"
               class="w-full sm:w-48"
               :items="[
                 {

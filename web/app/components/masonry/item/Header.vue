@@ -82,7 +82,10 @@ const openLogin = () => router.push("/signin");
 <template>
   <header class="masonry-topbar">
     <div class="masonry-topbar__inner">
-      <div class="masonry-topbar__identity">
+      <div
+        class="masonry-topbar__identity"
+        data-tour="home-avatar"
+      >
         <img
           :src="(getSetting('app:avatarUrl') as string) || '/web-app-manifest-192x192.png'"
           class="size-8 shrink-0 rounded-full object-cover ring-1 ring-black/10 dark:ring-white/15"
@@ -201,6 +204,7 @@ const openLogin = () => router.push("/signin");
               <template v-if="loggedIn">
                 <UTooltip :text="$t('ui.action.dashboard.tooltip')" ignore-non-keyboard-focus>
                   <UButton
+                    data-tour="home-dashboard"
                     variant="ghost"
                     color="neutral"
                     class="masonry-topbar__button"

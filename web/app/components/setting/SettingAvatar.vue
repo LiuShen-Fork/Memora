@@ -131,7 +131,10 @@ const saveUrl = async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+  <div
+    data-tour-setting="app:avatarUrl"
+    class="flex flex-col gap-4 sm:flex-row sm:items-start"
+  >
     <div
       class="relative size-16 shrink-0 overflow-hidden rounded-full border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
     >

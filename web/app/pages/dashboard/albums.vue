@@ -502,6 +502,7 @@ const columns = computed<any[]>(() => [
       <UDashboardNavbar :title="$t('title.albums')">
         <template #right>
           <UButton
+            data-tour="album-create"
             icon="tabler:plus"
             variant="soft"
             @click="openCreateSlideover"
@@ -622,7 +623,10 @@ const columns = computed<any[]>(() => [
             </template>
 
             <template #actions-cell="{ row }">
-              <div class="flex items-center gap-1">
+              <div
+                data-tour="album-actions"
+                class="flex items-center gap-1"
+              >
                 <UButton
                   variant="ghost"
                   color="neutral"

@@ -160,6 +160,7 @@ const handleLocationSettingsSubmit = async () => {
           >
             <UTabs
               v-model="mapProvider"
+              data-tour-setting="map:provider"
               :items="mapProviderTabs"
               color="primary"
               variant="pill"
