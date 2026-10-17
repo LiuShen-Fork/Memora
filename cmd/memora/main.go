@@ -39,6 +39,10 @@ type App struct {
 	settingsLoadMu sync.Mutex
 	publicSettings map[string]map[string]any
 	mediaSlots     chan struct{}
+	// uploadsMu guards the uploads in progress: the files that arrive in parts,
+	// and the multipart uploads an object store is holding for them.
+	uploadsMu sync.Mutex
+	uploads   map[string]*uploadSession
 }
 
 func main() {

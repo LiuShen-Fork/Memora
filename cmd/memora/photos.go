@@ -177,13 +177,17 @@ func paginationParams(r *http.Request) (page, pageSize int, enabled bool) {
 }
 
 func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.require(r); !ok {
+	user, ok := a.require(r)
+	if !ok {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	var b struct {
 		FileName, ContentType string
 		SkipDuplicateCheck    bool
+		// Size is what the browser is about to send. A caller that leaves it out
+		// is prepared for the single request every earlier version made.
+		Size int64
 	}
 	if decodeJSON(r, &b) != nil || b.FileName == "" {
 		errorJSON(w, 400, "fileName is required")
@@ -221,20 +225,28 @@ func (a *App) prepareUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		response["warningInfo"] = map[string]any{"title": "Duplicate file", "message": "File already exists"}
-		signed, err := a.storage.SignedURL(r.Context(), key, b.ContentType)
-		if err != nil {
-			signed = "/api/photos/upload?key=" + urlQueryEscape(key)
+		for name, value := range a.uploadResponse(r, user, key, b.ContentType, b.Size) {
+			response[name] = value
 		}
-		response["signedUrl"] = signed
-		response["expiresIn"] = 3600
 		writeJSON(w, http.StatusOK, response)
 		return
 	}
-	signed, err := a.storage.SignedURL(r.Context(), key, b.ContentType)
+	writeJSON(w, 200, a.uploadResponse(r, user, key, b.ContentType, b.Size))
+}
+
+// uploadResponse is what a browser needs to send one file: the signed URL it
+// can always fall back to, and, for a file large enough to be worth splitting,
+// the plan for sending it in parts.
+func (a *App) uploadResponse(r *http.Request, user map[string]any, key, contentType string, size int64) map[string]any {
+	signed, err := a.storage.SignedURL(r.Context(), key, contentType)
 	if err != nil {
 		signed = "/api/photos/upload?key=" + urlQueryEscape(key)
 	}
-	writeJSON(w, 200, map[string]any{"signedUrl": signed, "fileKey": key, "expiresIn": 3600})
+	response := map[string]any{"signedUrl": signed, "fileKey": key, "expiresIn": 3600}
+	if plan := a.uploadPlanFor(r.Context(), userID(user), key, contentType, size); plan != nil {
+		response["upload"] = plan
+	}
+	return response
 }
 
 func isVideoUpload(fileName, contentType string) bool {

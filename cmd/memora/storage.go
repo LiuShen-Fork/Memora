@@ -159,7 +159,10 @@ func (s *LocalStorage) SignedURL(_ context.Context, key, _ string) (string, erro
 func urlQueryEscape(v string) string { return url.QueryEscape(v) }
 
 type S3Storage struct {
-	client              *minio.Client
+	client *minio.Client
+	// core speaks the multipart calls an upload of parts needs, which the
+	// convenience client does not expose.
+	core                *minio.Core
 	bucket, prefix, cdn string
 	endpoint, region    string
 }
@@ -175,7 +178,11 @@ func NewS3Storage(c Config) (*S3Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &S3Storage{client: client, bucket: c.S3Bucket, prefix: strings.Trim(c.S3Prefix, "/"), cdn: strings.TrimRight(c.S3CDN, "/"), endpoint: c.S3Endpoint, region: c.S3Region}, nil
+	core, err := minio.NewCore(endpoint, &clientOptions)
+	if err != nil {
+		return nil, err
+	}
+	return &S3Storage{client: client, core: core, bucket: c.S3Bucket, prefix: strings.Trim(c.S3Prefix, "/"), cdn: strings.TrimRight(c.S3CDN, "/"), endpoint: c.S3Endpoint, region: c.S3Region}, nil
 }
 func (s *S3Storage) Prefix() string      { return s.prefix }
 func (s *S3Storage) key(k string) string { return storageKey(s.prefix, k) }
