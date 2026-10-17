@@ -246,7 +246,9 @@ async function main() {
     await sleep(400)
   }
 
-  const shot = await cdp.send('Page.captureScreenshot', { format: 'png' })
+  // The eval runs before the picture is taken so that it can also be used to
+  // put the page into a state worth photographing — opening a menu, expanding a
+  // row — and not only to read numbers out of it.
   if (options.eval) {
     const result = await cdp.send('Runtime.evaluate', {
       expression: options.eval,
@@ -258,7 +260,10 @@ async function main() {
         ? result.result.value
         : JSON.stringify(result.result.value, null, 2),
     )
+    await sleep(400)
   }
+
+  const shot = await cdp.send('Page.captureScreenshot', { format: 'png' })
   mkdirSync(dirname(options.out), { recursive: true })
   writeFileSync(options.out, Buffer.from(shot.data, 'base64'))
 

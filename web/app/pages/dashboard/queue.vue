@@ -334,11 +334,22 @@ const columns = computed<TableColumn<any>[]>(() => [
   },
 ])
 
-// 自动刷新
-const refreshInterval = setInterval(refreshData, 10000) // 每10秒刷新一次
-onBeforeUnmount(() => {
-  clearInterval(refreshInterval)
-})
+/**
+ * 每十秒拉一次队列，标签页在后台时不动。
+ *
+ * 后台拉来的结果没有人看，而回到这个页面时本来就该是新的——所以定时器照常走，
+ * 只是轮到它的时候先问一句页面还在不在。
+ *
+ * 这一轮不走 refreshData：那个会点亮"刷新"按钮上的转圈，于是每分钟六次，三个
+ * 按钮一起转一下。定时刷新没有人在等它。
+ */
+const visibility = useDocumentVisibility()
+useIntervalFn(
+  () => {
+    if (visibility.value === 'visible') void refreshQueue()
+  },
+  10000,
+)
 </script>
 
 <template>
@@ -383,35 +394,37 @@ onBeforeUnmount(() => {
           <DashboardIndicator
             :title="$t('dashboard.queue.indicator.pending')"
             icon="tabler:clock"
-            color="orange"
+            tone="attention"
             :value="queueStats.pending"
           />
           <DashboardIndicator
             :title="$t('dashboard.queue.indicator.processing')"
             icon="tabler:loader"
-            color="blue"
+            tone="accent"
             :value="queueStats.processing"
           />
           <DashboardIndicator
             :title="$t('dashboard.queue.indicator.completed')"
             icon="tabler:check"
-            color="green"
+            tone="positive"
             :value="queueStats.completed"
           />
           <DashboardIndicator
             :title="$t('dashboard.queue.indicator.failed')"
             icon="tabler:alert-triangle"
-            color="red"
+            tone="negative"
             :value="queueStats.failed"
           />
         </div>
 
         <!-- 筛选器和表格 -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center justify-between pb-2">
-              <h2 class="text-lg font-semibold">{{ $t('dashboard.queue.taskListTitle') }}</h2>
-              <div class="flex items-center gap-2">
+        <DashboardPanel
+          :title="$t('dashboard.queue.taskListTitle')"
+          flush
+          :ui="{ header: 'flex-wrap gap-y-2 px-4 py-3 sm:px-4' }"
+        >
+          <template #actions>
+            <div class="flex flex-wrap items-center justify-end gap-2">
                 <!-- 并发数：队列同时处理多少个任务，改完立即生效 -->
                 <UPopover :content="{ align: 'end' }">
                   <UButton
@@ -430,12 +443,12 @@ onBeforeUnmount(() => {
                     <div class="w-72 space-y-4 p-1">
                       <div class="space-y-1">
                         <p
-                          class="text-sm font-semibold text-neutral-900 dark:text-neutral-100"
+                          class="text-sm font-semibold text-highlighted"
                         >
                           {{ $t('dashboard.queue.concurrency.title') }}
                         </p>
                         <p
-                          class="text-xs leading-relaxed text-neutral-500 dark:text-neutral-400"
+                          class="text-xs leading-relaxed text-muted"
                         >
                           {{ $t('dashboard.queue.concurrency.description') }}
                         </p>
@@ -449,7 +462,7 @@ onBeforeUnmount(() => {
                           :step="1"
                         />
                         <div
-                          class="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400"
+                          class="flex items-center justify-between text-xs text-muted"
                         >
                           <span>
                             {{
@@ -459,7 +472,7 @@ onBeforeUnmount(() => {
                             }}
                           </span>
                           <span
-                            class="font-semibold tabular-nums text-neutral-900 dark:text-neutral-100"
+                            class="font-semibold tabular-nums text-highlighted"
                           >
                             {{ concurrencyDraft }}
                           </span>
@@ -497,11 +510,10 @@ onBeforeUnmount(() => {
                   class="w-32"
                   :search-input="false"
                 />
-              </div>
             </div>
           </template>
 
-          <div class="space-y-4">
+          <div>
             <!-- 任务表格 -->
             <UTable
               v-model:expanded="expanded"
@@ -513,17 +525,25 @@ onBeforeUnmount(() => {
                 label: $t('dashboard.queue.messages.noTasks'),
               }"
               class="w-full"
+              :ui="{
+                root: 'table-scroll overflow-auto',
+                base: 'min-w-full',
+                thead: 'bg-muted whitespace-nowrap',
+                tr: 'data-[selected=true]:bg-primary/5',
+                th: 'px-3 py-2.5 text-xs font-medium text-muted',
+                td: 'px-3 py-2.5 text-sm text-default',
+                empty: 'py-12 text-sm text-muted',
+              }"
             >
-              <!-- 任务类型 -->
+              <!-- 任务类型：一列里一个颜色只说明"这是哪种任务"，而这张表里颜色已经
+                   被状态用掉了，所以类型一律素色。 -->
               <template #type-cell="{ row }">
                 <UBadge
                   :label="
                     $t(`dashboard.queue.types.${row.original.payload.type}`)
                   "
                   variant="soft"
-                  :color="
-                    row.original.payload.type === 'photo' ? 'info' : 'secondary'
-                  "
+                  color="neutral"
                   size="sm"
                 />
               </template>
@@ -540,7 +560,7 @@ onBeforeUnmount(() => {
                   <!-- 任务正在等待重试延迟结束，说明回来的时间 -->
                   <span
                     v-if="row.original.availableAt"
-                    class="inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400"
+                    class="inline-flex items-center gap-1 text-xs text-muted"
                   >
                     <UIcon
                       name="tabler:clock-hour-4"
@@ -568,14 +588,14 @@ onBeforeUnmount(() => {
               <template #statusStage-cell="{ row }">
                 <span
                   v-if="row.original.statusStage"
-                  class="text-xs text-gray-500"
+                  class="text-xs text-toned"
                 >
                   {{ $t(`dashboard.queue.stages.${row.original.statusStage}`) }}
                 </span>
                 <span
                   v-else
-                  class="text-xs text-gray-400"
-                  >-</span
+                  class="text-xs text-dimmed"
+                  >—</span
                 >
               </template>
 
@@ -586,38 +606,35 @@ onBeforeUnmount(() => {
                 }}</span>
               </template>
 
-              <!-- 操作按钮 -->
+              <!-- 操作按钮：只有失败的任务能重试，也只有失败的任务能单独删掉，
+                   队列接口本来就只收这一种（DELETE /api/queue/failed/<id>）。 -->
               <template #actions-cell="{ row }">
                 <div class="flex items-center gap-1">
-                  <UButton
-                    v-if="row.original.status === 'failed'"
-                    icon="tabler:refresh"
-                    size="xs"
-                    variant="soft"
-                    color="warning"
-                    @click="retryTask(row.original.id)"
-                  >
-                    {{ $t('dashboard.queue.buttons.retry') }}
-                  </UButton>
-                  <UButton
-                    v-if="row.original.status !== 'in-stage'"
-                    icon="tabler:trash"
-                    size="xs"
-                    variant="soft"
-                    color="error"
-                    @click="deleteTask(row.original.id)"
-                  >
-                    {{ $t('dashboard.queue.buttons.delete') }}
-                  </UButton>
+                  <template v-if="row.original.status === 'failed'">
+                    <UButton
+                      icon="tabler:refresh"
+                      size="xs"
+                      variant="soft"
+                      color="warning"
+                      @click="retryTask(row.original.id)"
+                    >
+                      {{ $t('dashboard.queue.buttons.retry') }}
+                    </UButton>
+                    <UButton
+                      icon="tabler:trash"
+                      size="xs"
+                      variant="ghost"
+                      color="error"
+                      @click="deleteTask(row.original.id)"
+                    >
+                      {{ $t('dashboard.queue.buttons.delete') }}
+                    </UButton>
+                  </template>
                   <span
-                    v-if="
-                      row.original.status === 'pending' ||
-                      row.original.status === 'in-stages'
-                    "
-                    class="text-xs text-gray-400"
+                    v-else
+                    class="text-xs text-dimmed"
+                    >—</span
                   >
-                    -
-                  </span>
                 </div>
               </template>
 
@@ -628,19 +645,19 @@ onBeforeUnmount(() => {
                     <!-- 任务ID和类型 -->
                     <div class="flex gap-4">
                       <div>
-                        <p class="text-xs text-neutral-500">{{ $t('dashboard.queue.table.detail.photoId') }}</p>
+                        <p class="text-xs text-dimmed">{{ $t('dashboard.queue.table.detail.photoId') }}</p>
                         <p class="text-sm capitalize">
                           {{ row.original.payload.photoId || '-' }}
                         </p>
                       </div>
                       <div>
-                        <p class="text-xs text-neutral-500">
+                        <p class="text-xs text-dimmed">
                           {{ $t('dashboard.queue.table.id') }}
                         </p>
                         <p class="font-mono text-sm">{{ row.original.id }}</p>
                       </div>
                       <div>
-                        <p class="text-xs text-neutral-500">
+                        <p class="text-xs text-dimmed">
                           {{ $t('dashboard.queue.table.type') }}
                         </p>
                         <p class="text-sm capitalize">
@@ -657,14 +674,14 @@ onBeforeUnmount(() => {
                       "
                       class="mt-3"
                     >
-                      <p class="text-xs text-neutral-500 mb-1">
+                      <p class="text-xs text-dimmed mb-1">
                         {{ $t('dashboard.queue.table.errorMessage') }}
                       </p>
                       <div
-                        class="p-3 bg-red-50 dark:bg-red-950/20 rounded border border-red-100 dark:border-red-900/30"
+                        class="rounded border border-error/25 bg-error/5 p-3"
                       >
                         <p
-                          class="text-sm text-red-700 dark:text-red-300 wrap-break-word font-mono"
+                          class="font-mono text-sm wrap-break-word text-error"
                         >
                           {{ row.original.errorMessage }}
                         </p>
@@ -676,9 +693,9 @@ onBeforeUnmount(() => {
                       v-if="row.original.payload"
                       class="mt-3"
                     >
-                      <p class="text-xs text-gray-500 mb-1">{{ $t('dashboard.queue.table.detail.payload') }}</p>
+                      <p class="text-xs text-dimmed mb-1">{{ $t('dashboard.queue.table.detail.payload') }}</p>
                       <pre
-                        class="text-xs bg-neutral-100/50 dark:bg-neutral-800/50 p-2 rounded overflow-x-auto text-neutral-700 dark:text-neutral-300"
+                        class="overflow-x-auto rounded bg-elevated/60 p-2 text-xs text-toned"
                         >{{
                           JSON.stringify(row.original.payload, null, 2)
                         }}</pre
@@ -688,7 +705,7 @@ onBeforeUnmount(() => {
                 </div>
               </template>
             </UTable>
-            <div class="flex justify-center border-t border-neutral-200/80 dark:border-neutral-800/80 p-3">
+            <div class="flex justify-center border-t border-default p-3">
               <UPagination
                 v-model:page="page"
                 :total="queueData?.total || 0"
@@ -697,15 +714,8 @@ onBeforeUnmount(() => {
               />
             </div>
           </div>
-        </UCard>
+        </DashboardPanel>
       </div>
     </template>
   </UDashboardPanel>
 </template>
-
-<style scoped>
-/* 确保表格在小屏幕上正常显示 */
-:deep(.table-wrapper) {
-  overflow-x: auto;
-}
-</style>
