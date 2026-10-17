@@ -367,19 +367,16 @@ const sizedColumns = computed<TableColumn<any>[]>(() =>
   }),
 )
 
-// 表格自己的那身衣服也随宽度换：桌面上列宽随内容，窄屏上先分好再截断，
-// 内边距也让一格少占几个像素。
+// 表格自己的那身衣服也随宽度换：桌面上列宽随内容，窄屏上先分好再截断。
+// 一格左右各留 2.5 而不是 3 个间距——九列攒下来差出三十多个像素，正是这张表
+// 在一千像素宽上还要横着挪一点点的那点差额。
 const tableUi = computed(() => ({
   root: 'table-scroll overflow-auto',
   base: isMobile.value ? 'min-w-full table-fixed' : 'min-w-full',
   thead: 'bg-muted whitespace-nowrap',
   tr: 'data-[selected=true]:bg-primary/5',
-  th: isMobile.value
-    ? 'px-2 py-2.5 text-xs font-medium text-muted'
-    : 'px-3 py-2.5 text-xs font-medium text-muted',
-  td: isMobile.value
-    ? 'px-2 py-2.5 text-sm text-default'
-    : 'px-3 py-2.5 text-sm text-default',
+  th: 'px-2.5 py-2.5 text-xs font-medium text-muted',
+  td: 'px-2.5 py-2.5 text-sm text-default',
   empty: 'py-12 text-sm text-muted',
 }))
 
