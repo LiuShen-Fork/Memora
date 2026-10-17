@@ -99,9 +99,13 @@ export const useSettingsStore = defineStore('settings', {
      */
     getSetting(key: string): SettingValue {
       if (!this.isInitialized) {
-        console.warn(
-          '[Settings] Settings not initialized yet. Call await initSettings() first.',
-        )
+        // 请求还在路上时读到空值是正常的，读的人已经等过了；只有明明没人在加载
+        // 设置、却来要值，才是真忘了初始化。
+        if (!this.isLoading && !pendingSettingsRequest) {
+          console.warn(
+            '[Settings] Settings not initialized yet. Call await initSettings() first.',
+          )
+        }
         return null
       }
 

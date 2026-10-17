@@ -3,8 +3,7 @@ import { parseScriptTags } from '~/utils/parseScriptTags'
 /**
  * 将管理员配置的 <script> 标签注入到页面 <head> 和 <body> 中。
  *
- * 读取 settings store 中的 `analytics:headScripts` 与 `analytics:bodyScripts`
- * （由 app.vue 中的 `await initSettings()` 在 SSR 渲染前完成填充），
+ * 读取 settings store 中的 `analytics:headScripts` 与 `analytics:bodyScripts`，
  * 通过正则解析为 useHead 接受的 script 数组。
  *
  * 与 analytics-tracker.client.ts（Matomo）独立并行，互不干扰：
@@ -15,6 +14,12 @@ import { parseScriptTags } from '~/utils/parseScriptTags'
  * useHead 自动同步 DOM。
  */
 export default defineNuxtPlugin(() => {
+  // 插件比 app.vue 早一步执行，而下面这两个 computed 在 useHead 注册的当下就会被
+  // 求值——那时设置请求还没发出去，读到的只会是空值。先在这里把请求发起来，
+  // store 会复用同一次请求（pendingSettingsRequest），不会因此多发一次。
+  // 失败由 app.vue 统一记录，这里只是不让请求悬着。
+  void useSettingsStore().initSettings().catch(() => {})
+
   const headScriptsRef = useSettingRef('analytics:headScripts')
   const bodyScriptsRef = useSettingRef('analytics:bodyScripts')
 
