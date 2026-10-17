@@ -8,12 +8,19 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // logLinesKeptInMemory bounds what a buffer that has nowhere to write still
 // remembers, so a server whose log file cannot be written does not grow without
 // end. A buffer with a file keeps everything: the file is the history.
 const logLinesKeptInMemory = 200
+
+// logLineTimeFormat is RFC 3339 with milliseconds. A log is read in order or
+// read later, and neither is possible without the moment each line was
+// written; the offset is in the stamp so that a log kept across a
+// daylight-saving change still sorts the way it happened.
+const logLineTimeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 type LogBuffer struct {
 	mu       sync.RWMutex
@@ -37,10 +44,12 @@ func NewLogBuffer(filePath ...string) *LogBuffer {
 	return &LogBuffer{lines: []string{}, filePath: path}
 }
 
+// Add writes one line, stamped with the moment it was written and the part of
+// the server that wrote it.
 func (l *LogBuffer) Add(scope, message string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	line := fmt.Sprintf("[%s] %s", scope, message)
+	line := fmt.Sprintf("%s [%s] %s", time.Now().Format(logLineTimeFormat), scope, message)
 	l.lines = append(l.lines, line)
 	if len(l.lines) > logLinesKeptInMemory {
 		l.lines = l.lines[len(l.lines)-logLinesKeptInMemory:]

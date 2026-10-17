@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The log page asks for as much history as it means to show, and the stream
@@ -86,7 +87,7 @@ func TestTheLogFileIsReadFromWhereTheLastReadStopped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(written) != 2 || written[0].text != "[server] first" || written[1].text != "[server] second" {
+	if len(written) != 2 || logText(written[0].text) != "[server] first" || logText(written[1].text) != "[server] second" {
 		t.Fatalf("the log reads %+v", written)
 	}
 	if written[len(written)-1].offset != size {
@@ -123,6 +124,51 @@ func TestTheLogFileIsReadFromWhereTheLastReadStopped(t *testing.T) {
 	if len(rolled) != 1 || rolled[0].text != "[server] fresh" {
 		t.Fatalf("a log smaller than the reader's position reads %+v", rolled)
 	}
+}
+
+// A line says when it was written and who wrote it. The page shows both, and
+// the log file is read by people long after the fact, so the stamp has to
+// survive into the file and out of the stream.
+func TestEveryLineIsStampedWithTheMomentItWasWritten(t *testing.T) {
+	app := newTestApp(t)
+	app.logs = NewLogBuffer(filepath.Join(t.TempDir(), "logs", "app.log"))
+	before := time.Now().Add(-time.Second)
+	app.logs.Add("queue", "processed photo abc")
+	after := time.Now().Add(time.Second)
+
+	stream := readLogStream(t, app, "/api/system/logs?initial=all", "")
+	stamped, ok := strings.CutPrefix(stream, "id: "+lastLogOffset(t, stream)+"\ndata: ")
+	if !ok {
+		t.Fatalf("the stream opened with %q", stream)
+	}
+	line, rest, ok := strings.Cut(strings.TrimSuffix(stamped, "\n\n"), " [queue] ")
+	if !ok || rest != "processed photo abc" {
+		t.Fatalf("the line reads %q", stamped)
+	}
+	written, err := time.Parse(logLineTimeFormat, line)
+	if err != nil {
+		t.Fatalf("the line is stamped %q: %v", line, err)
+	}
+	if written.Before(before) || written.After(after) {
+		t.Fatalf("the line claims to have been written at %s, outside %s..%s", written, before, after)
+	}
+
+	// The file is where the history lives, so the same stamp has to be in it.
+	saved, err := os.ReadFile(app.logs.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(saved), line+" [queue] processed photo abc\n") {
+		t.Fatalf("the log file holds %q", saved)
+	}
+}
+
+// logText is a line as it was written, without the moment it was written at.
+func logText(line string) string {
+	if cut, rest, ok := strings.Cut(line, " ["); ok && cut != "" {
+		return "[" + rest
+	}
+	return line
 }
 
 // readLogStream asks for the log stream and answers with what it wrote before it
