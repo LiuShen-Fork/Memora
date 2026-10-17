@@ -930,12 +930,16 @@
       "title": "儀表板概覽",
       "indicator": {
         "totalPhotos": "照片總數",
-        "thisMonth": "本月新增",
+        "thisMonth": "本月拍攝",
         "queueStatus": {
           "title": "隊列狀態",
           "processing": "處理中",
           "pending": "空閒"
         },
+        "todayCount": "今天 {count} 張",
+        "weekCount": "本週 {count} 張",
+        "queueCounts": "等待 {pending}，失敗 {failed}",
+        "averageSize": "平均 {size}",
         "storageUsage": "存儲使用"
       },
       "section": {
@@ -1113,6 +1117,9 @@
       "noAccess": "抱歉，您沒有存取此頁面的權限。"
     },
     "nav": {
+      "content": "內容",
+      "operations": "運行",
+      "settings": "設定",
       "documentation": "文件"
     }
   },

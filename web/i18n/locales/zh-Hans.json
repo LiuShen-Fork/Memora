@@ -1004,12 +1004,16 @@
       "title": "仪表板概览",
       "indicator": {
         "totalPhotos": "照片总数",
-        "thisMonth": "本月新增",
+        "thisMonth": "本月拍摄",
         "queueStatus": {
           "title": "队列状态",
           "processing": "处理中",
           "pending": "空闲"
         },
+        "todayCount": "今天 {count} 张",
+        "weekCount": "本周 {count} 张",
+        "queueCounts": "等待 {pending}，失败 {failed}",
+        "averageSize": "平均 {size}",
         "storageUsage": "存储使用"
       },
       "section": {
@@ -1187,6 +1191,9 @@
       "noAccess": "抱歉，您没有访问此页面的权限。"
     },
     "nav": {
+      "content": "内容",
+      "operations": "运行",
+      "settings": "设置",
       "documentation": "文档"
     }
   },

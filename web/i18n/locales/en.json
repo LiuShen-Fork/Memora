@@ -1004,12 +1004,16 @@
       "title": "Overview",
       "indicator": {
         "totalPhotos": "Total Photos",
-        "thisMonth": "New This Month",
+        "thisMonth": "Taken This Month",
         "queueStatus": {
           "title": "Queue Status",
           "processing": "Processing",
           "pending": "Idle"
         },
+        "todayCount": "Today {count}",
+        "weekCount": "This week {count}",
+        "queueCounts": "{pending} waiting, {failed} failed",
+        "averageSize": "{size} per photo",
         "storageUsage": "Storage Usage"
       },
       "section": {
@@ -1187,6 +1191,9 @@
       "noAccess": "Sorry, you do not have access to this page."
     },
     "nav": {
+      "content": "Content",
+      "operations": "Operations",
+      "settings": "Settings",
       "documentation": "Documentation"
     }
   },

@@ -930,12 +930,16 @@
       "title": "概要",
       "indicator": {
         "totalPhotos": "写真の総数",
-        "thisMonth": "今月は新しく",
+        "thisMonth": "今月の撮影",
         "queueStatus": {
           "title": "キューステータス",
           "processing": "処理",
           "pending": "アイドル"
         },
+        "todayCount": "今日 {count} 枚",
+        "weekCount": "今週 {count} 枚",
+        "queueCounts": "待機 {pending}、失敗 {failed}",
+        "averageSize": "1枚あたり {size}",
         "storageUsage": "ストレージの使用"
       },
       "section": {
@@ -1113,6 +1117,9 @@
       "noAccess": "申し訳ありませんが、このページにアクセスする権限がありません。"
     },
     "nav": {
+      "content": "コンテンツ",
+      "operations": "運用",
+      "settings": "設定",
       "documentation": "ドキュメント"
     }
   },

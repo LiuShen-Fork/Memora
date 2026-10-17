@@ -1004,12 +1004,16 @@
       "title": "Обзор",
       "indicator": {
         "totalPhotos": "Всего фотографий",
-        "thisMonth": "Новых за месяц",
+        "thisMonth": "Снято в этом месяце",
         "queueStatus": {
           "title": "Состояние очереди",
           "processing": "Обработка",
           "pending": "Нет задач"
         },
+        "todayCount": "Сегодня: {count}",
+        "weekCount": "За неделю: {count}",
+        "queueCounts": "Ожидают {pending}, сбоев {failed}",
+        "averageSize": "{size} на фото",
         "storageUsage": "Использование хранилища"
       },
       "section": {
@@ -1187,6 +1191,9 @@
       "noAccess": "У вас нет доступа к этой странице."
     },
     "nav": {
+      "content": "Содержимое",
+      "operations": "Операции",
+      "settings": "Настройки",
       "documentation": "Документация"
     }
   },
