@@ -34,8 +34,6 @@ const containerHeight = ref(0)
 // 批处理队列
 const batchQueue = ref<LogEntry[]>([])
 const isBatchProcessing = ref(false)
-const MAX_LOG_LINES = 6000
-const TRIM_TO_LOG_LINES = 4000
 const BATCH_SIZE = 100 // 每批处理的日志条数
 const BATCH_DELAY = 8 // 每批处理间隔（毫秒）
 const INITIAL_LOG_LINES = 'all'
@@ -79,11 +77,6 @@ const processBatch = async () => {
   while (batchQueue.value.length > 0) {
     const batch = batchQueue.value.splice(0, BATCH_SIZE)
     logs.value.push(...batch)
-
-    // 限制日志条数，避免内存泄漏
-    if (logs.value.length > MAX_LOG_LINES) {
-      logs.value = logs.value.slice(-TRIM_TO_LOG_LINES)
-    }
 
     // 更新加载进度（只在初始加载时显示）
     if (isInitialLoading.value) {
@@ -370,7 +363,9 @@ const connectLogStream = () => {
 
   eventSource.onopen = () => {
     isConnected.value = true
-    connectionState.value = 'loadingHistory'
+    // 浏览器的 EventSource 会自行重连，服务端也会从上次中断处继续发送，
+    // 因此重连时不需要重新加载历史，只需要把状态切回已连接
+    connectionState.value = isInitialLoading.value ? 'loadingHistory' : 'live'
   }
 
   eventSource.onmessage = (event) => {

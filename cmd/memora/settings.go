@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"runtime"
@@ -445,12 +446,20 @@ func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	initial, offset, err := a.logs.Tail(400)
+	// The page asks for as much history as it means to show. A stream the
+	// browser has to renew, on the other hand, is picked up where it stopped:
+	// the history it already has is not read out to it a second time.
+	initial, offset, err := a.logs.Tail(logHistoryAsked(r))
 	if err != nil {
-		initial, offset = a.logs.Snapshot(), 0
+		initial, offset = rememberedLines(a.logs.Snapshot()), 0
+	}
+	if resumed := logResumeOffset(r); resumed > 0 {
+		if newer, size, readErr := a.logs.Since(resumed); readErr == nil {
+			initial, offset = newer, size
+		}
 	}
 	for _, line := range initial {
-		fmt.Fprintf(w, "data: %s\n\n", line)
+		writeLogEvent(w, line)
 	}
 	flusher, canFlush := w.(http.Flusher)
 	if canFlush {
@@ -472,7 +481,7 @@ func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			for _, line := range lines {
-				fmt.Fprintf(w, "data: %s\n\n", line)
+				writeLogEvent(w, line)
 			}
 			offset = next
 			if canFlush {
@@ -480,4 +489,40 @@ func (a *App) systemLogs(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+// logHistoryAsked is how much history the page asked for: "all" reads the log
+// from its beginning, a count reads that many of the latest lines, and anything
+// else keeps the modest backlog the endpoint has always answered with.
+func logHistoryAsked(r *http.Request) int {
+	const defaultBacklog = 400
+	switch asked := strings.TrimSpace(r.URL.Query().Get("initial")); {
+	case strings.EqualFold(asked, "all"):
+		return 0
+	default:
+		if count, err := strconv.Atoi(asked); err == nil && count > 0 {
+			return count
+		}
+		return defaultBacklog
+	}
+}
+
+// logResumeOffset is the position a stream that is being opened again stopped
+// at, as the browser reports it. A stream opened for the first time has none.
+func logResumeOffset(r *http.Request) int64 {
+	offset, err := strconv.ParseInt(strings.TrimSpace(r.Header.Get("Last-Event-ID")), 10, 64)
+	if err != nil || offset < 0 {
+		return 0
+	}
+	return offset
+}
+
+// writeLogEvent hands one line to the page, tagged with the position it ends
+// at, so a stream the browser has to renew continues from the last line it saw
+// rather than from the top of the log.
+func writeLogEvent(w io.Writer, line logLine) {
+	if line.offset > 0 {
+		fmt.Fprintf(w, "id: %d\n", line.offset)
+	}
+	fmt.Fprintf(w, "data: %s\n\n", line.text)
 }
