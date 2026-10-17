@@ -46,6 +46,9 @@
         "searchPlaceholder": "搜索文件名等...",
         "shuffleTooltip": "打乱列表"
       },
+      "select": {
+        "rangeTip": "提示：按住 Shift 键并点击，即可选择一个范围内的照片"
+      },
       "logout": {
         "tooltip": "登出"
       },

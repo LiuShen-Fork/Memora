@@ -46,6 +46,9 @@
         "searchPlaceholder": "搜尋檔名等...",
         "shuffleTooltip": "打亂清單"
       },
+      "select": {
+        "rangeTip": "提示：按住 Shift 鍵並點擊，即可選取一個範圍內的照片"
+      },
       "logout": {
         "tooltip": "登出"
       },

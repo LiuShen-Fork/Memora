@@ -28,6 +28,9 @@
         "searchPlaceholder": "Search filenames, etc...",
         "shuffleTooltip": "Shuffle list"
       },
+      "select": {
+        "rangeTip": "Tip: hold Shift and click to select a range of photos"
+      },
       "displaySettings": {
         "tooltip": "Display settings",
         "title": "Display settings",
