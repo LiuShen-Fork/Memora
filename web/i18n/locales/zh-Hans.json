@@ -674,7 +674,8 @@
         },
         "columnVisibility": {
           "button": "列设置",
-          "description": "切换列的显示/隐藏"
+          "description": "切换列的显示/隐藏",
+          "reset": "恢复默认"
         },
         "selectAllAria": "全选",
         "selectRowAria": "选择行",

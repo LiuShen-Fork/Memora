@@ -674,7 +674,8 @@
         },
         "columnVisibility": {
           "button": "Columns",
-          "description": "Toggle column visibility"
+          "description": "Toggle column visibility",
+          "reset": "Reset to default"
         },
         "selectAllAria": "Select all",
         "selectRowAria": "Select row",

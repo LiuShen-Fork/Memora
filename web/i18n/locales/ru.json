@@ -674,7 +674,8 @@
         },
         "columnVisibility": {
           "button": "Столбцы",
-          "description": "Настройка отображения столбцов"
+          "description": "Настройка отображения столбцов",
+          "reset": "Сбросить настройки"
         },
         "selectAllAria": "Выбрать все",
         "selectRowAria": "Выбрать строку",

@@ -600,7 +600,8 @@
         },
         "columnVisibility": {
           "button": "列設定",
-          "description": "切換列的顯示/隱藏"
+          "description": "切換列的顯示/隱藏",
+          "reset": "回復預設"
         },
         "selectAllAria": "全選",
         "selectRowAria": "選擇列",

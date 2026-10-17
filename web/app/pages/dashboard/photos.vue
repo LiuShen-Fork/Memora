@@ -647,6 +647,36 @@ watch(
 // 列可见性状态：选了哪些列记在本地，刷新后照旧
 const columnVisibility = useDashboardPhotoColumnVisibility()
 
+// 挑列这件事只有必要的时候才想起来，所以它藏在工具栏的一颗按钮后面。表头那一行
+// 是拿来扫的，不是拿来点的，因此不把复选框直接摆上去。
+const columnMenuItems = computed(() => [
+  ...(table.value?.tableApi
+    ?.getAllColumns()
+    .filter((column: any) => column.getCanHide())
+    .map((column: any) => ({
+      label: columnNameMap.value[column.id] || column.id,
+      type: 'checkbox' as const,
+      // 勾选状态读本地这份而不是 column.getIsVisible()：后者是表自己的字段，
+      // 改动它不会让这个 computed 重算，菜单里的勾就会停在打开时的那一眼。
+      checked: columnVisibility.value[column.id] !== false,
+      onUpdateChecked(checked: boolean) {
+        table.value?.tableApi?.getColumn(column.id)?.toggleVisibility(!!checked)
+      },
+      onSelect(e: Event) {
+        // 复选框要留在菜单里，所以这一项本身不许把菜单关掉
+        e.preventDefault()
+      },
+    })) ?? []),
+  { type: 'separator' as const },
+  {
+    label: $t('dashboard.photos.table.columnVisibility.reset'),
+    icon: 'tabler:refresh',
+    onSelect: () => {
+      columnVisibility.value = defaultDashboardPhotoColumnVisibility()
+    },
+  },
+])
+
 const selectedRowsCount = computed((): number => {
   return table.value?.tableApi?.getFilteredSelectedRowModel().rows.length || 0
 })
@@ -943,6 +973,15 @@ const clearAllUploads = () => {
   }
 }
 
+/**
+ * A column where ten rows in a row say "none" is louder than a column that
+ * says nothing at all: the eye reads a wall of grey words and learns to skip
+ * the column entirely. The absent value is drawn as a dash instead, and the
+ * dash still carries the word it stands for in its tooltip.
+ */
+const emptyCell = (label: string) =>
+  h('span', { class: 'text-dimmed text-xs', title: label }, '—')
+
 const columns = computed<TableColumn<Photo>[]>(() => [
   {
     id: 'select',
@@ -983,7 +1022,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
         alt: row.original.title || $t('dashboard.photos.table.thumbnailAlt'),
         key: row.original.id,
         thumbhash: row.original.thumbnailHash || '',
-        class: 'size-16 min-w-[100px] object-cover rounded-md shadow',
+        class: 'size-11 min-w-11 rounded object-cover shadow-sm',
         onClick: () => openImagePreview(row.original),
         style: { cursor: url ? 'pointer' : 'default' },
       })
@@ -994,11 +1033,36 @@ const columns = computed<TableColumn<Photo>[]>(() => [
     id: 'id',
     accessorKey: 'id',
     header: $t('dashboard.photos.table.columns.id'),
-    enableHiding: false,
+    // A photo's id is a 32-character hash, which is a wide column for a value
+    // nobody reads twice. It stays available, and here it stays inside its
+    // column instead of setting the column's width.
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class: 'block truncate tabular',
+          title: row.original.id,
+        },
+        row.original.id,
+      ),
   },
   {
     accessorKey: 'title',
     header: $t('dashboard.photos.table.columns.title'),
+    // The title is the one column with no width of its own — it takes
+    // whatever the fixed columns leave behind. A long filename would still
+    // run past its cell, so it is cut off with the whole value kept in the
+    // tooltip. This is also the only cell that carries emphasis: it is what
+    // tells one row from another.
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class: 'block truncate font-medium text-highlighted',
+          title: row.original.title,
+        },
+        row.original.title,
+      ),
   },
   {
     accessorKey: 'tags',
@@ -1018,11 +1082,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
                 () => tag,
               ),
             )
-          : h(
-              'span',
-              { class: 'text-neutral-400 text-xs' },
-              $t('dashboard.photos.table.cells.noTags'),
-            ),
+          : emptyCell($t('dashboard.photos.table.cells.noTags')),
       ])
     },
   },
@@ -1040,7 +1100,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
             })
           : h(
               'span',
-              { class: 'text-neutral-400 text-xs' },
+              { class: 'text-dimmed text-xs' },
               $t('dashboard.photos.table.cells.noRating'),
             ),
       ])
@@ -1067,13 +1127,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
                 $t('ui.livePhoto'),
               ),
             ])
-          : h(
-              'span',
-              {
-                class: 'text-neutral-400 text-xs',
-              },
-              $t('dashboard.photos.table.cells.staticPhoto'),
-            ),
+          : emptyCell($t('dashboard.photos.table.cells.staticPhoto')),
       ])
     },
     sortingFn: (rowA, rowB) => {
@@ -1089,21 +1143,12 @@ const columns = computed<TableColumn<Photo>[]>(() => [
       const { exif, city, country } = row.original
 
       if (!exif?.GPSLongitude && !exif?.GPSLatitude) {
-        return h(
-          'span',
-          { class: 'text-neutral-400 text-xs' },
-          $t('dashboard.photos.table.cells.noGps'),
-        )
+        return emptyCell($t('dashboard.photos.table.cells.noGps'))
       }
 
       const location = [city, country].filter(Boolean).join(', ')
-      return h(
-        'span',
-        {
-          class: location ? 'text-xs' : 'text-neutral-400 text-xs',
-        },
-        location || $t('dashboard.photos.table.cells.unknown'),
-      )
+      if (!location) return emptyCell($t('dashboard.photos.table.cells.unknown'))
+      return h('span', { class: 'text-xs' }, location)
     },
   },
   {
@@ -1111,11 +1156,13 @@ const columns = computed<TableColumn<Photo>[]>(() => [
     header: $t('dashboard.photos.table.columns.dateTaken'),
     cell: (info) => {
       const date = info.getValue() as string
+      // Minutes are as precise as anyone reads a date in a list; the seconds
+      // were costing every date column a third of its width.
       return h(
         'span',
-        { class: 'font-mono text-xs' },
+        { class: 'text-xs tabular' },
         date
-          ? dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+          ? dayjs(date).format('YYYY-MM-DD HH:mm')
           : $t('dashboard.photos.table.cells.unknown'),
       )
     },
@@ -1125,11 +1172,13 @@ const columns = computed<TableColumn<Photo>[]>(() => [
     header: $t('dashboard.photos.table.columns.lastModified'),
     cell: (info) => {
       const date = info.getValue() as string
+      // Minutes are as precise as anyone reads a date in a list; the seconds
+      // were costing every date column a third of its width.
       return h(
         'span',
-        { class: 'font-mono text-xs' },
+        { class: 'text-xs tabular' },
         date
-          ? dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+          ? dayjs(date).format('YYYY-MM-DD HH:mm')
           : $t('dashboard.photos.table.cells.unknown'),
       )
     },
@@ -1156,11 +1205,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
       )
 
       if (totalReactions === 0) {
-        return h(
-          'span',
-          { class: 'text-neutral-400 text-xs' },
-          $t('dashboard.photos.table.cells.noReactions'),
-        )
+        return emptyCell($t('dashboard.photos.table.cells.noReactions'))
       }
 
       const reactionIcons: Record<string, string> = {
@@ -1197,7 +1242,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
                 'span',
                 {
                   class:
-                    'text-xs font-medium text-neutral-700 dark:text-neutral-300',
+                    'text-xs font-medium text-default',
                 },
                 count,
               ),
@@ -1206,7 +1251,7 @@ const columns = computed<TableColumn<Photo>[]>(() => [
           totalReactions > topReactions.length
             ? h(
                 'span',
-                { class: 'text-xs text-neutral-400' },
+                { class: 'text-xs text-dimmed' },
                 `+${totalReactions - topReactions.reduce((sum, [_, count]) => sum + (count as number), 0)}`,
               )
             : null,
@@ -1221,6 +1266,44 @@ const columns = computed<TableColumn<Photo>[]>(() => [
     enableHiding: false,
   },
 ])
+
+/**
+ * How much room each column gets, in pixels.
+ *
+ * The table is laid out with fixed widths, so a column's width is what is
+ * written here rather than what its longest value happens to be — otherwise a
+ * 32-character hash and a 19-character timestamp decide the shape of the whole
+ * table and push it off the side of the page.
+ *
+ * The title column is deliberately absent: it is the one column with no width
+ * of its own, so it takes whatever is left over and the table always fills the
+ * width it is given, whatever is shown and however wide the window is.
+ */
+const columnWidths: Record<string, string> = {
+  select: '36px',
+  thumbnailUrl: '60px',
+  id: '112px',
+  tags: '110px',
+  rating: '92px',
+  isLivePhoto: '92px',
+  location: '100px',
+  dateTaken: '118px',
+  lastModified: '118px',
+  fileSize: '78px',
+  colorSpace: '88px',
+  reactions: '64px',
+  actions: '56px',
+}
+
+// 宽度是这张表的事，不是某一列的事，所以在这里一次补上，而不是在那一长串列定义里
+// 再抄一遍列名。
+const sizedColumns = computed<TableColumn<Photo>[]>(() =>
+  columns.value.map((column) => {
+    const width = columnWidths[String(column.id ?? column.accessorKey ?? '')]
+    if (!width) return column
+    return { ...column, meta: { ...column.meta, style: { th: { width } } } }
+  }),
+)
 
 // 文件验证函数
 const validateFile = (
@@ -2610,32 +2693,7 @@ onUnmounted(() => {
             </UPopover>
 
             <!-- 列可见性按钮 -->
-            <UDropdownMenu
-              :items="
-                table?.tableApi
-                  ?.getAllColumns()
-                  .filter((column: any) => column.getCanHide())
-                  .map((column: any) => ({
-                    label: columnNameMap[column.id] || column.id,
-                    type: 'checkbox' as const,
-                    checked: column.getIsVisible(),
-                    disabled:
-                      !column.getCanHide() ||
-                      column.id === 'thumbnailUrl' ||
-                      column.id === 'id' ||
-                      column.id === 'actions',
-                    onUpdateChecked(checked: boolean) {
-                      table?.tableApi
-                        ?.getColumn(column.id)
-                        ?.toggleVisibility(!!checked)
-                    },
-                    onSelect(e: Event) {
-                      e.preventDefault()
-                    },
-                  }))
-              "
-              :content="{ align: 'end' }"
-            >
+            <UDropdownMenu :items="columnMenuItems" :content="{ align: 'end' }">
               <UButton
                 label=""
                 color="neutral"
@@ -2665,34 +2723,22 @@ onUnmounted(() => {
               right: ['actions'],
             }"
             :data="filteredData as Photo[]"
-            :columns="columns"
+            :columns="sizedColumns"
             :loading="status === 'pending'"
             sticky
             class="h-full flex-1"
             :ui="{
-              wrapper: 'table-scroll relative scroll-smooth h-full overflow-auto',
+              // UTable merges these as plain class lists, so each one states
+              // the whole look of its slot rather than patching the default:
+              // the header is a quiet band above the rows, the rows are the
+              // page's own surface, and hover is the only thing that moves.
+              root: 'table-scroll h-full overflow-auto',
               base: 'min-w-full table-fixed',
-              divide:
-                'divide-y divide-neutral-200/80 dark:divide-neutral-800/80',
-              thead:
-                'bg-neutral-50/80 dark:bg-neutral-900/80 backdrop-blur-md sticky top-0 z-10 whitespace-nowrap',
-              tbody:
-                'divide-y divide-neutral-200/80 dark:divide-neutral-800/80 bg-white dark:bg-neutral-900',
-              tr: {
-                base: 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors',
-                selected: 'bg-primary-50/50 dark:bg-primary-900/20',
-              },
-              th: {
-                base: 'text-left rtl:text-right ',
-                padding: 'px-4 py-3.5',
-                color: 'text-neutral-500 dark:text-neutral-400',
-                font: 'font-medium text-sm',
-              },
-              td: {
-                padding: 'px-4 py-3',
-                color: 'text-neutral-700 dark:text-neutral-300 text-sm',
-              },
-              separator: 'bg-neutral-200/80 dark:bg-neutral-800/80',
+              thead: 'sticky top-0 z-10 bg-muted whitespace-nowrap',
+              tr: 'data-[selected=true]:bg-primary/5',
+              th: 'px-3 py-2.5 text-xs font-medium text-muted',
+              td: 'px-3 py-2.5 text-sm text-default',
+              empty: 'py-12 text-sm text-muted',
             }"
           >
             <template #actions-cell="{ row }">
