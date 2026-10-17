@@ -524,6 +524,28 @@
         "label": "拖曳或點擊選擇照片",
         "description": "支援 JPEG、PNG、HEIC 格式的照片，以及 MOV 格式的原況照片影片。每個檔案的最大大小：{maxSize}MB"
       },
+      "albumSelection": {
+        "label": "將上傳的照片加入相簿",
+        "description": "可選。不選擇相簿也可以，之後再整理照片。",
+        "placeholder": "選擇相簿，或留空",
+        "noAlbum": "不加入相簿",
+        "batchTitle": "修改照片所屬相簿",
+        "batchDescription": "對選取的 {count} 張照片批量修改相簿歸屬。",
+        "actionLabel": "操作",
+        "targetLabel": "目標相簿",
+        "targetPlaceholder": "選擇相簿",
+        "actions": {
+          "add": "加入相簿",
+          "remove": "從相簿移除"
+        },
+        "cancel": "取消",
+        "confirm": "套用",
+        "messages": {
+          "added": "已將 {count} 張照片加入相簿",
+          "removed": "已將 {count} 張照片從相簿移除",
+          "failed": "修改照片相簿失敗"
+        }
+      },
       "toolbar": {
         "title": "照片管理",
         "filter": "篩選",
@@ -585,6 +607,7 @@
         "selected": "已選擇 {count} / {total} 列",
         "batchReprocess": "批量重新處理",
         "batchEraseLocation": "抹除位置資訊",
+        "batchAlbums": "相簿",
         "batchDownload": "批量下載",
         "batchDelete": "批量刪除"
       },
@@ -733,7 +756,10 @@
           "noLocation": "未選擇位置",
           "rating": "評分",
           "ratingHint": "點擊星星為照片設定評分（0-5 星）。",
-          "noRating": "未評分"
+          "noRating": "未評分",
+          "albums": "相簿",
+          "albumsHint": "將此照片加入相簿或從相簿中移除。",
+          "albumsPlaceholder": "選擇相簿"
         },
         "actions": {
           "cancel": "取消",

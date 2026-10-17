@@ -524,6 +524,28 @@
         "label": "ドラッグアンドドロップするか、クリックして写真を選択します",
         "description": "JPEG、PNG、HEIC形式の写真、およびMOV形式のライブフォトビデオをサポート。ファイルあたりの最大サイズ：{maxSize}MB"
       },
+      "albumSelection": {
+        "label": "アップロードした写真をアルバムに追加",
+        "description": "任意です。空のままでも、後から写真を整理できます。",
+        "placeholder": "アルバムを選択、または空欄のまま",
+        "noAlbum": "アルバムに追加しない",
+        "batchTitle": "写真のアルバムを変更",
+        "batchDescription": "選択した {count} 枚の写真のアルバム所属をまとめて変更します。",
+        "actionLabel": "操作",
+        "targetLabel": "対象のアルバム",
+        "targetPlaceholder": "アルバムを選択",
+        "actions": {
+          "add": "アルバムに追加",
+          "remove": "アルバムから削除"
+        },
+        "cancel": "キャンセル",
+        "confirm": "適用",
+        "messages": {
+          "added": "{count} 枚の写真をアルバムに追加しました",
+          "removed": "{count} 枚の写真をアルバムから削除しました",
+          "failed": "写真のアルバムを変更できませんでした"
+        }
+      },
       "toolbar": {
         "title": "写真管理",
         "filter": "フィルター",
@@ -585,6 +607,7 @@
         "selected": "{count} / {total}行選択済み",
         "batchReprocess": "一括再処理",
         "batchEraseLocation": "位置情報を抹消",
+        "batchAlbums": "アルバム",
         "batchDownload": "一括ダウンロード",
         "batchDelete": "一括削除"
       },
@@ -733,7 +756,10 @@
           "noLocation": "位置情報が未設定です",
           "rating": "評価",
           "ratingHint": "星をクリックして写真の評価を設定します（0～5つ星）。",
-          "noRating": "未評価"
+          "noRating": "未評価",
+          "albums": "アルバム",
+          "albumsHint": "この写真をアルバムに追加、またはアルバムから削除します。",
+          "albumsPlaceholder": "アルバムを選択"
         },
         "actions": {
           "cancel": "キャンセル",
