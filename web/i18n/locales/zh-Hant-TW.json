@@ -450,6 +450,8 @@
         "subtitle": "登錄到 {0}"
       },
       "action": {
+        "showPassword": "顯示密碼",
+        "hidePassword": "隱藏密碼",
         "or": "或",
         "continue": "繼續",
         "backToHome": "回到首頁"
@@ -1242,6 +1244,9 @@
       "sectionDescription": "設定系統級行為參數。這裡的修改會影響全域上傳和服務行為。"
     },
     "map": {
+      "sections": {
+        "display": "地圖顯示"
+      },
       "provider": {
         "label": "地圖服務商",
         "description": "選擇地圖服務商提供者"
@@ -1312,6 +1317,9 @@
       }
     },
     "privacy": {
+      "sections": {
+        "upload": "上傳隱私"
+      },
       "upload": {
         "autoEraseLocation": {
           "label": "上傳時自動抹除位置資訊",
@@ -1511,6 +1519,9 @@
       }
     },
     "analytics": {
+      "sections": {
+        "scripts": "自訂指令碼"
+      },
       "sectionDescription": "將自訂 script 標籤注入到頁面 head 和 body 中，用於分析、追蹤或結構化資料。指令碼對所有訪客執行，請僅貼上可信程式碼。",
       "headScripts": {
         "label": "Head 指令碼",
@@ -1524,6 +1535,9 @@
       }
     },
     "general": {
+      "sections": {
+        "site": "站點資訊"
+      },
       "description": "管理站點基礎資訊與展示外觀。更改會立即影響控制台和前台展示。"
     },
     "password": {

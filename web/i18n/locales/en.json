@@ -454,6 +454,8 @@
         "oauthLogin": "Continue with {name}"
       },
       "action": {
+        "showPassword": "Show password",
+        "hidePassword": "Hide password",
         "backToHome": "Back to Home",
         "or": "OR",
         "continue": "Continue"
@@ -1316,6 +1318,9 @@
       "sectionDescription": "Configure system-level behavior parameters. Changes here will affect global upload and service behavior."
     },
     "map": {
+      "sections": {
+        "display": "Map display"
+      },
       "provider": {
         "label": "Map Provider",
         "description": "Select the map service provider"
@@ -1386,6 +1391,9 @@
       }
     },
     "privacy": {
+      "sections": {
+        "upload": "Upload privacy"
+      },
       "upload": {
         "autoEraseLocation": {
           "label": "Automatically erase location info on upload",
@@ -1585,6 +1593,9 @@
       }
     },
     "analytics": {
+      "sections": {
+        "scripts": "Custom scripts"
+      },
       "sectionDescription": "Inject custom script tags into the page head and body for analytics, tracking, or structured data. Scripts run for all visitors. Only paste code you trust.",
       "headScripts": {
         "label": "Head Scripts",
@@ -1598,6 +1609,9 @@
       }
     },
     "general": {
+      "sections": {
+        "site": "Site details"
+      },
       "description": "Manage the site's basic information and display appearance. Changes will immediately affect the dashboard and public-facing display."
     },
     "password": {

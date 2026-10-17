@@ -450,6 +450,8 @@
         "subtitle": "{0} にログインします"
       },
       "action": {
+        "showPassword": "パスワードを表示",
+        "hidePassword": "パスワードを隠す",
         "or": "または",
         "continue": "続く",
         "backToHome": "ホームに戻る"
@@ -1242,6 +1244,9 @@
       "sectionDescription": "システムレベルの動作パラメーターを設定します。ここでの変更はグローバルなアップロードとサービスの動作に影響します。"
     },
     "map": {
+      "sections": {
+        "display": "地図表示"
+      },
       "provider": {
         "label": "地図プロバイダー",
         "description": "地図サービスプロバイダーを選択"
@@ -1312,6 +1317,9 @@
       }
     },
     "privacy": {
+      "sections": {
+        "upload": "アップロードのプライバシー"
+      },
       "upload": {
         "autoEraseLocation": {
           "label": "アップロード時に位置情報を自動で抹消",
@@ -1511,6 +1519,9 @@
       }
     },
     "analytics": {
+      "sections": {
+        "scripts": "カスタムスクリプト"
+      },
       "sectionDescription": "アナリティクス、トラッキング、または構造化データ用のカスタム script タグを head と body に注入します。スクリプトはすべての訪問者に実行されます。信頼できるコードのみ貼り付けてください。",
       "headScripts": {
         "label": "Head スクリプト",
@@ -1524,6 +1535,9 @@
       }
     },
     "general": {
+      "sections": {
+        "site": "サイト情報"
+      },
       "description": "サイトの基本情報と表示外観を管理します。変更はダッシュボードと公開側の表示に即時反映されます。"
     },
     "password": {
