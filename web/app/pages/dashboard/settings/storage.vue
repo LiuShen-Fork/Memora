@@ -539,61 +539,44 @@ const confirmStorageDelete = async () => {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar :title="$t('title.storageSettings')" />
+      <DashboardPageHeader
+        :title="$t('title.storageSettings')"
+        :description="$t('settings.storage.sectionDescription')"
+      />
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-5xl space-y-6">
-        <section
-          class="space-y-2 border-b border-neutral-200 pb-4 dark:border-neutral-800"
+      <div class="mx-auto w-full max-w-4xl space-y-6">
+        <DashboardPanel
+          :title="$t('settings.storage.sections.management')"
+          :description="$t('settings.storage.listDescription')"
+          icon="tabler:database"
+          flush
+          :ui="{ header: 'flex-wrap gap-y-2 px-4 py-3 sm:px-4' }"
         >
-          <h2
-            class="text-xl font-semibold text-neutral-900 dark:text-neutral-100"
-          >
-            {{ $t('title.storageSettings') }}
-          </h2>
-          <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            {{ $t('settings.storage.sectionDescription') }}
-          </p>
-        </section>
-
-        <section
-          class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
-        >
-          <header
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4 dark:border-neutral-800"
-          >
-            <div class="space-y-1">
-              <h3
-                class="text-base font-semibold text-neutral-900 dark:text-neutral-100"
-              >
-                {{ $t('settings.storage.sections.management') }}
-              </h3>
-              <p class="text-sm text-neutral-500 dark:text-neutral-400">
-                {{ $t('settings.storage.listDescription') }}
-              </p>
-            </div>
+          <template #actions>
             <UButton
               data-tour="storage-add"
+              size="sm"
               icon="tabler:plus"
               :disabled="isSwitchingStorage || isDeletingStorage"
               @click="openStorageEditor()"
             >
               {{ $t('settings.storage.actions.add') }}
             </UButton>
-          </header>
+          </template>
 
           <div
             v-if="
               (availableStorageStatus === 'pending' && !availableStorage) ||
               (currentStorageStatus === 'pending' && !currentStorageProvider)
             "
-            class="space-y-3 px-5 py-5"
+            class="space-y-3 p-4"
           >
             <USkeleton
               v-for="index in 3"
               :key="index"
-              class="h-24 w-full"
+              class="h-20 w-full"
             />
           </div>
 
@@ -602,7 +585,7 @@ const confirmStorageDelete = async () => {
               availableStorageStatus === 'error' ||
               currentStorageStatus === 'error'
             "
-            class="space-y-4 px-5 py-5"
+            class="space-y-4 p-4"
           >
             <UAlert
               color="error"
@@ -631,12 +614,12 @@ const confirmStorageDelete = async () => {
           >
             <Icon
               name="tabler:database"
-              class="size-10 text-neutral-400"
+              class="size-10 text-dimmed"
             />
-            <h4 class="font-medium">
+            <p class="font-medium text-highlighted">
               {{ $t('settings.storage.empty.title') }}
-            </h4>
-            <p class="max-w-sm text-sm text-neutral-500 dark:text-neutral-400">
+            </p>
+            <p class="max-w-sm text-sm text-muted">
               {{ $t('settings.storage.empty.description') }}
             </p>
             <UButton
@@ -650,29 +633,27 @@ const confirmStorageDelete = async () => {
           <div
             v-else
             data-tour="storage-default"
-            class="divide-y divide-neutral-200 dark:divide-neutral-800"
+            class="divide-y divide-default"
           >
             <article
               v-for="storage in sortedStorage"
               :key="storage.id"
-              class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
+              class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div class="flex min-w-0 items-center gap-3">
                 <div
-                  class="flex size-10 shrink-0 items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-900"
+                  class="flex size-10 shrink-0 items-center justify-center rounded-md bg-elevated"
                 >
                   <Icon
                     :name="PROVIDER_ICON[storage.provider]"
-                    class="size-5 text-neutral-600 dark:text-neutral-400"
+                    class="size-5 text-muted"
                   />
                 </div>
                 <div class="min-w-0 space-y-0.5">
                   <div class="flex flex-wrap items-center gap-2">
-                    <h4
-                      class="break-all font-medium text-neutral-900 dark:text-neutral-100"
-                    >
+                    <span class="break-all font-medium text-highlighted">
                       {{ storage.name }}
-                    </h4>
+                    </span>
                     <UBadge
                       v-if="storage.id === activeStorage?.id"
                       color="success"
@@ -683,7 +664,7 @@ const confirmStorageDelete = async () => {
                     </UBadge>
                   </div>
                   <div
-                    class="flex min-w-0 items-center gap-2 text-xs leading-5 text-neutral-500 dark:text-neutral-400"
+                    class="flex min-w-0 items-center gap-2 text-xs leading-5 text-muted"
                   >
                     <span class="shrink-0">
                       {{ $t(`settings.storage.providers.${storage.provider}`) }}
@@ -691,7 +672,7 @@ const confirmStorageDelete = async () => {
                     <template v-if="getStorageDestination(storage)">
                       <span
                         aria-hidden="true"
-                        class="text-neutral-300 dark:text-neutral-700"
+                        class="text-dimmed"
                       >
                         ·
                       </span>
@@ -712,6 +693,7 @@ const confirmStorageDelete = async () => {
                 <UButton
                   color="neutral"
                   variant="outline"
+                  size="sm"
                   icon="tabler:pencil"
                   :disabled="isSwitchingStorage || isDeletingStorage"
                   @click="openStorageEditor(storage)"
@@ -722,6 +704,7 @@ const confirmStorageDelete = async () => {
                   v-if="storage.id !== activeStorage?.id"
                   color="neutral"
                   variant="soft"
+                  size="sm"
                   icon="tabler:arrows-exchange"
                   :disabled="isSwitchingStorage || isDeletingStorage"
                   @click="requestStorageActivation(storage)"
@@ -742,6 +725,7 @@ const confirmStorageDelete = async () => {
                   <UButton
                     color="neutral"
                     variant="ghost"
+                    size="sm"
                     icon="tabler:dots"
                     :aria-label="
                       $t('settings.storage.moreActions', { name: storage.name })
@@ -753,13 +737,15 @@ const confirmStorageDelete = async () => {
             </article>
           </div>
 
-          <footer
+          <template
             v-if="sortedStorage.length"
-            class="border-t border-neutral-200 px-5 py-4 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400"
+            #footer
           >
-            {{ $t('settings.storage.changeModal.alertDescription') }}
-          </footer>
-        </section>
+            <p class="text-xs leading-relaxed text-muted">
+              {{ $t('settings.storage.changeModal.alertDescription') }}
+            </p>
+          </template>
+        </DashboardPanel>
 
         <USlideover
           :open="editorOpen"

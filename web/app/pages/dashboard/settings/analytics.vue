@@ -48,49 +48,32 @@ const handleAnalyticsSettingsSubmit = async () => {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar :title="$t('title.analyticsSettings')" />
+      <DashboardPageHeader
+        :title="$t('title.analyticsSettings')"
+        :description="$t('settings.analytics.sectionDescription')"
+      />
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-5xl space-y-6">
-        <section
-          class="space-y-2 border-b border-neutral-200 pb-4 dark:border-neutral-800"
+      <div class="mx-auto w-full max-w-4xl">
+        <SettingSkeleton
+          v-if="analyticsLoading && analyticsFields.length === 0"
+          :rows="2"
+        />
+
+        <SettingCard
+          v-else
+          :title="$t('settings.analytics.sections.scripts')"
+          icon="tabler:code"
+          form-id="analyticsSettingsForm"
+          :dirty="isAnalyticsDirty"
+          :loading="analyticsLoading"
+          @reset="resetAnalyticsSettings"
         >
-          <h2
-            class="text-xl font-semibold text-neutral-900 dark:text-neutral-100"
-          >
-            {{ $t('title.analyticsSettings') }}
-          </h2>
-          <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            {{ $t('settings.analytics.sectionDescription') }}
-          </p>
-        </section>
-
-        <section
-          class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
-        >
-          <header
-            class="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800"
-          >
-            <h3
-              class="text-base font-semibold text-neutral-900 dark:text-neutral-100"
-            >
-              {{ $t('title.analyticsSettings') }}
-            </h3>
-          </header>
-
-          <div
-            v-if="analyticsLoading && analyticsFields.length === 0"
-            class="space-y-4 px-5 py-5"
-          >
-            <USkeleton class="h-4 w-44" />
-            <USkeleton class="h-12 w-full" />
-          </div>
-
+          <!-- 粘进来的是代码，所以这两块用等宽字排版 -->
           <UForm
-            v-else
             id="analyticsSettingsForm"
-            class="space-y-5 px-5 py-5 [&_textarea]:font-mono [&_textarea]:text-xs"
+            class="divide-y divide-default [&_textarea]:font-mono [&_textarea]:text-xs"
             @submit="handleAnalyticsSettingsSubmit"
           >
             <SettingField
@@ -101,41 +84,9 @@ const handleAnalyticsSettingsSubmit = async () => {
               @update:model-value="(val) => (analyticsState[field.key] = val)"
             />
           </UForm>
-
-          <footer
-            class="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800"
-          >
-            <div
-              v-if="isAnalyticsDirty"
-              class="mb-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-900/60 dark:bg-warning-950/30 dark:text-warning-200"
-            >
-              {{ $t('common.unsavedChanges') }}
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="outline"
-                :disabled="!isAnalyticsDirty"
-                @click="resetAnalyticsSettings"
-              >
-                {{ $t('common.actions.reset') }}
-              </UButton>
-              <UButton
-                :loading="analyticsLoading"
-                type="submit"
-                form="analyticsSettingsForm"
-                :disabled="!isAnalyticsDirty"
-                icon="tabler:device-floppy"
-              >
-                {{ $t('common.actions.saveSettings') }}
-              </UButton>
-            </div>
-          </footer>
-        </section>
+        </SettingCard>
       </div>
     </template>
   </UDashboardPanel>
 </template>
 
-<style scoped></style>

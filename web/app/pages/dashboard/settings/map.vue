@@ -3,6 +3,10 @@ definePageMeta({
   layout: 'dashboard',
 })
 
+// 文件名 map.vue 会让 Vue 以 "map" 当组件名，而 <map> 是 HTML 自带元素，
+// 于是每次进这一页都会报一句组件名保留的警告。路由不受影响，名字单独给一个。
+defineOptions({ name: 'SettingsMapPage' })
+
 useHead({
   title: () => $t('title.mapAndLocation'),
 })
@@ -121,52 +125,45 @@ const handleLocationSettingsSubmit = async () => {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar :title="$t('title.mapAndLocation')" />
+      <DashboardPageHeader
+        :title="$t('title.mapAndLocation')"
+        :description="$t('settings.map.sectionDescription')"
+      />
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-5xl space-y-6">
-        <section class="space-y-2 border-b border-neutral-200 pb-4 dark:border-neutral-800">
-          <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            {{ $t('title.mapAndLocation') }}
-          </h2>
-          <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            {{ $t('settings.map.sectionDescription') }}
-          </p>
-        </section>
+      <div class="mx-auto w-full max-w-4xl space-y-6">
+        <SettingSkeleton v-if="mapLoading && visibleMapFields.length === 0" />
 
-        <section class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-          <header class="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {{ $t('title.mapAndLocation') }}
-            </h3>
-          </header>
-
-          <div
-            v-if="mapLoading && visibleMapFields.length === 0"
-            class="space-y-4 px-5 py-5"
-          >
-            <USkeleton class="h-4 w-32" />
-            <USkeleton class="h-10 w-full" />
-            <USkeleton class="h-4 w-44" />
-            <USkeleton class="h-10 w-full" />
-          </div>
-
+        <SettingCard
+          v-else
+          :title="$t('settings.map.sections.display')"
+          icon="tabler:map-2"
+          form-id="mapSettingsForm"
+          :dirty="isMapDirty"
+          :loading="mapLoading"
+          @reset="resetMapSettings"
+        >
           <UForm
-            v-else
             id="mapSettingsForm"
-            class="space-y-5 px-5 py-5"
+            class="divide-y divide-default"
             @submit="handleMapSettingsSubmit"
           >
-            <UTabs
-              v-model="mapProvider"
-              data-tour-setting="map:provider"
-              :items="mapProviderTabs"
-              color="primary"
-              variant="pill"
-              class="w-full"
-              :ui="{ list: 'w-full', trigger: 'flex-1 justify-center' }"
-            />
+            <!-- 换一家地图服务，下面要填的东西也跟着换 -->
+            <SettingRow
+              :label="$t('settings.map.provider.label')"
+              :description="$t('settings.map.provider.description')"
+            >
+              <UTabs
+                v-model="mapProvider"
+                data-tour-setting="map:provider"
+                :items="mapProviderTabs"
+                color="neutral"
+                variant="pill"
+                size="sm"
+                :ui="{ list: 'w-fit', root: 'items-start' }"
+              />
+            </SettingRow>
 
             <SettingField
               v-for="field in visibleMapFields"
@@ -176,68 +173,37 @@ const handleLocationSettingsSubmit = async () => {
               @update:model-value="(val) => (mapState[field.key] = val)"
             />
           </UForm>
+        </SettingCard>
 
-          <footer class="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <div
-              v-if="isMapDirty"
-              class="mb-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-900/60 dark:bg-warning-950/30 dark:text-warning-200"
-            >
-              {{ $t('common.unsavedChanges') }}
-            </div>
+        <SettingSkeleton v-if="locationLoading && visibleLocationFields.length === 0" />
 
-            <div class="flex items-center justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="outline"
-                :disabled="!isMapDirty"
-                @click="resetMapSettings"
-              >
-                {{ $t('common.actions.reset') }}
-              </UButton>
-            <UButton
-              :loading="mapLoading"
-              type="submit"
-              form="mapSettingsForm"
-              :disabled="!isMapDirty"
-              icon="tabler:device-floppy"
-            >
-              {{ $t('common.actions.saveSettings') }}
-            </UButton>
-            </div>
-          </footer>
-        </section>
-
-        <section class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-          <header class="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {{ $t('title.location') }}
-            </h3>
-          </header>
-
-          <div
-            v-if="locationLoading && visibleLocationFields.length === 0"
-            class="space-y-4 px-5 py-5"
-          >
-            <USkeleton class="h-4 w-36" />
-            <USkeleton class="h-10 w-full" />
-            <USkeleton class="h-4 w-40" />
-            <USkeleton class="h-10 w-full" />
-          </div>
-
+        <SettingCard
+          v-else
+          :title="$t('title.location')"
+          icon="tabler:map-pin"
+          form-id="locationSettingsForm"
+          :dirty="isLocationDirty"
+          :loading="locationLoading"
+          @reset="resetLocationSettings"
+        >
           <UForm
-            v-else
             id="locationSettingsForm"
-            class="space-y-5 px-5 py-5"
+            class="divide-y divide-default"
             @submit="handleLocationSettingsSubmit"
           >
-            <UTabs
-              v-model="locationProvider"
-              :items="locationProviderTabs"
-              color="primary"
-              variant="pill"
-              class="w-full"
-              :ui="{ list: 'w-full', trigger: 'flex-1 justify-center' }"
-            />
+            <SettingRow
+              :label="$t('settings.location.provider.label')"
+              :description="$t('settings.location.provider.description')"
+            >
+              <UTabs
+                v-model="locationProvider"
+                :items="locationProviderTabs"
+                color="neutral"
+                variant="pill"
+                size="sm"
+                :ui="{ list: 'w-fit', root: 'items-start' }"
+              />
+            </SettingRow>
 
             <SettingField
               v-for="field in visibleLocationFields"
@@ -247,39 +213,9 @@ const handleLocationSettingsSubmit = async () => {
               @update:model-value="(val) => (locationState[field.key] = val)"
             />
           </UForm>
-
-          <footer class="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <div
-              v-if="isLocationDirty"
-              class="mb-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-900/60 dark:bg-warning-950/30 dark:text-warning-200"
-            >
-              {{ $t('common.unsavedChanges') }}
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="outline"
-                :disabled="!isLocationDirty"
-                @click="resetLocationSettings"
-              >
-                {{ $t('common.actions.reset') }}
-              </UButton>
-            <UButton
-              :loading="locationLoading"
-              type="submit"
-              form="locationSettingsForm"
-              :disabled="!isLocationDirty"
-              icon="tabler:device-floppy"
-            >
-              {{ $t('common.actions.saveSettings') }}
-            </UButton>
-            </div>
-          </footer>
-        </section>
+        </SettingCard>
       </div>
     </template>
   </UDashboardPanel>
 </template>
 
-<style scoped></style>

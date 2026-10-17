@@ -15,10 +15,6 @@ const { fields, state, submit, loading } = useSettingsForm('app')
 // 也避免重置按钮把已上传的图片退回旧地址。
 const AVATAR_KEY = 'avatarUrl'
 
-const avatarField = computed(() =>
-  fields.value.find((f) => f.key === AVATAR_KEY),
-)
-
 const appFields = computed(() =>
   fields.value.filter(
     (f) => !f.key.startsWith('appearance.') && f.key !== AVATAR_KEY,
@@ -88,119 +84,65 @@ const handleAppearanceSettingsSubmit = async () => {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar :title="$t('title.generalSettings')" />
+      <DashboardPageHeader
+        :title="$t('title.generalSettings')"
+        :description="$t('settings.general.description')"
+      />
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-5xl space-y-6">
-        <section class="space-y-2 border-b border-neutral-200 pb-4 dark:border-neutral-800">
-          <h2 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-            {{ $t('title.generalSettings') }}
-          </h2>
-          <p class="text-sm text-neutral-600 dark:text-neutral-400">
-            {{ $t('settings.general.description') }}
-          </p>
-        </section>
+      <div class="mx-auto w-full max-w-4xl space-y-6">
+        <SettingSkeleton
+          v-if="loading && appFields.length === 0"
+          :rows="3"
+        />
 
-        <section class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-          <header class="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {{ $t('title.generalSettings') }}
-            </h3>
-          </header>
+        <SettingCard
+          v-else
+          :title="$t('settings.general.sections.site')"
+          icon="tabler:info-circle"
+          form-id="appSettingsForm"
+          :dirty="isAppDirty"
+          :loading="loading"
+          @reset="resetAppSettings"
+        >
+          <div class="divide-y divide-default">
+            <!-- 头像自己上传、自己保存，不跟着下面的保存按钮走 -->
+            <SettingAvatar v-model="state[AVATAR_KEY]" />
 
-          <div
-            v-if="loading && !avatarField"
-            class="flex items-center gap-4 border-b border-neutral-200 px-5 py-5 dark:border-neutral-800"
-          >
-            <USkeleton class="size-16 rounded-full" />
-            <div class="w-full space-y-2">
-              <USkeleton class="h-4 w-24" />
-              <USkeleton class="h-10 w-full max-w-md" />
-            </div>
-          </div>
-          <SettingAvatar
-            v-else
-            v-model="state[AVATAR_KEY]"
-            class="border-b border-neutral-200 px-5 py-5 dark:border-neutral-800"
-          />
-
-          <div
-            v-if="loading && appFields.length === 0"
-            class="space-y-4 px-5 py-5"
-          >
-            <USkeleton class="h-4 w-32" />
-            <USkeleton class="h-10 w-full" />
-            <USkeleton class="h-4 w-44" />
-            <USkeleton class="h-10 w-full" />
-            <USkeleton class="h-4 w-36" />
-            <USkeleton class="h-10 w-full" />
-          </div>
-
-          <UForm
-            v-else
-            id="appSettingsForm"
-            class="space-y-5 px-5 py-5"
-            @submit="handleAppSettingsSubmit"
-          >
-            <SettingField
-              v-for="field in appFields"
-              :key="field.key"
-              :field="field"
-              :model-value="state[field.key]"
-              @update:model-value="(val) => (state[field.key] = val)"
-            />
-          </UForm>
-
-          <footer class="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <div
-              v-if="isAppDirty"
-              class="mb-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-900/60 dark:bg-warning-950/30 dark:text-warning-200"
+            <UForm
+              id="appSettingsForm"
+              class="divide-y divide-default"
+              @submit="handleAppSettingsSubmit"
             >
-              {{ $t('common.unsavedChanges') }}
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="outline"
-                :disabled="!isAppDirty"
-                @click="resetAppSettings"
-              >
-                {{ $t('common.actions.reset') }}
-              </UButton>
-            <UButton
-              :loading="loading"
-              type="submit"
-              form="appSettingsForm"
-              :disabled="!isAppDirty"
-              icon="tabler:device-floppy"
-            >
-              {{ $t('common.actions.saveSettings') }}
-            </UButton>
-            </div>
-          </footer>
-        </section>
-
-        <section class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-          <header class="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {{ $t('title.appearanceSettings') }}
-            </h3>
-          </header>
-
-          <div
-            v-if="loading && appearanceFields.length === 0"
-            class="space-y-4 px-5 py-5"
-          >
-            <USkeleton class="h-4 w-40" />
-            <USkeleton class="h-10 w-full" />
+              <SettingField
+                v-for="field in appFields"
+                :key="field.key"
+                :field="field"
+                :model-value="state[field.key]"
+                @update:model-value="(val) => (state[field.key] = val)"
+              />
+            </UForm>
           </div>
+        </SettingCard>
 
+        <SettingSkeleton
+          v-if="loading && appearanceFields.length === 0"
+          :rows="1"
+        />
+
+        <SettingCard
+          v-else
+          :title="$t('title.appearanceSettings')"
+          icon="tabler:palette"
+          form-id="appearanceSettingsForm"
+          :dirty="isAppearanceDirty"
+          :loading="loading"
+          @reset="resetAppearanceSettings"
+        >
           <UForm
-            v-else
             id="appearanceSettingsForm"
-            class="space-y-5 px-5 py-5"
+            class="divide-y divide-default"
             @submit="handleAppearanceSettingsSubmit"
           >
             <SettingField
@@ -211,58 +153,10 @@ const handleAppearanceSettingsSubmit = async () => {
               @update:model-value="(val) => (state[field.key] = val)"
             />
           </UForm>
+        </SettingCard>
 
-          <footer class="border-t border-neutral-200 px-5 py-4 dark:border-neutral-800">
-            <div
-              v-if="isAppearanceDirty"
-              class="mb-3 rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-800 dark:border-warning-900/60 dark:bg-warning-950/30 dark:text-warning-200"
-            >
-              {{ $t('common.unsavedChanges') }}
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <UButton
-                color="neutral"
-                variant="outline"
-                :disabled="!isAppearanceDirty"
-                @click="resetAppearanceSettings"
-              >
-                {{ $t('common.actions.reset') }}
-              </UButton>
-            <UButton
-              :loading="loading"
-              type="submit"
-              form="appearanceSettingsForm"
-              :disabled="!isAppearanceDirty"
-              icon="tabler:device-floppy"
-            >
-              {{ $t('common.actions.saveSettings') }}
-            </UButton>
-            </div>
-          </footer>
-        </section>
-
-        <section
-          class="rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
-        >
-          <header
-            class="space-y-1 border-b border-neutral-200 px-5 py-4 dark:border-neutral-800"
-          >
-            <h3
-              class="text-base font-semibold text-neutral-900 dark:text-neutral-100"
-            >
-              {{ $t('settings.password.title') }}
-            </h3>
-            <p class="text-sm text-neutral-600 dark:text-neutral-400">
-              {{ $t('settings.password.description') }}
-            </p>
-          </header>
-
-          <SettingPassword />
-        </section>
+        <SettingPassword />
       </div>
     </template>
   </UDashboardPanel>
 </template>
-
-<style scoped></style>
