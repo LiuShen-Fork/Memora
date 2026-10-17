@@ -644,22 +644,8 @@ watch(
   },
 )
 
-// 列可见性状态
-const columnVisibility = ref({
-  thumbnailUrl: true,
-  id: true,
-  actions: true,
-  title: true,
-  tags: true,
-  rating: true,
-  isLivePhoto: true,
-  location: true,
-  dateTaken: true,
-  lastModified: true,
-  fileSize: true,
-  colorSpace: true,
-  reactions: true,
-})
+// 列可见性状态：选了哪些列记在本地，刷新后照旧
+const columnVisibility = useDashboardPhotoColumnVisibility()
 
 const selectedRowsCount = computed((): number => {
   return table.value?.tableApi?.getFilteredSelectedRowModel().rows.length || 0
