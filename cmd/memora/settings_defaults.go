@@ -147,6 +147,14 @@ func serializeSetting(typ string, value any) any {
 	return jsonValue(value)
 }
 
+// scriptsAreBlocks holds the settings whose value is pasted markup: the tags
+// injected into every page. They are named by namespace:key so that the list
+// reads the same way the settings are addressed everywhere else.
+var scriptsAreBlocks = map[string]bool{
+	"analytics:headScripts": true,
+	"analytics:bodyScripts": true,
+}
+
 func settingUI(namespace, key, typ string, enum []string) map[string]any {
 	uiType := "input"
 	switch typ {
@@ -162,6 +170,13 @@ func settingUI(namespace, key, typ string, enum []string) map[string]any {
 		uiType = "select"
 	}
 	ui := map[string]any{"type": uiType, "required": false}
+	// The injected scripts are a block of markup, not a line of text. A
+	// one-line input would drop the newlines out of whatever was pasted into
+	// it, and hand every visitor a script that no longer parses.
+	if typ == "string" && scriptsAreBlocks[namespace+":"+key] {
+		ui["type"] = "textarea"
+		ui["rows"] = 8
+	}
 	// The queue's concurrency is edited where the workers are visible, so the
 	// dashboard is told the range it may offer. The server refuses anything
 	// outside it whatever the browser sends.
