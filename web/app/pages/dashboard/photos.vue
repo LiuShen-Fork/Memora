@@ -61,6 +61,7 @@ const setPhotoPage = (page: number) => {
   void navigateTo({ query: { ...useRoute().query, page: page === 1 ? undefined : page } })
 }
 const { filteredPhotos, selectedCounts, hasActiveFilters } = usePhotoFilters()
+const { currentSortIcon } = usePhotoSort()
 
 const totalSelectedFilters = computed(() => {
   return Object.values(selectedCounts.value).reduce(
@@ -2596,6 +2597,31 @@ onUnmounted(() => {
                 $t('dashboard.photos.toolbar.refresh')
               }}</span>
             </UButton>
+
+            <!-- 排序按钮：与画廊用的是同一份排序方式 -->
+            <UPopover :content="{ align: 'end' }">
+              <UButton
+                color="neutral"
+                variant="outline"
+                size="sm"
+                :icon="currentSortIcon"
+                :title="$t('ui.action.sort.tooltip')"
+              >
+                <span class="hidden sm:inline">{{
+                  $t('ui.action.sort.title')
+                }}</span>
+              </UButton>
+              <template #content>
+                <UCard variant="glassmorphism" class="w-3xs">
+                  <template #header>
+                    <h3 class="p-1 text-sm font-bold">
+                      {{ $t('ui.action.sort.title') }}
+                    </h3>
+                  </template>
+                  <OverlaySortPanel />
+                </UCard>
+              </template>
+            </UPopover>
 
             <!-- 列可见性按钮 -->
             <UDropdownMenu

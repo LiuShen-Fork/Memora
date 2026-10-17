@@ -1,10 +1,5 @@
 <script setup lang="ts">
-const {
-  currentSortLabel,
-  currentSortOption,
-  availableSorts,
-  setSortOption,
-} = usePhotoSort()
+const { currentSortOption } = usePhotoSort()
 const {
   selectedColumns,
   minColumns,
@@ -40,19 +35,7 @@ const {
             <p class="px-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">
               {{ $t('ui.action.displaySettings.sort') }}
             </p>
-          <UButton
-            v-for="sort in availableSorts"
-            :key="sort.key"
-            :variant="currentSortLabel === sort.labelI18n ? 'soft' : 'ghost'"
-            :color="currentSortLabel === sort.labelI18n ? 'info' : 'neutral'"
-            :icon="sort.icon"
-            size="sm"
-            block
-            class="justify-start"
-            @click="setSortOption(sort.key)"
-          >
-            {{ $t(sort.labelI18n) }}
-          </UButton>
+            <OverlaySortPanel />
           </div>
           <div v-if="isAdjustable" class="space-y-2 border-t border-neutral-200/70 pt-3 dark:border-neutral-700/70">
             <div class="flex items-center justify-between px-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">
