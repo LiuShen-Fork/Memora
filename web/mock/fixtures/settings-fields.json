@@ -1,0 +1,814 @@
+{
+  "analytics": {
+    "fields": [
+      {
+        "defaultValue": "",
+        "description": "settings.analytics.headScripts.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "headScripts",
+        "label": "settings.analytics.headScripts.label",
+        "namespace": "analytics",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.analytics.bodyScripts.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "bodyScripts",
+        "label": "settings.analytics.bodyScripts.label",
+        "namespace": "analytics",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      }
+    ],
+    "namespace": "analytics"
+  },
+  "app": {
+    "fields": [
+      {
+        "defaultValue": "Memora",
+        "description": "settings.app.title.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "title",
+        "label": "settings.app.title.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": "Memora"
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.app.slogan.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "slogan",
+        "label": "settings.app.slogan.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.app.author.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "author",
+        "label": "settings.app.author.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.app.avatarUrl.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "avatarUrl",
+        "label": "settings.app.avatarUrl.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.app.footerLinkText.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "footerLinkText",
+        "label": "settings.app.footerLinkText.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.app.footerLinkUrl.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "footerLinkUrl",
+        "label": "settings.app.footerLinkUrl.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "system",
+        "description": "settings.app.appearance.theme.description",
+        "enum": [
+          "light",
+          "dark",
+          "system"
+        ],
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "appearance.theme",
+        "label": "settings.app.appearance.theme.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "options": [
+            {
+              "label": "light",
+              "value": "light"
+            },
+            {
+              "label": "dark",
+              "value": "dark"
+            },
+            {
+              "label": "system",
+              "value": "system"
+            }
+          ],
+          "required": false,
+          "type": "tabs"
+        },
+        "value": "system"
+      }
+    ],
+    "namespace": "app"
+  },
+  "location": {
+    "fields": [
+      {
+        "defaultValue": "en",
+        "description": "settings.location.language.description",
+        "enum": [
+          "zh-CN",
+          "en",
+          "ja",
+          "ru"
+        ],
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "language",
+        "label": "settings.location.language.label",
+        "namespace": "location",
+        "type": "string",
+        "ui": {
+          "options": [
+            {
+              "label": "中文（简体）",
+              "value": "zh-CN"
+            },
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "日本語",
+              "value": "ja"
+            },
+            {
+              "label": "Русский",
+              "value": "ru"
+            }
+          ],
+          "required": false,
+          "type": "select"
+        },
+        "value": "en"
+      },
+      {
+        "defaultValue": "nominatim",
+        "description": "settings.location.provider.description",
+        "enum": [
+          "nominatim",
+          "mapbox",
+          "amap"
+        ],
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "provider",
+        "label": "settings.location.provider.label",
+        "namespace": "location",
+        "type": "string",
+        "ui": {
+          "options": [
+            {
+              "label": "nominatim",
+              "value": "nominatim"
+            },
+            {
+              "label": "mapbox",
+              "value": "mapbox"
+            },
+            {
+              "label": "amap",
+              "value": "amap"
+            }
+          ],
+          "required": false,
+          "type": "tabs"
+        },
+        "value": "nominatim"
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.location.mapbox.token.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "mapbox.token",
+        "label": "settings.location.mapbox.token.label",
+        "namespace": "location",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "password"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.location.amap.key.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": true,
+        "key": "amap.key",
+        "label": "settings.location.amap.key.label",
+        "namespace": "location",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.location.nominatim.baseUrl.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "nominatim.baseUrl",
+        "label": "settings.location.nominatim.baseUrl.label",
+        "namespace": "location",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      }
+    ],
+    "namespace": "location"
+  },
+  "map": {
+    "fields": [
+      {
+        "defaultValue": "maplibre",
+        "description": "settings.map.provider.description",
+        "enum": [
+          "mapbox",
+          "maplibre",
+          "amap"
+        ],
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "provider",
+        "label": "settings.map.provider.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "options": [
+            {
+              "label": "mapbox",
+              "value": "mapbox"
+            },
+            {
+              "label": "maplibre",
+              "value": "maplibre"
+            },
+            {
+              "label": "amap",
+              "value": "amap"
+            }
+          ],
+          "required": false,
+          "type": "tabs"
+        },
+        "value": "maplibre"
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.map.mapbox.token.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "mapbox.token",
+        "label": "settings.map.mapbox.token.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "password"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.map.mapbox.style.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "mapbox.style",
+        "label": "settings.map.mapbox.style.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.map.maplibre.token.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "maplibre.token",
+        "label": "settings.map.maplibre.token.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "password"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.map.maplibre.style.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "maplibre.style",
+        "label": "settings.map.maplibre.style.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.map.amap.key.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "amap.key",
+        "label": "settings.map.amap.key.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.map.amap.securityCode.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": true,
+        "key": "amap.securityCode",
+        "label": "settings.map.amap.securityCode.label",
+        "namespace": "map",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      }
+    ],
+    "namespace": "map"
+  },
+  "privacy": {
+    "fields": [
+      {
+        "defaultValue": false,
+        "description": "settings.privacy.upload.autoEraseLocation.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "upload.autoEraseLocation",
+        "label": "settings.privacy.upload.autoEraseLocation.label",
+        "namespace": "privacy",
+        "type": "boolean",
+        "ui": {
+          "required": false,
+          "type": "toggle"
+        },
+        "value": false
+      }
+    ],
+    "namespace": "privacy"
+  },
+  "storage": {
+    "fields": [
+      {
+        "defaultValue": null,
+        "description": "settings.storage_provider.provider.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "provider",
+        "label": "settings.storage_provider.provider.label",
+        "namespace": "storage",
+        "type": "number",
+        "ui": {
+          "required": false,
+          "type": "number"
+        },
+        "value": 0
+      }
+    ],
+    "namespace": "storage"
+  },
+  "system": {
+    "fields": [
+      {
+        "defaultValue": true,
+        "description": "settings.system.firstLaunch.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": true,
+        "isSecret": false,
+        "key": "firstLaunch",
+        "label": "settings.system.firstLaunch.label",
+        "namespace": "system",
+        "type": "boolean",
+        "ui": {
+          "required": false,
+          "type": "toggle"
+        },
+        "value": true
+      },
+      {
+        "defaultValue": 32,
+        "description": "settings.app.upload.maxFileSize.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "upload.maxFileSize",
+        "label": "settings.app.upload.maxFileSize.label",
+        "namespace": "system",
+        "type": "number",
+        "ui": {
+          "required": false,
+          "type": "number"
+        },
+        "value": 32
+      },
+      {
+        "defaultValue": true,
+        "description": "settings.system.upload.duplicateCheck.enabled.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "upload.duplicateCheck.enabled",
+        "label": "settings.system.upload.duplicateCheck.enabled.label",
+        "namespace": "system",
+        "type": "boolean",
+        "ui": {
+          "required": false,
+          "type": "toggle"
+        },
+        "value": true
+      },
+      {
+        "defaultValue": "skip",
+        "description": "settings.system.upload.duplicateCheck.mode.description",
+        "enum": [
+          "warn",
+          "block",
+          "skip"
+        ],
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "upload.duplicateCheck.mode",
+        "label": "settings.system.upload.duplicateCheck.mode.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "options": [
+            {
+              "label": "warn",
+              "value": "warn"
+            },
+            {
+              "label": "block",
+              "value": "block"
+            },
+            {
+              "label": "skip",
+              "value": "skip"
+            }
+          ],
+          "required": false,
+          "type": "tabs"
+        },
+        "value": "skip"
+      },
+      {
+        "defaultValue": false,
+        "description": "settings.system.webglImageViewerDebug.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "webglImageViewerDebug",
+        "label": "settings.system.webglImageViewerDebug.label",
+        "namespace": "system",
+        "type": "boolean",
+        "ui": {
+          "required": false,
+          "type": "toggle"
+        },
+        "value": false
+      },
+      {
+        "defaultValue": 5,
+        "description": "settings.system.queueConcurrency.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "queueConcurrency",
+        "label": "settings.system.queueConcurrency.label",
+        "namespace": "system",
+        "type": "number",
+        "ui": {
+          "max": 8,
+          "min": 1,
+          "required": false,
+          "type": "number"
+        },
+        "value": 5
+      },
+      {
+        "defaultValue": false,
+        "description": "settings.system.auth.github.enabled.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.github.enabled",
+        "label": "settings.system.auth.github.enabled.label",
+        "namespace": "system",
+        "type": "boolean",
+        "ui": {
+          "required": false,
+          "type": "toggle"
+        },
+        "value": false
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.github.clientId.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.github.clientId",
+        "label": "settings.system.auth.github.clientId.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.github.clientSecret.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": true,
+        "key": "auth.github.clientSecret",
+        "label": "settings.system.auth.github.clientSecret.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "password"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": false,
+        "description": "settings.system.auth.oauth.enabled.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.enabled",
+        "label": "settings.system.auth.oauth.enabled.label",
+        "namespace": "system",
+        "type": "boolean",
+        "ui": {
+          "required": false,
+          "type": "toggle"
+        },
+        "value": false
+      },
+      {
+        "defaultValue": "OAuth",
+        "description": "settings.system.auth.oauth.name.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.name",
+        "label": "settings.system.auth.oauth.name.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": "OAuth"
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.oauth.clientId.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.clientId",
+        "label": "settings.system.auth.oauth.clientId.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.oauth.clientSecret.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": true,
+        "key": "auth.oauth.clientSecret",
+        "label": "settings.system.auth.oauth.clientSecret.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "password"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.oauth.authorizationUrl.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.authorizationUrl",
+        "label": "settings.system.auth.oauth.authorizationUrl.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.oauth.tokenUrl.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.tokenUrl",
+        "label": "settings.system.auth.oauth.tokenUrl.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.system.auth.oauth.userInfoUrl.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.userInfoUrl",
+        "label": "settings.system.auth.oauth.userInfoUrl.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": ""
+      },
+      {
+        "defaultValue": "openid profile email",
+        "description": "settings.system.auth.oauth.scope.description",
+        "enum": null,
+        "isPublic": false,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "auth.oauth.scope",
+        "label": "settings.system.auth.oauth.scope.label",
+        "namespace": "system",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": "openid profile email"
+      }
+    ],
+    "namespace": "system"
+  }
+}

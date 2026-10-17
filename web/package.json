@@ -26,7 +26,9 @@
     "postinstall": "nuxt prepare",
     "docs:dev": "vitepress dev ../docs",
     "docs:build": "vitepress build ../docs",
-    "docs:preview": "vitepress preview ../docs"
+    "docs:preview": "vitepress preview ../docs",
+    "mock": "node mock/server.mjs",
+    "dev:mock": "node mock/dev.mjs"
   },
   "dependencies": {
     "@iconify/vue": "5.0.1",
