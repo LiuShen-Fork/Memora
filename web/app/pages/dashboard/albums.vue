@@ -24,6 +24,10 @@ interface AlbumFormState {
   password: string
 }
 
+// 全站对「窄屏」的说法就是这个断点，这里跟着用：表格放得下就还是表格，
+// 放不下就换成一页一张的卡片。
+const isMobile = useMediaQuery('(max-width: 768px)')
+
 const albums = ref<AlbumItem[]>([])
 const isLoadingAlbums = ref(false)
 const { photos: allPhotos } = usePhotos()
@@ -566,8 +570,9 @@ const columns = computed<any[]>(() =>
 
     <template #body>
       <div class="flex flex-col gap-6">
-        <div v-if="albums.length > 0">
+        <template v-if="albums.length > 0">
           <UTable
+            v-if="!isMobile"
             :data="albums"
             :columns="columns"
             class="table-scroll w-full"
@@ -678,55 +683,112 @@ const columns = computed<any[]>(() =>
             </template>
 
             <template #actions-cell="{ row }">
-              <div
-                data-tour="album-actions"
-                class="flex items-center gap-1"
-              >
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="xs"
-                  icon="tabler:chevron-up"
-                  :title="$t('dashboard.albums.actions.moveUp')"
-                  :disabled="row.index === 0 || isReorderingAlbums"
-                  @click="moveAlbum(row.index, -1)"
-                />
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="xs"
-                  icon="tabler:chevron-down"
-                  :title="$t('dashboard.albums.actions.moveDown')"
-                  :disabled="
-                    row.index === albums.length - 1 || isReorderingAlbums
-                  "
-                  @click="moveAlbum(row.index, 1)"
-                />
-                <span class="mx-0.5 h-4 w-px bg-border" />
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="xs"
-                  icon="tabler:edit"
-                  :title="$t('common.actions.edit')"
-                  @click="
-                    openEditSlideover(row.original as unknown as AlbumItem)
-                  "
-                />
-                <UButton
-                  variant="ghost"
-                  color="error"
-                  size="xs"
-                  icon="tabler:trash"
-                  :title="$t('common.actions.delete')"
-                  @click="
-                    openDeleteConfirm(row.original as unknown as AlbumItem)
-                  "
-                />
-              </div>
+              <DashboardAlbumActions
+                :index="row.index"
+                :total="albums.length"
+                :reordering="isReorderingAlbums"
+                @move="moveAlbum(row.index, $event)"
+                @edit="
+                  openEditSlideover(row.original as unknown as AlbumItem)
+                "
+                @delete="
+                  openDeleteConfirm(row.original as unknown as AlbumItem)
+                "
+              />
             </template>
           </UTable>
-        </div>
+
+          <!-- 窄屏上放不下六列：封面、标题、说明、张数和日子挤在一张表里，
+               描述被卡片边缘切断，看着像坏了。改成一页一张卡片，把这些
+               横着摆不下的一层层摞起来。 -->
+          <ul
+            v-else
+            class="divide-y divide-default overflow-hidden rounded-lg border border-default bg-default"
+          >
+            <li
+              v-for="(album, index) in albums"
+              :key="album.id"
+              class="p-3.5"
+            >
+              <div class="flex gap-3">
+                <div
+                  class="size-14 shrink-0 overflow-hidden rounded-lg bg-elevated"
+                >
+                  <img
+                    v-if="album.coverPhoto"
+                    :src="album.coverPhoto.thumbnailUrl || ''"
+                    :alt="album.title"
+                    class="size-full object-cover"
+                  />
+                  <div
+                    v-else
+                    class="flex size-full items-center justify-center text-dimmed"
+                  >
+                    <UIcon
+                      name="tabler:photo"
+                      class="size-5"
+                    />
+                  </div>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5">
+                    <NuxtLink
+                      :to="`/albums/${album.id}`"
+                      target="_blank"
+                      class="truncate font-medium text-highlighted"
+                    >
+                      {{ album.title }}
+                    </NuxtLink>
+                    <UIcon
+                      v-if="album.hasPassword"
+                      name="tabler:lock"
+                      class="size-3.5 shrink-0 text-dimmed"
+                      :aria-label="$t('dashboard.albums.form.password')"
+                    />
+                  </div>
+
+                  <p
+                    v-if="album.description"
+                    class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted"
+                  >
+                    {{ album.description }}
+                  </p>
+
+                  <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <UBadge
+                      variant="soft"
+                      color="neutral"
+                      size="sm"
+                    >
+                      {{
+                        $t('dashboard.albums.photoCount', {
+                          count: album.photoCount || 0,
+                        })
+                      }}
+                    </UBadge>
+                    <span class="text-xs tabular text-dimmed">
+                      {{ dayjs(album.createdAt).format('YYYY-MM-DD') }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="mt-3 flex justify-end border-t border-default pt-2.5"
+              >
+                <DashboardAlbumActions
+                  :index="index"
+                  :total="albums.length"
+                  :reordering="isReorderingAlbums"
+                  @move="moveAlbum(index, $event)"
+                  @edit="openEditSlideover(album)"
+                  @delete="openDeleteConfirm(album)"
+                />
+              </div>
+            </li>
+          </ul>
+        </template>
 
         <DashboardPanel
           v-else-if="!isLoadingAlbums"
