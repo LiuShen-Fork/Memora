@@ -100,10 +100,11 @@ const onAuthSubmit = async (event: any) => {
   <div
     class="relative flex min-h-svh w-full flex-col items-center justify-center overflow-hidden p-4"
   >
-    <!-- 卡片背后的一点光，让这张小卡片看起来是浮着的，而不是贴着的 -->
+    <!-- 卡片背后的一点光，让这张小卡片看起来是浮着的，而不是贴着的。
+         用渐变而不是一个模糊的圆：模糊过的圆，边上还是有一圈看得出来的轮廓。 -->
     <div
       aria-hidden="true"
-      class="pointer-events-none absolute left-1/2 top-1/2 size-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-3xl"
+      class="auth-glow"
     />
 
     <div class="absolute end-2 top-2 z-10 sm:end-4 sm:top-4">
@@ -133,3 +134,17 @@ const onAuthSubmit = async (event: any) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 从中间往外化开，边上没有一圈停下来，所以看不出它其实是一块画上去的东西。 */
+.auth-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    34rem 26rem at 50% 46%,
+    color-mix(in oklab, var(--color-primary) 14%, transparent),
+    transparent 72%
+  );
+}
+</style>
