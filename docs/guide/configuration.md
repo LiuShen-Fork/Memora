@@ -56,19 +56,22 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 
 A link to this site pasted into a chat client or a timeline is shown as a card:
 a 1200×630 JPEG the server draws when the client asks for it, rather than
-whichever photo happens to be first. The card of the site carries its title, its
-slogan and its avatar; the card of a photo carries the photo, its title, its
-description and what the file says about the camera. The size is declared in the
-page as well (`og:image:width` and `og:image:height`), so a client can lay the
-preview out before it has the picture.
+whichever photo happens to be first. The card of the site carries the pictures
+it holds, its name, its slogan and who it belongs to; a site with no pictures
+yet carries the picture it goes by instead. The card of a photo carries the
+photo, its title, its description and what the file says about the camera. The
+size is declared in the page as well (`og:image:width` and `og:image:height`),
+so a client can lay the preview out before it has the picture.
 
-| Address             | What it draws                                   |
-| ------------------- | ----------------------------------------------- |
-| `/_og/site.jpg`     | The site: title, slogan and avatar              |
-| `/_og/photo/<id>.jpg` | That photo, when an anonymous visitor may see it |
+| Address             | What it draws                                                |
+| ------------------- | ------------------------------------------------------------ |
+| `/_og/site.jpg`     | The site: its pictures, name, slogan, author and picture count |
+| `/_og/photo/<id>.jpg` | That photo, when an anonymous visitor may see it             |
 
-Cards are kept for ten minutes (`Cache-Control: public, max-age=600`) and drawn
-again after that, so a change to the title or the avatar reaches a preview
+The pictures a card offers are the ones an anonymous visitor may see, and the
+card says how many there are in the language the page that named it was served
+in. Cards are kept for ten minutes (`Cache-Control: public, max-age=600`) and
+drawn again after that, so a change to the title or the avatar reaches a preview
 without a restart. A photo in a hidden or password-protected album has no card:
 the address answers `404`, the same way the photo is kept out of the page.
 

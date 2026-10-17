@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -55,8 +56,89 @@ var errNoCard = errors.New("no card for this address")
 // from, and photoCardAddress the card for one photo.
 const siteCardAddress = "/_og/site.jpg"
 
+// localeCookie is where the client keeps the language the reader is reading in.
+const localeCookie = "memora-locale"
+
+// siteCardAddressIn is the card of a site asked for in a language. The card
+// says how many pictures the site holds, and the client that fetches it runs
+// none of the site's own translations, so the language it was named in travels
+// in its address.
+func siteCardAddressIn(locale string) string {
+	if locale == "" || locale == "en" {
+		return siteCardAddress
+	}
+	return siteCardAddress + "?lang=" + url.QueryEscape(locale)
+}
+
 func photoCardAddress(id string) string {
 	return "/_og/photo/" + url.PathEscape(id) + ".jpg"
+}
+
+// photoCountLabels is how many pictures a site holds in each language the
+// client is translated into, worded as the client words the same count.
+var photoCountLabels = map[string]struct{ one, many string }{
+	"en":         {"one photo", "{count} photos"},
+	"ja":         {"写真1枚", "写真{count}枚"},
+	"ru":         {"одно фото", "{count} фото"},
+	"zh-Hans":    {"一张照片", "{count} 张照片"},
+	"zh-Hant-HK": {"一張相片", "{count} 張相片"},
+	"zh-Hant-TW": {"一張相片", "{count} 張相片"},
+}
+
+// photoCount says how many pictures a site holds, in the language asked for,
+// and in English where the card does not know that language.
+func photoCount(locale string, total int) string {
+	label := photoCountLabels[cardLocale(locale)]
+	if total == 1 {
+		return label.one
+	}
+	return strings.ReplaceAll(label.many, "{count}", thousands(total))
+}
+
+// thousands writes a number with a comma every three digits, the way every
+// language the card is written in reads a count out loud.
+func thousands(value int) string {
+	digits := strconv.Itoa(value)
+	if len(digits) <= 3 {
+		return digits
+	}
+	written := make([]byte, 0, len(digits)+len(digits)/3)
+	for index := 0; index < len(digits); index++ {
+		if index > 0 && (len(digits)-index)%3 == 0 {
+			written = append(written, ',')
+		}
+		written = append(written, digits[index])
+	}
+	return string(written)
+}
+
+// cardLocale is the language a card writes its few words in. The client
+// resolves a language out of a query, its own cookie and the browser's own
+// header, in that order; a card is named by a page that has already resolved
+// one, so the two names it may arrive under are the same two the client reads,
+// and anything else is English.
+func cardLocale(name string) string {
+	switch strings.TrimSpace(name) {
+	case "zh-CN", "zh-SG", "zh":
+		return "zh-Hans"
+	case "zh-TW":
+		return "zh-Hant-TW"
+	case "zh-HK", "zh-MO", "zh-Hant":
+		return "zh-Hant-HK"
+	}
+	if _, known := photoCountLabels[name]; known {
+		return name
+	}
+	return "en"
+}
+
+// cardLocaleOf is the language the page naming a card was served in, which the
+// client keeps in its own cookie.
+func cardLocaleOf(r *http.Request) string {
+	if cookie, err := r.Cookie(localeCookie); err == nil {
+		return cardLocale(cookie.Value)
+	}
+	return "en"
 }
 
 // ogCardFonts is the type cards are set in: the Go family, which ships inside
@@ -531,7 +613,7 @@ func (a *App) ogCard(w http.ResponseWriter, r *http.Request) {
 	)
 	switch {
 	case r.URL.Path == siteCardAddress:
-		picture, err = a.siteCard(r.Context())
+		picture, err = a.siteCard(r.Context(), r.URL.Query().Get("lang"))
 	case strings.HasPrefix(r.URL.Path, "/_og/photo/"):
 		id, unescapeErr := url.PathUnescape(strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/_og/photo/"), ".jpg"))
 		if unescapeErr != nil {
@@ -563,28 +645,39 @@ func (a *App) ogCard(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(picture)
 }
 
+// The card of a site is laid out once: a column of what the site is called on
+// the left, and the strip it has pictures for on the right.
+const (
+	siteCardMargin    = 96
+	siteCardCopy      = 460
+	siteCardGap       = 48
+	siteCardStripLeft = siteCardMargin + siteCardCopy + siteCardGap
+	siteCardStrip     = ogCardWidth - siteCardStripLeft - siteCardMargin
+)
+
 // siteCard draws the card the site itself is shared with: what the site is
-// called, what it says about itself, and the picture it goes by.
-func (a *App) siteCard(ctx context.Context) ([]byte, error) {
-	site, slogan, avatar := a.siteIdentity(ctx)
+// called, what it says about itself, who it belongs to, and the work it holds.
+// A site with photographs shows them, because that is what a visitor sent the
+// link is being offered; a site with none shows the picture it goes by.
+func (a *App) siteCard(ctx context.Context, locale string) ([]byte, error) {
+	site, slogan, avatar, author := a.siteIdentity(ctx)
 	card := newOGCard(a.cardFonts())
 	card.glow(180, 60, 780, ogPrimary, 0.32)
 	card.glow(1160, 660, 640, ogAccent, 0.24)
 
 	const (
-		margin = 96
+		margin = siteCardMargin
 		side   = 168
 		gap    = 52
 	)
-	pictured := false
-	if picture := a.cardImage(ctx, avatar); picture != nil {
+	covers := a.publicPhotoCovers(ctx, siteCardFrames)
+	x, width := margin, siteCardCopy
+	switch avatar := a.cardImage(ctx, avatar); {
+	case len(covers) > 0:
+		card.gallery(ctx, a, covers)
+	case avatar != nil:
 		top := (ogCardHeight - side) / 2
-		card.cover(picture, image.Rect(margin, top, margin+side, top+side), 44)
-		pictured = true
-	}
-
-	x, width := margin, ogCardWidth-2*margin
-	if pictured {
+		card.cover(avatar, image.Rect(margin, top, margin+side, top+side), 44)
 		x, width = margin+side+gap, ogCardWidth-(margin+side+gap)-margin
 	}
 
@@ -592,6 +685,7 @@ func (a *App) siteCard(ctx context.Context) ([]byte, error) {
 	// slogan and a site without both sit in the middle of the card.
 	type block struct {
 		lines []string
+		facts []string
 		size  float64
 		lead  int
 		bold  bool
@@ -600,19 +694,37 @@ func (a *App) siteCard(ctx context.Context) ([]byte, error) {
 	var blocks []block
 	if card.says(site) {
 		title := card.truncate(site, 68, true, width)
-		blocks = append(blocks, block{[]string{title}, 68, 84, true, ogHeading})
+		blocks = append(blocks, block{lines: []string{title}, size: 68, lead: 84, bold: true, ink: ogHeading})
 	}
 	if card.says(slogan) {
-		blocks = append(blocks, block{card.fit(card.lines(slogan, 32, false, width), 32, false, width, 2), 32, 44, false, ogBody})
+		blocks = append(blocks, block{lines: card.fit(card.lines(slogan, 32, false, width), 32, false, width, 2), size: 32, lead: 44, ink: ogBody})
+	}
+	var facts []string
+	if author != "" {
+		facts = append(facts, author)
+	}
+	if len(covers) > 0 {
+		facts = append(facts, photoCount(locale, a.publicPhotoTotal(ctx)))
+	}
+	if said := card.sayable(facts); len(said) > 0 {
+		blocks = append(blocks, block{facts: said, lead: 42, ink: ogBody})
 	}
 	height := 0
 	for _, block := range blocks {
-		height += block.lead * len(block.lines)
+		lines := len(block.lines)
+		if block.facts != nil {
+			lines = 1
+		}
+		height += block.lead * lines
 	}
 	y := (ogCardHeight+height)/2 - height + 24
 	for index, block := range blocks {
 		if index > 0 {
 			y += 12
+		}
+		if block.facts != nil {
+			card.metaLine(block.facts, x, y+12, width)
+			continue
 		}
 		for _, line := range block.lines {
 			card.draw(line, x, y, block.size, block.bold, block.ink)
@@ -622,6 +734,101 @@ func (a *App) siteCard(ctx context.Context) ([]byte, error) {
 	return card.encode()
 }
 
+// siteCardFrames is how many pictures the card of a site shows.
+const siteCardFrames = 3
+
+// gallery draws the strip of pictures along the right of the card of a site.
+// The strip is always the width it has room for, divided between the pictures
+// there are: one picture is drawn large, and three hang the middle of them
+// taller than the two beside it, so the strip reads as pictures rather than as
+// a row of tiles.
+func (c *ogCard) gallery(ctx context.Context, a *App, covers []string) {
+	const (
+		gap    = 16
+		radius = 18
+		top    = siteCardMargin
+	)
+	if len(covers) == 0 {
+		return
+	}
+	tall := ogCardHeight - 2*top
+	short := tall - 58
+	frame := (siteCardStrip - (len(covers)-1)*gap) / len(covers)
+	for index, cover := range covers {
+		at := siteCardStripLeft + index*(frame+gap)
+		rect := image.Rect(at, top, at+frame, top+tall)
+		if len(covers) == siteCardFrames && index != siteCardFrames/2 {
+			// The frames either side hang from the same line as the middle one,
+			// rather than rising to the same height.
+			rect = image.Rect(at, ogCardHeight-top-short, at+frame, ogCardHeight-top)
+		}
+		if picture := a.cardImage(ctx, cover); picture != nil {
+			c.cover(picture, rect, radius)
+			continue
+		}
+		c.placeholder(rect, radius)
+	}
+}
+
+// placeholder is the frame the card has no picture for: a panel the shape of
+// the others with a soft mark on it, so the strip keeps its rhythm.
+func (c *ogCard) placeholder(rect image.Rectangle, radius int) {
+	panel := color.RGBA{0x26, 0x26, 0x26, 0xff} // neutral-800
+	stamp := image.NewRGBA(image.Rect(0, 0, rect.Dx(), rect.Dy()))
+	draw.Draw(stamp, stamp.Bounds(), &image.Uniform{panel}, image.Point{}, draw.Src)
+	draw.Draw(stamp, stamp.Bounds(), &image.Uniform{shade(ogHeading, 0.06)}, image.Point{}, draw.Over)
+	mask := image.NewAlpha(stamp.Bounds())
+	draw.Draw(mask, mask.Bounds(), &image.Uniform{color.Alpha{A: 0xff}}, image.Point{}, draw.Src)
+	cutCorners(mask, radius)
+	draw.DrawMask(c.img, rect, stamp, image.Point{}, mask, image.Point{}, draw.Over)
+	c.dot(rect.Min.X+rect.Dx()/2, rect.Min.Y+rect.Dy()/2, 42, panel)
+}
+
+// publicPhotoCovers reads where the newest pictures an anonymous visitor may
+// see are kept. The card of a site shows the site's work, so it needs a few
+// addresses rather than the records behind them.
+func (a *App) publicPhotoCovers(ctx context.Context, count int) []string {
+	if count <= 0 {
+		return nil
+	}
+	rows, err := a.db.QueryContext(ctx, `SELECT COALESCE(NULLIF(thumbnail_key,''),COALESCE(thumbnail_url,'')) FROM photos
+		WHERE `+publicPhotoClause+` AND (COALESCE(thumbnail_key,'')<>'' OR COALESCE(thumbnail_url,'')<>'')
+		ORDER BY date_taken DESC, photos.id DESC LIMIT ?`, count)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var covers []string
+	for rows.Next() && len(covers) < count {
+		var address string
+		if rows.Scan(&address) == nil && strings.TrimSpace(address) != "" {
+			covers = append(covers, address)
+		}
+	}
+	return covers
+}
+
+// publicPhotoTotal counts the pictures an anonymous visitor may see.
+func (a *App) publicPhotoTotal(ctx context.Context) int {
+	var total int
+	if err := a.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM photos WHERE `+publicPhotoClause).Scan(&total); err != nil {
+		return 0
+	}
+	return total
+}
+
+// sayable keeps the facts a card can actually write, and drops the rest before
+// they are measured.
+func (c *ogCard) sayable(facts []string) []string {
+	var said []string
+	for _, fact := range facts {
+		if c.says(fact) {
+			said = append(said, fact)
+		}
+	}
+	return said
+}
+
 // photoCard draws the card one photo is shared with: the photo itself, and what
 // the site knows about it.
 func (a *App) photoCard(ctx context.Context, id string) ([]byte, error) {
@@ -629,7 +836,7 @@ func (a *App) photoCard(ctx context.Context, id string) ([]byte, error) {
 	if !ok {
 		return nil, errNoCard
 	}
-	site, slogan, _ := a.siteIdentity(ctx)
+	site, slogan, _, _ := a.siteIdentity(ctx)
 	card := newOGCard(a.cardFonts())
 
 	// The picture takes the right of the card and is faded into the panel

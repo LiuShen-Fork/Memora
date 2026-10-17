@@ -45,7 +45,22 @@ func TestTheSiteCardIsDrawnAtTheShareSize(t *testing.T) {
 	}
 }
 
-// The site's own picture belongs on the card of the site.
+// A site with photographs on it shows them: the card of a site is meant to
+// offer what the site holds.
+func TestTheSiteCardShowsTheSitesPhotographs(t *testing.T) {
+	app := shellTestApp(t)
+	app.setSetting("app", "title", "Memora Test")
+	insertTestPhoto(t, app, "sunset", "Sunset over the bay", "")
+	unreadable := getCard(t, app, siteCardAddress).Body.Bytes()
+
+	writeTestPicture(t, app, "photos/thumbnails/sunset.webp", color.RGBA{0xff, 0x88, 0x22, 0xff})
+	pictured := getCard(t, app, siteCardAddress).Body.Bytes()
+	if bytes.Equal(unreadable, pictured) {
+		t.Fatal("the card of a site holding a picture is the card of one that is not")
+	}
+}
+
+// A site too new to hold anything shows the picture it goes by instead.
 func TestTheSiteCardCarriesTheSitesOwnPicture(t *testing.T) {
 	app := shellTestApp(t)
 	app.setSetting("app", "title", "Memora Test")
@@ -56,6 +71,70 @@ func TestTheSiteCardCarriesTheSitesOwnPicture(t *testing.T) {
 	pictured := getCard(t, app, siteCardAddress).Body.Bytes()
 	if bytes.Equal(plain, pictured) {
 		t.Fatal("the card of a site with a picture is the card of a site without one")
+	}
+}
+
+// A card is drawn for whoever the link is pasted in front of, so the pictures
+// it offers are the ones that visitor is allowed to see.
+func TestTheSiteCardOnlyShowsPicturesAVisitorMaySee(t *testing.T) {
+	app := shellTestApp(t)
+	insertTestPhoto(t, app, "visible", "", "")
+	insertTestPhoto(t, app, "hidden", "", "")
+	if _, err := app.db.Exec(`INSERT INTO albums(id,title,is_hidden) VALUES(1,'Private',1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.db.Exec(`INSERT INTO album_photos(album_id,photo_id) VALUES(1,'hidden')`); err != nil {
+		t.Fatal(err)
+	}
+	covers := app.publicPhotoCovers(context.Background(), siteCardFrames)
+	if len(covers) != 1 || covers[0] != "/storage/photos/thumbnails/visible.webp" {
+		t.Fatalf("the card offers %q, want only the picture a visitor may see", covers)
+	}
+	if total := app.publicPhotoTotal(context.Background()); total != 1 {
+		t.Fatalf("the site says it holds %d pictures, want 1", total)
+	}
+}
+
+// The card says how many pictures the site holds, and it says it in the
+// language the page that named it was served in.
+func TestTheCardSaysItsCountInTheLanguageOfThePage(t *testing.T) {
+	app := shellTestApp(t)
+	app.setSetting("app", "title", "Memora Test")
+	insertTestPhoto(t, app, "sunset", "Sunset over the bay", "")
+
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(&http.Cookie{Name: localeCookie, Value: "zh-Hant-TW"})
+	response := httptest.NewRecorder()
+	app.ServeHTTP(response, request)
+	assertPageHas(t, response.Body.String(), `<meta property="og:image" content="http://example.com/_og/site.jpg?lang=zh-Hant-TW">`)
+
+	english := getCard(t, app, siteCardAddress).Body.Bytes()
+	chinese := getCard(t, app, siteCardAddress+"?lang=zh-Hant-TW").Body.Bytes()
+	if bytes.Equal(english, chinese) {
+		t.Fatal("the card of a site is the same picture in Chinese as in English")
+	}
+}
+
+// The words the card says are the words the client says for the same count.
+func TestTheCountOfPicturesIsWrittenInEachLanguage(t *testing.T) {
+	for _, counted := range []struct {
+		locale string
+		total  int
+		want   string
+	}{
+		{locale: "en", total: 1, want: "one photo"},
+		{locale: "en", total: 1234, want: "1,234 photos"},
+		{locale: "zh-Hans", total: 1234, want: "1,234 张照片"},
+		{locale: "zh-Hant-TW", total: 2, want: "2 張相片"},
+		{locale: "zh-CN", total: 3, want: "3 张照片"},
+		{locale: "ja", total: 12, want: "写真12枚"},
+		{locale: "ru", total: 5, want: "5 фото"},
+		{locale: "", total: 7, want: "7 photos"},
+		{locale: "de", total: 7, want: "7 photos"},
+	} {
+		if written := photoCount(counted.locale, counted.total); written != counted.want {
+			t.Errorf("photoCount(%q, %d) = %q, want %q", counted.locale, counted.total, written, counted.want)
+		}
 	}
 }
 

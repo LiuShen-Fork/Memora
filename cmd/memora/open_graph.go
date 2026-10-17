@@ -87,15 +87,16 @@ func (a *App) socialHead(r *http.Request) string {
 // the address names a photo an anonymous visitor may see, the site itself
 // otherwise.
 func (a *App) socialPreviewFor(ctx context.Context, r *http.Request) socialPreview {
-	site, slogan, _ := a.siteIdentity(ctx)
+	site, slogan, _, _ := a.siteIdentity(ctx)
 	preview := socialPreview{
 		title:       site,
 		site:        site,
 		description: slogan,
 		// The picture a preview shows is drawn per request by the server, so
 		// that a shared link arrives as a card of the site rather than as
-		// whichever picture happens to be first.
-		image: siteCardAddress,
+		// whichever picture happens to be first. It is asked for in the
+		// language the page is being served in.
+		image: siteCardAddressIn(cardLocaleOf(r)),
 		kind:  "website",
 		card:  "summary_large_image",
 	}
@@ -118,16 +119,18 @@ func (a *App) socialPreviewFor(ctx context.Context, r *http.Request) socialPrevi
 	return preview
 }
 
-// siteIdentity reads what the site calls itself. It comes from the public
-// snapshot the client is served, which is warmed once and kept current.
-func (a *App) siteIdentity(ctx context.Context) (site, slogan, avatar string) {
+// siteIdentity reads what the site calls itself, what it says about itself, the
+// picture it goes by and who it belongs to. It comes from the public snapshot
+// the client is served, which is warmed once and kept current.
+func (a *App) siteIdentity(ctx context.Context) (site, slogan, avatar, author string) {
 	site = defaultSiteTitle
 	snapshot, err := a.publicSettingsSnapshot(ctx)
 	if err != nil {
-		return site, "", ""
+		return site, "", "", ""
 	}
 	values := snapshot["app"]
-	return firstNonEmpty(stringValue(values["title"]), site), stringValue(values["slogan"]), stringValue(values["avatarUrl"])
+	return firstNonEmpty(stringValue(values["title"]), site), stringValue(values["slogan"]),
+		stringValue(values["avatarUrl"]), stringValue(values["author"])
 }
 
 // publicPhoto reads one photo an anonymous visitor is allowed to see. A preview
