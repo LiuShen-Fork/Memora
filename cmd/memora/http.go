@@ -157,6 +157,8 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.reactions(w, r)
 	case path == "/api/photos/status" && r.Method == "GET":
 		a.photoStatus(w, r)
+	case path == "/api/photos/timeline" && r.Method == "GET":
+		a.photoTimeline(w, r)
 	case strings.HasPrefix(path, "/api/photos/chunks/"):
 		a.chunkUploadRoute(w, r, strings.TrimPrefix(path, "/api/photos/chunks/"))
 	case strings.HasPrefix(path, "/api/photos/multipart/"):

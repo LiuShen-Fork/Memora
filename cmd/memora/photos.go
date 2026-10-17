@@ -363,6 +363,61 @@ func (a *App) checkDuplicate(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "results": results, "duplicatesFound": duplicates, "summary": map[string]any{"title": "Duplicate check completed", "message": "Duplicate check completed"}})
 }
+// photoTimeline answers the one question the dashboard's calendar asks — how
+// many photos were taken on each day — as a single grouped query.
+//
+// The calendar used to count the photos the browser happened to be holding.
+// On a cold visit to the dashboard that is no photos at all, so the year
+// rendered empty, and even on a warm one it was counting however many the
+// gallery had got round to fetching. Every photo knows its own date, so the
+// count belongs where the dates are.
+//
+// Like /api/photos this is not gated: it describes the same collection that
+// endpoint already describes in full.
+func (a *App) photoTimeline(w http.ResponseWriter, r *http.Request) {
+	// date_taken is RFC 3339 text, so the day is its first ten characters. A
+	// photo the queue has not dated yet falls back to when it was last
+	// written, which is at least the day it arrived.
+	const day = `substr(COALESCE(NULLIF(date_taken,''),last_modified),1,10)`
+	query := `SELECT ` + day + ` AS day,count(*) FROM photos WHERE ` + day + `<>''`
+	args := []any{}
+	if from := strings.TrimSpace(r.URL.Query().Get("from")); from != "" {
+		query += ` AND ` + day + `>=?`
+		args = append(args, from)
+	}
+	if to := strings.TrimSpace(r.URL.Query().Get("to")); to != "" {
+		query += ` AND ` + day + `<=?`
+		args = append(args, to)
+	}
+	query += ` GROUP BY day ORDER BY day`
+
+	rows, err := a.db.QueryContext(r.Context(), query, args...)
+	if err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read the photo timeline")
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	type dayCount struct {
+		Date  string `json:"date"`
+		Count int    `json:"count"`
+	}
+	days := []dayCount{}
+	for rows.Next() {
+		var entry dayCount
+		if err := rows.Scan(&entry.Date, &entry.Count); err != nil {
+			errorJSON(w, http.StatusInternalServerError, "Unable to read the photo timeline")
+			return
+		}
+		days = append(days, entry)
+	}
+	if err := rows.Err(); err != nil {
+		errorJSON(w, http.StatusInternalServerError, "Unable to read the photo timeline")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"days": days})
+}
 func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.require(r); !ok {
 		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
