@@ -14,7 +14,8 @@
         "type": "string",
         "ui": {
           "required": false,
-          "type": "input"
+          "rows": 8,
+          "type": "textarea"
         },
         "value": ""
       },
@@ -31,7 +32,8 @@
         "type": "string",
         "ui": {
           "required": false,
-          "type": "input"
+          "rows": 8,
+          "type": "textarea"
         },
         "value": ""
       }

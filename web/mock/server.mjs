@@ -539,6 +539,68 @@ Object.assign(settingValues.location, { provider: 'nominatim' })
 Object.assign(settingValues.system, { queueConcurrency: 4, firstLaunch: false })
 
 /* ------------------------------------------------------------------ *
+ * Storage configs — a list the storage page reads and edits
+ * ------------------------------------------------------------------ */
+
+// The page manages several named configs and picks one of them as active, so
+// the mock keeps the same three shapes a person is likely to have.
+let storageConfigs = [
+  {
+    id: 1,
+    name: '本地存储',
+    provider: 'local',
+    config: {
+      provider: 'local',
+      basePath: './data/storage',
+      baseUrl: '/storage',
+      prefix: 'photos/',
+    },
+    createdAt: '2026-01-04T09:12:00+08:00',
+    updatedAt: '2026-03-11T20:41:00+08:00',
+  },
+  {
+    id: 2,
+    name: 'Cloudflare R2',
+    provider: 's3',
+    config: {
+      provider: 's3',
+      bucket: 'memora-photos',
+      region: 'auto',
+      endpoint: 'https://example.r2.cloudflarestorage.com',
+      prefix: 'photos',
+      cdnUrl: '',
+      accessKeyId: '',
+      secretAccessKey: '',
+      forcePathStyle: false,
+      maxKeys: 1000,
+    },
+    createdAt: '2026-02-19T14:03:00+08:00',
+    updatedAt: '2026-02-19T14:03:00+08:00',
+  },
+  {
+    id: 3,
+    name: 'OpenList 备份',
+    provider: 'openlist',
+    config: {
+      provider: 'openlist',
+      baseUrl: 'https://openlist.example.com',
+      rootPath: '/memora',
+      token: '',
+      uploadEndpoint: '/api/fs/put',
+      downloadEndpoint: '',
+      listEndpoint: '',
+      deleteEndpoint: '/api/fs/remove',
+      metaEndpoint: '/api/fs/get',
+      pathField: 'path',
+      cdnUrl: '',
+    },
+    createdAt: '2026-05-02T08:20:00+08:00',
+    updatedAt: '2026-05-02T08:20:00+08:00',
+  },
+]
+let nextStorageId = 4
+
+/* ------------------------------------------------------------------ *
  * HTTP
  * ------------------------------------------------------------------ */
 
@@ -570,6 +632,23 @@ function pagination(url) {
   const page = Math.max(1, Number(url.searchParams.get('page')) || 1)
   const pageSize = Number(url.searchParams.get('pageSize')) || 0
   return { page, pageSize }
+}
+
+/** A request body, once the whole of it has arrived. */
+function readJson(req) {
+  return new Promise((resolve) => {
+    let raw = ''
+    req.on('data', (chunk) => {
+      raw += chunk
+    })
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(raw || '{}'))
+      } catch {
+        resolve({})
+      }
+    })
+  })
 }
 
 const photoById = new Map(photos.map((photo) => [photo.id, photo]))
@@ -649,7 +728,62 @@ function route(req, res, url) {
     })
   }
   if (path === '/api/system/settings/storage/provider' && method === 'GET') {
-    return send(res, 200, { provider: 'local' })
+    // The page reads the active config's id out of the setting's value.
+    return send(res, 200, {
+      namespace: 'storage',
+      key: 'provider',
+      value: storageConfigs[0]?.id ?? null,
+    })
+  }
+  if (path === '/api/system/settings/storage/provider' && method === 'PUT') {
+    return readJson(req).then((body) => {
+      const wanted = storageConfigs.find((item) => item.id === Number(body.value))
+      if (!wanted) return fail(res, 404, 'no such storage config')
+      storageConfigs = [wanted, ...storageConfigs.filter((item) => item !== wanted)]
+      return send(res, 200, {
+        namespace: 'storage',
+        key: 'provider',
+        value: wanted.id,
+      })
+    })
+  }
+  if (path === '/api/system/settings/storage-config' && method === 'GET') {
+    return send(res, 200, storageConfigs)
+  }
+  if (path === '/api/system/settings/storage-config' && method === 'POST') {
+    return readJson(req).then((body) => {
+      const now = new Date().toISOString()
+      const created = {
+        id: nextStorageId++,
+        name: body.name ?? '未命名存储',
+        provider: body.provider ?? 'local',
+        config: body.config ?? {},
+        createdAt: now,
+        updatedAt: now,
+      }
+      storageConfigs.push(created)
+      return send(res, 200, created)
+    })
+  }
+  if (path.startsWith('/api/system/settings/storage-config/')) {
+    const id = Number(path.slice('/api/system/settings/storage-config/'.length))
+    const found = storageConfigs.find((item) => item.id === id)
+    if (!found) return fail(res, 404, 'no such storage config')
+    if (method === 'PUT') {
+      return readJson(req).then((body) => {
+        Object.assign(found, {
+          name: body.name ?? found.name,
+          provider: body.provider ?? found.provider,
+          config: body.config ?? found.config,
+          updatedAt: new Date().toISOString(),
+        })
+        return send(res, 200, found)
+      })
+    }
+    if (method === 'DELETE') {
+      storageConfigs = storageConfigs.filter((item) => item !== found)
+      return send(res, 200, { ok: true })
+    }
   }
 
   if (path === '/api/system/stats' && method === 'GET') {
