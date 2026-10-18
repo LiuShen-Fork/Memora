@@ -201,74 +201,71 @@
   --leading-normal: normal;
 }
 
-/* Keep native scrolling quiet and consistent across gallery and dashboard. */
+/* ==========================================================================
+ * Scrolling
+ *
+ * One scrollbar for the whole site, and it is thin. The platform bar is a
+ * bright grey slab about fifteen pixels wide, which against a page of
+ * photographs is the loudest thing on screen; every list, panel and page here
+ * scrolls, so it is worth drawing once rather than leaving each of them to the
+ * system.
+ *
+ * It is drawn with the pseudo-element rather than asked for with
+ * scrollbar-width, because the standard property only goes as far as naming a
+ * size class — about ten pixels in Chrome, no matter what is wanted — and
+ * asking for it switches these rules off as well. A browser that understands
+ * the pseudo-element gets the bar drawn to the pixel; the ones that do not get
+ * the nearest standard thing, in the same colour.
+ * ========================================================================== */
 html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ui-color-neutral-300) transparent;
   /* Keep the gallery width stable while the photo viewer locks body scroll. */
   scrollbar-gutter: stable;
 }
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-html::-webkit-scrollbar-track,
-body::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-html::-webkit-scrollbar-thumb,
-body::-webkit-scrollbar-thumb {
-  background: var(--ui-color-neutral-300);
-  border-radius: 0;
+/* A ten-pixel gutter holding a four-pixel bar. The transparent border is what
+ * makes the bar look thin while leaving something wide enough to grab. */
+::-webkit-scrollbar-thumb {
+  background-color: var(--ui-color-neutral-300);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
 }
 
-html::-webkit-scrollbar-thumb:hover,
-body::-webkit-scrollbar-thumb:hover {
-  background: var(--ui-color-neutral-400);
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ui-color-neutral-400);
 }
 
-.dark {
-  scrollbar-color: var(--ui-color-neutral-600) transparent;
+.dark ::-webkit-scrollbar-thumb {
+  background-color: var(--ui-color-neutral-700);
 }
 
-.dark::-webkit-scrollbar-thumb {
-  background: var(--ui-color-neutral-600);
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ui-color-neutral-600);
 }
 
-.dark::-webkit-scrollbar-thumb:hover {
-  background: var(--ui-color-neutral-500);
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-color-neutral-300) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: var(--ui-color-neutral-700) transparent;
+  }
 }
 
 .table-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ui-color-neutral-300) transparent;
   scrollbar-gutter: stable;
-}
-
-.table-scroll::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
-}
-
-.table-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.table-scroll::-webkit-scrollbar-thumb {
-  background: var(--ui-color-neutral-300);
-  border-radius: 0;
-}
-
-.dark .table-scroll {
-  scrollbar-color: var(--ui-color-neutral-600) transparent;
-}
-
-.dark .table-scroll::-webkit-scrollbar-thumb {
-  background: var(--ui-color-neutral-600);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
