@@ -1081,11 +1081,9 @@ const columns = computed<TableColumn<Photo>[]>(() => [
   {
     accessorKey: 'title',
     header: $t('dashboard.photos.table.columns.title'),
-    // The title is the one column with no width of its own — it takes
-    // whatever the fixed columns leave behind. A long filename would still
-    // run past its cell, so it is cut off with the whole value kept in the
-    // tooltip. This is also the only cell that carries emphasis: it is what
-    // tells one row from another.
+    // A title is as long as whoever wrote it, so it is cut off with the whole
+    // value kept in the tooltip whichever column it lands in. This is also the
+    // only cell that carries emphasis: it is what tells one row from another.
     cell: ({ row }) => {
       // 桌面上标题空着不要紧，旁边的关键词和拍摄日期还认得出这一行；手机上
       // 那些列都收起来了，空出来的就是一片空，所以退回去显示文件名。
@@ -1316,21 +1314,26 @@ const columns = computed<TableColumn<Photo>[]>(() => [
  * 32-character hash and a 19-character timestamp decide the shape of the whole
  * table and push it off the side of the page.
  *
- * The title column is deliberately absent: it is the one column with no width
- * of its own, so it takes whatever is left over and the table always fills the
- * width it is given, whatever is shown and however wide the window is.
+ * The numbers are what each column needs and no more. The browser hands any
+ * room left over back to every column in proportion to what is written here,
+ * so writing the title down as well — it used to be the only column left
+ * blank, which meant it took the whole of the leftover and nothing else grew —
+ * is what keeps the row evenly divided instead of one column wide enough for
+ * three of its own headings. How much each column ends up with is therefore
+ * still the window's business; these are only the shares they start from.
  */
 const columnWidths: Record<string, string> = {
   select: '36px',
-  thumbnailUrl: '60px',
+  thumbnailUrl: '68px',
+  title: '240px',
   id: '112px',
-  tags: '110px',
-  rating: '92px',
-  isLivePhoto: '92px',
-  location: '100px',
-  dateTaken: '118px',
-  lastModified: '118px',
-  fileSize: '78px',
+  tags: '116px',
+  rating: '110px',
+  isLivePhoto: '96px',
+  location: '116px',
+  dateTaken: '132px',
+  lastModified: '132px',
+  fileSize: '84px',
   colorSpace: '88px',
   reactions: '64px',
   actions: '56px',
