@@ -1,0 +1,89 @@
+name: CI
+
+# There was no workflow on push or on a pull request: the only automation in
+# the repository was the manual release, which builds the image and pushes a
+# tag. So `go vet`, `go test`, the linter and the frontend build — the four
+# things a change is judged by — first ran on somebody's laptop, and the next
+# time they ran at all was when a release was already under way. This runs the
+# same four on every change, so the release is not where a broken build is
+# discovered.
+#
+# It is deliberately the same commands as the release path and nothing more:
+# `pnpm generate` is what the Dockerfile runs to produce the frontend that
+# ships, and it is the only thing that would notice a frontend that compiles
+# under `nuxt dev` and does not build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # The workspace root is web/, not the repository root, so the version
+      # cannot be read off a package.json here and is written out instead. It
+      # is the same one web/package.json pins in packageManager.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The frontend imports the WebGL image viewer from a workspace package,
+      # which has to be built before anything that consumes it.
+      - name: Build workspace dependencies
+        run: pnpm run build:deps
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Lint
+        run: pnpm exec oxlint
+
+      - name: Generate static frontend
+        run: pnpm generate
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
