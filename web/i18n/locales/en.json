@@ -913,9 +913,16 @@
       "title": "Album Management",
       "subtitle": "Create and manage your photo albums",
       "createButton": "Create Album",
-      "actions": {
-        "moveUp": "Move up",
-        "moveDown": "Move down"
+      "menu": {
+        "label": "Album actions",
+        "view": "View album"
+      },
+      "order": {
+        "start": "Reorder",
+        "done": "Done",
+        "hint": "Drag a card to move it, or use the arrows on a card to step it one place at a time. Press Done when the order looks right.",
+        "moveEarlier": "Move one place earlier",
+        "moveLater": "Move one place later"
       },
       "noAlbums": "No albums yet",
       "noAlbumsTip": "Create your first album to organize your photos",
@@ -1865,7 +1872,7 @@
     },
     "albumActions": {
       "title": "Manage existing albums",
-      "description": "Reorder, edit or delete albums using these buttons. Album editing includes covers and access protection."
+      "description": "The menu on each album card edits its details or deletes it. To change the order, use Reorder at the top of the page."
     },
     "avatar": {
       "title": "Site avatar",

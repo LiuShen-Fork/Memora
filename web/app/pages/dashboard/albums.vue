@@ -24,13 +24,13 @@ interface AlbumFormState {
   password: string
 }
 
-// 全站对「窄屏」的说法就是这个断点，这里跟着用：表格放得下就还是表格，
-// 放不下就换成一页一张的卡片。
-const isMobile = useMediaQuery('(max-width: 768px)')
-
 const albums = ref<AlbumItem[]>([])
 const isLoadingAlbums = ref(false)
 const { photos: allPhotos } = usePhotos()
+
+// 一次就够。每次要弹提示时现调 useToast()，在没有组件实例的上下文里调用
+// 会拿到 undefined 并报警告——事件回调里能成，异步续上的那一半不一定。
+const toast = useToast()
 
 const isAlbumSlideoverOpen = ref(false)
 const isDeleteConfirmOpen = ref(false)
@@ -128,7 +128,7 @@ const loadAlbums = async () => {
     syncAlbumCovers()
   } catch (error) {
     console.error('Failed to load albums:', error)
-    useToast().add({
+    toast.add({
       title: $t('dashboard.albums.messages.loadError'),
       color: 'error',
     })
@@ -166,7 +166,7 @@ const openEditSlideover = async (album: AlbumItem) => {
     formRef.value?.clear()
   } catch (error) {
     console.error('Failed to load album details:', error)
-    useToast().add({
+    toast.add({
       title: $t('dashboard.albums.messages.loadDetailError'),
       color: 'error',
     })
@@ -200,7 +200,7 @@ const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
         },
       })
 
-      useToast().add({
+      toast.add({
         title: $t('dashboard.albums.messages.updateSuccess'),
         color: 'success',
       })
@@ -219,7 +219,7 @@ const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
         },
       })
 
-      useToast().add({
+      toast.add({
         title: $t('dashboard.albums.messages.createSuccess'),
         color: 'success',
       })
@@ -233,7 +233,7 @@ const onFormSubmit = async (event: FormSubmitEvent<AlbumFormState>) => {
     await loadAlbums()
   } catch (error) {
     console.error('Failed to save album:', error)
-    useToast().add({
+    toast.add({
       title: currentAlbum.value
         ? $t('dashboard.albums.messages.updateError')
         : $t('dashboard.albums.messages.createError'),
@@ -252,7 +252,7 @@ const deleteAlbum = async () => {
       method: 'DELETE',
     })
 
-    useToast().add({
+    toast.add({
       title: $t('dashboard.albums.messages.deleteSuccess'),
       color: 'success',
     })
@@ -261,7 +261,7 @@ const deleteAlbum = async () => {
     await loadAlbums()
   } catch (error) {
     console.error('Failed to delete album:', error)
-    useToast().add({
+    toast.add({
       title: $t('dashboard.albums.messages.deleteError'),
       color: 'error',
     })
@@ -379,6 +379,30 @@ const moveDraftPhoto = (photoId: string, offset: number) => {
 
 const isReorderingAlbums = ref(false)
 
+/**
+ * 把当前顺序交给服务器。新顺序是调用方先摆在屏幕上的，写不进去就退回
+ * previous 那一份。
+ */
+const persistAlbumOrder = async (previous: AlbumItem[]) => {
+  isReorderingAlbums.value = true
+
+  try {
+    await $fetch('/api/albums/reorder', {
+      method: 'PUT',
+      body: { albumIds: albums.value.map((album) => album.id) },
+    })
+  } catch (error) {
+    console.error('Failed to reorder albums:', error)
+    albums.value = previous
+    toast.add({
+      title: $t('dashboard.albums.messages.reorderError'),
+      color: 'error',
+    })
+  } finally {
+    isReorderingAlbums.value = false
+  }
+}
+
 const moveAlbum = async (index: number, offset: number) => {
   const target = index + offset
   if (isReorderingAlbums.value || target < 0 || target >= albums.value.length) {
@@ -391,23 +415,7 @@ const moveAlbum = async (index: number, offset: number) => {
   reordered.splice(target, 0, moved as AlbumItem)
   // Show the new order straight away; a failure puts the old one back.
   albums.value = reordered
-  isReorderingAlbums.value = true
-
-  try {
-    await $fetch('/api/albums/reorder', {
-      method: 'PUT',
-      body: { albumIds: reordered.map((album) => album.id) },
-    })
-  } catch (error) {
-    console.error('Failed to reorder albums:', error)
-    albums.value = previous
-    useToast().add({
-      title: $t('dashboard.albums.messages.reorderError'),
-      color: 'error',
-    })
-  } finally {
-    isReorderingAlbums.value = false
-  }
+  await persistAlbumOrder(previous)
 }
 
 const areAllFilteredPhotosSelected = computed(() => {
@@ -495,60 +503,71 @@ const submitButtonLabel = computed(() => {
     : $t('dashboard.albums.slideover.submitCreate')
 })
 
-/**
- * How much room each column gets, in pixels.
+/* -------------------------------------------------------------------------
+ * 排列顺序
  *
- * The widths are written down rather than left to the content, because the
- * content is an album title and an album description and those are as long as
- * whoever wrote them felt like. The description is the one column left without
- * a width: it is the one that reads better the more room it is given, so it
- * takes whatever the others leave.
- */
-const columnWidths: Record<string, string> = {
-  coverPhoto: '68px',
-  title: '220px',
-  photoCount: '92px',
-  createdAt: '104px',
-  actions: '152px',
+ * 卡片墙里的上下箭头没有意义——一张卡片不在「上一张的下面」，它可能在右边、
+ * 也可能换了一行。所以顺序是另外一层：点「排序」进到排序状态，卡片各自报出
+ * 自己是第几张，然后可以用鼠标拖，也可以点 ◀ ▶ 一格一格挪。离开这个状态就
+ * 回到平时的样子，不会误触。
+ * ---------------------------------------------------------------------- */
+const isOrdering = ref(false)
+/** 拖动前的顺序，写回失败时退回去。 */
+let orderBeforeDrag: AlbumItem[] | null = null
+
+const moveAlbumTo = (from: number, to: number) => {
+  const reordered = [...albums.value]
+  const [moved] = reordered.splice(from, 1)
+  reordered.splice(to, 0, moved as AlbumItem)
+  albums.value = reordered
 }
 
-const columns = computed<any[]>(() =>
+const {
+  containerRef: albumGridRef,
+  draggingIndex,
+  ghostStyle,
+  startDrag,
+} = useGridDragSort({
+  onMove: moveAlbumTo,
+  onStart: () => {
+    orderBeforeDrag = albums.value
+  },
+  // 拖一次可能换过十几个位置，但服务器只该收到一遍。
+  onCommit: () => {
+    if (orderBeforeDrag) void persistAlbumOrder(orderBeforeDrag)
+    orderBeforeDrag = null
+  },
+})
+
+const draggingAlbum = computed(() =>
+  draggingIndex.value === null ? null : albums.value[draggingIndex.value],
+)
+
+const isDragging = (index: number) => draggingIndex.value === index
+
+const albumMenu = (album: AlbumItem) => [
   [
     {
-      id: 'coverPhoto',
-      accessorKey: 'coverPhoto',
-      header: $t('dashboard.albums.table.columns.cover'),
+      label: $t('dashboard.albums.menu.view'),
+      icon: 'tabler:external-link',
+      to: `/albums/${album.id}`,
+      target: '_blank',
     },
     {
-      id: 'title',
-      accessorKey: 'title',
-      header: $t('dashboard.albums.table.columns.title'),
+      label: $t('common.actions.edit'),
+      icon: 'tabler:edit',
+      onSelect: () => openEditSlideover(album),
     },
+  ],
+  [
     {
-      id: 'description',
-      accessorKey: 'description',
-      header: $t('dashboard.albums.table.columns.description'),
+      label: $t('common.actions.delete'),
+      icon: 'tabler:trash',
+      color: 'error' as const,
+      onSelect: () => openDeleteConfirm(album),
     },
-    {
-      id: 'photoCount',
-      accessorKey: 'photoCount',
-      header: $t('dashboard.albums.table.columns.photoCount'),
-    },
-    {
-      id: 'createdAt',
-      accessorKey: 'createdAt',
-      header: $t('dashboard.albums.table.columns.createdAt'),
-    },
-    {
-      id: 'actions',
-      header: $t('dashboard.albums.table.columns.actions'),
-    },
-  ].map((column) => {
-    const width = columnWidths[column.id]
-    if (!width) return column
-    return { ...column, meta: { style: { th: { width } } } }
-  }),
-)
+  ],
+]
 </script>
 
 <template>
@@ -557,6 +576,20 @@ const columns = computed<any[]>(() =>
       <UDashboardNavbar :title="$t('title.albums')">
         <template #right>
           <UButton
+            v-if="albums.length > 0"
+            :icon="isOrdering ? 'tabler:check' : 'tabler:arrows-sort'"
+            :variant="isOrdering ? 'solid' : 'soft'"
+            :color="isOrdering ? 'primary' : 'neutral'"
+            @click="isOrdering = !isOrdering"
+          >
+            {{
+              isOrdering
+                ? $t('dashboard.albums.order.done')
+                : $t('dashboard.albums.order.start')
+            }}
+          </UButton>
+          <UButton
+            v-if="!isOrdering"
             data-tour="album-create"
             icon="tabler:plus"
             variant="soft"
@@ -571,154 +604,58 @@ const columns = computed<any[]>(() =>
     <template #body>
       <div class="flex flex-col gap-6">
         <template v-if="albums.length > 0">
-          <UTable
-            v-if="!isMobile"
-            :data="albums"
-            :columns="columns"
-            class="table-scroll w-full"
-            :ui="{
-              root: 'overflow-hidden rounded-lg border border-default bg-default',
-              base: 'min-w-full table-fixed',
-              thead: 'bg-muted whitespace-nowrap',
-              tr: 'data-[selected=true]:bg-primary/5',
-              th: 'px-3 py-2.5 text-xs font-medium text-muted',
-              td: 'px-3 py-2.5 text-sm text-default',
-              empty: 'py-12 text-sm text-muted',
-            }"
+          <!-- 排序状态才出现的一行说明：这个状态下卡片的样子变了，得说一句
+               为什么变。 -->
+          <div
+            v-if="isOrdering"
+            class="flex items-center gap-2.5 rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-2.5"
           >
-            <template #coverPhoto-cell="{ row }">
-              <div
-                class="size-11 shrink-0 overflow-hidden rounded bg-elevated"
-              >
-                <img
-                  v-if="(row.original as unknown as AlbumItem).coverPhoto"
-                  :src="
-                    (row.original as unknown as AlbumItem).coverPhoto
-                      ?.thumbnailUrl || ''
-                  "
-                  :alt="(row.original as unknown as AlbumItem).title"
-                  class="w-full h-full object-cover"
-                />
-                <div
-                  v-else
-                  class="flex size-full items-center justify-center text-dimmed"
-                >
-                  <Icon
-                    name="tabler:photo"
-                    size="20"
-                  />
-                </div>
-              </div>
-            </template>
+            <UIcon
+              name="tabler:arrows-sort"
+              class="size-4 shrink-0 text-primary"
+            />
+            <p class="min-w-0 flex-1 text-sm text-toned">
+              {{ $t('dashboard.albums.order.hint') }}
+            </p>
+          </div>
 
-            <template #title-cell="{ row }">
-              <div class="group flex items-center gap-2">
-                <NuxtLink
-                  :to="`/albums/${(row.original as unknown as AlbumItem).id}`"
-                  target="_blank"
-                  class="inline-flex cursor-pointer items-center gap-1.5 font-medium text-highlighted hover:text-primary"
-                >
-                  <span class="truncate">{{
-                    (row.original as unknown as AlbumItem).title
-                  }}</span>
-                  <Icon
-                    name="tabler:external-link"
-                    size="14"
-                    class="shrink-0 text-dimmed opacity-0 transition-opacity group-hover:opacity-100"
-                  />
-                </NuxtLink>
-                <UTooltip
-                  v-if="(row.original as unknown as AlbumItem).hasPassword"
-                  :text="$t('dashboard.albums.form.password')"
-                  ignore-non-keyboard-focus
-                >
-                  <Icon
-                    name="tabler:lock"
-                    class="size-3.5 shrink-0 text-dimmed"
-                    :aria-label="$t('dashboard.albums.form.password')"
-                  />
-                </UTooltip>
-              </div>
-            </template>
-
-            <template #description-cell="{ row }">
-              <div
-                v-if="(row.original as unknown as AlbumItem).description"
-                class="line-clamp-2 text-sm text-muted"
-                :title="
-                  (row.original as unknown as AlbumItem).description || ''
-                "
-              >
-                {{ (row.original as unknown as AlbumItem).description }}
-              </div>
-              <span
-                v-else
-                class="text-xs text-dimmed"
-                >—</span
-              >
-            </template>
-
-            <template #photoCount-cell="{ row }">
-              <UBadge
-                variant="soft"
-                color="neutral"
-              >
-                {{
-                  $t('dashboard.albums.photoCount', {
-                    count:
-                      (row.original as unknown as AlbumItem).photoCount || 0,
-                  })
-                }}
-              </UBadge>
-            </template>
-
-            <template #createdAt-cell="{ row }">
-              <span class="text-xs tabular text-muted">
-                {{
-                  dayjs(
-                    (row.original as unknown as AlbumItem).createdAt,
-                  ).format('YYYY-MM-DD')
-                }}
-              </span>
-            </template>
-
-            <template #actions-cell="{ row }">
-              <DashboardAlbumActions
-                :index="row.index"
-                :total="albums.length"
-                :reordering="isReorderingAlbums"
-                @move="moveAlbum(row.index, $event)"
-                @edit="
-                  openEditSlideover(row.original as unknown as AlbumItem)
-                "
-                @delete="
-                  openDeleteConfirm(row.original as unknown as AlbumItem)
-                "
-              />
-            </template>
-          </UTable>
-
-          <!-- 窄屏上放不下六列：封面、标题、说明、张数和日子挤在一张表里，
-               描述被卡片边缘切断，看着像坏了。改成一页一张卡片，把这些
-               横着摆不下的一层层摞起来。 -->
-          <ul
-            v-else
-            class="divide-y divide-default overflow-hidden rounded-lg border border-default bg-default"
+          <div
+            ref="albumGridRef"
+            :class="draggingIndex !== null ? 'album-grid-dragging' : ''"
           >
-            <li
-              v-for="(album, index) in albums"
-              :key="album.id"
-              class="p-3.5"
+            <TransitionGroup
+              tag="ul"
+              name="album-card"
+              class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
             >
-              <div class="flex gap-3">
-                <div
-                  class="size-14 shrink-0 overflow-hidden rounded-lg bg-elevated"
-                >
+              <li
+                v-for="(album, index) in albums"
+                :key="album.id"
+                data-sort-item
+                class="group relative flex flex-col overflow-hidden rounded-lg border border-default bg-default"
+                :class="[
+                  isOrdering
+                    ? 'select-none'
+                    : 'cursor-pointer transition-[border-color,box-shadow] hover:border-accented hover:shadow-sm',
+                  // 被拖的那张留在格子里当空位，跟着手指走的是别处那块预览。
+                  isDragging(index) ? 'opacity-30' : '',
+                ]"
+                @click="isOrdering ? undefined : openEditSlideover(album)"
+                @pointerdown="
+                  isOrdering ? startDrag(index, $event) : undefined
+                "
+              >
+                <div class="relative aspect-[16/10] w-full overflow-hidden bg-elevated">
                   <img
                     v-if="album.coverPhoto"
                     :src="album.coverPhoto.thumbnailUrl || ''"
                     :alt="album.title"
                     class="size-full object-cover"
+                    :class="
+                      isOrdering
+                        ? ''
+                        : 'transition-transform duration-500 group-hover:scale-[1.04]'
+                    "
                   />
                   <div
                     v-else
@@ -726,68 +663,187 @@ const columns = computed<any[]>(() =>
                   >
                     <UIcon
                       name="tabler:photo"
-                      class="size-5"
+                      class="size-8"
                     />
+                  </div>
+
+                  <!-- 排序时卡片报出自己的名次，光有箭头看不出现在排到哪了。 -->
+                  <span
+                    v-if="isOrdering"
+                    class="absolute start-2 top-2 flex size-6 items-center justify-center rounded-full bg-inverted/75 text-xs font-medium tabular text-inverted backdrop-blur-sm"
+                  >
+                    {{ index + 1 }}
+                  </span>
+
+                  <!-- 平时这张卡片上只有一个控件：编辑和删除都在里面。
+                       一直看得见，手指上没有悬停这回事。 -->
+                  <div
+                    v-else
+                    class="absolute end-2 top-2"
+                    :data-tour="index === 0 ? 'album-actions' : undefined"
+                    @click.stop
+                  >
+                    <UDropdownMenu
+                      :items="albumMenu(album)"
+                      :content="{ align: 'end' }"
+                      size="sm"
+                    >
+                      <UButton
+                        icon="tabler:dots-vertical"
+                        color="neutral"
+                        variant="solid"
+                        size="xs"
+                        square
+                        class="rounded-full bg-default/85 text-toned backdrop-blur-sm hover:bg-default"
+                        :aria-label="$t('dashboard.albums.menu.label')"
+                      />
+                    </UDropdownMenu>
+                  </div>
+
+                  <div
+                    v-if="album.isHidden || album.hasPassword"
+                    class="absolute start-2 bottom-2 flex items-center gap-1"
+                  >
+                    <span
+                      v-if="album.isHidden"
+                      class="rounded-full bg-inverted/75 px-1.5 py-0.5 text-[11px] leading-4 text-inverted backdrop-blur-sm"
+                    >
+                      {{ $t('dashboard.albums.form.isHidden') }}
+                    </span>
+                    <span
+                      v-if="album.hasPassword"
+                      class="flex items-center gap-1 rounded-full bg-inverted/75 px-1.5 py-0.5 text-[11px] leading-4 text-inverted backdrop-blur-sm"
+                    >
+                      <UIcon
+                        name="tabler:lock"
+                        class="size-3"
+                      />
+                      {{ $t('dashboard.albums.form.password') }}
+                    </span>
                   </div>
                 </div>
 
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5">
-                    <NuxtLink
-                      :to="`/albums/${album.id}`"
-                      target="_blank"
-                      class="truncate font-medium text-highlighted"
-                    >
-                      {{ album.title }}
-                    </NuxtLink>
-                    <UIcon
-                      v-if="album.hasPassword"
-                      name="tabler:lock"
-                      class="size-3.5 shrink-0 text-dimmed"
-                      :aria-label="$t('dashboard.albums.form.password')"
-                    />
-                  </div>
+                <div class="flex flex-1 flex-col p-3.5">
+                  <h3
+                    class="truncate font-medium text-highlighted"
+                    :title="album.title"
+                  >
+                    {{ album.title }}
+                  </h3>
 
+                  <!-- 说明占固定的三行：每张卡片一样高，写多长都一样，多出来
+                       的收成省略号。要看全文就点开这一张。 -->
                   <p
                     v-if="album.description"
-                    class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted"
+                    class="mt-1 h-15 line-clamp-3 text-[13px] leading-5 text-muted"
+                    :title="album.description"
                   >
                     {{ album.description }}
                   </p>
+                  <p
+                    v-else
+                    class="mt-1 h-15 text-[13px] leading-5 text-dimmed"
+                  >
+                    —
+                  </p>
 
-                  <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <UBadge
-                      variant="soft"
-                      color="neutral"
-                      size="sm"
-                    >
+                  <div
+                    class="mt-auto flex items-center gap-2 pt-3 text-xs text-dimmed"
+                  >
+                    <span class="tabular">
                       {{
                         $t('dashboard.albums.photoCount', {
                           count: album.photoCount || 0,
                         })
                       }}
-                    </UBadge>
-                    <span class="text-xs tabular text-dimmed">
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span class="tabular">
                       {{ dayjs(album.createdAt).format('YYYY-MM-DD') }}
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <div
-                class="mt-3 flex justify-end border-t border-default pt-2.5"
-              >
-                <DashboardAlbumActions
-                  :index="index"
-                  :total="albums.length"
-                  :reordering="isReorderingAlbums"
-                  @move="moveAlbum(index, $event)"
-                  @edit="openEditSlideover(album)"
-                  @delete="openDeleteConfirm(album)"
+                <!-- 排序状态下的两件事：把手（触屏上只有它能拖），和把名次
+                     挪一格的两个按钮。 -->
+                <div
+                  v-if="isOrdering"
+                  class="flex items-center justify-between gap-2 border-t border-default px-2 py-1.5"
+                >
+                  <span
+                    data-sort-grip
+                    aria-hidden="true"
+                    class="flex size-7 cursor-grab touch-none items-center justify-center rounded-md text-dimmed active:cursor-grabbing"
+                  >
+                    <UIcon
+                      name="tabler:grip-horizontal"
+                      class="size-4"
+                    />
+                  </span>
+
+                  <div class="flex items-center gap-0.5">
+                    <UButton
+                      icon="tabler:chevron-left"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      square
+                      :disabled="index === 0 || isReorderingAlbums"
+                      :title="$t('dashboard.albums.order.moveEarlier')"
+                      :aria-label="$t('dashboard.albums.order.moveEarlier')"
+                      @click="moveAlbum(index, -1)"
+                    />
+                    <UButton
+                      icon="tabler:chevron-right"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      square
+                      :disabled="
+                        index === albums.length - 1 || isReorderingAlbums
+                      "
+                      :title="$t('dashboard.albums.order.moveLater')"
+                      :aria-label="$t('dashboard.albums.order.moveLater')"
+                      @click="moveAlbum(index, 1)"
+                    />
+                  </div>
+                </div>
+              </li>
+            </TransitionGroup>
+          </div>
+
+          <!-- 跟着指针走的那一块。用 teleport 挪到 body：它得贴着视口定位，
+               而且要躲开列表自己的移动动画。 -->
+          <Teleport to="body">
+            <div
+              v-if="draggingAlbum"
+              :style="ghostStyle"
+              class="pointer-events-none fixed z-50 overflow-hidden rounded-lg border border-default bg-default shadow-xl"
+            >
+              <div class="relative aspect-[16/10] w-full overflow-hidden bg-elevated">
+                <img
+                  v-if="draggingAlbum.coverPhoto"
+                  :src="draggingAlbum.coverPhoto.thumbnailUrl || ''"
+                  alt=""
+                  class="size-full object-cover"
                 />
+                <div
+                  v-else
+                  class="flex size-full items-center justify-center text-dimmed"
+                >
+                  <UIcon
+                    name="tabler:photo"
+                    class="size-8"
+                  />
+                </div>
               </div>
-            </li>
-          </ul>
+              <div class="p-3.5">
+                <h3 class="truncate font-medium text-highlighted">
+                  {{ draggingAlbum.title }}
+                </h3>
+              </div>
+            </div>
+          </Teleport>
         </template>
 
         <DashboardPanel
@@ -1546,4 +1602,24 @@ const columns = computed<any[]>(() =>
   </UDashboardPanel>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* 卡片换位的时候滑过去，不要「啪」地跳一下。<TransitionGroup> 会把这一
+ * 条挂到位置变了的卡片上，过渡读完再摘掉。 */
+.album-card-move {
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 拖动当中不做过场。指针落在哪张卡片上是按卡片量出来的矩形判的，而过场期间
+ * 量到的是半路上的坐标——卡片正从旧格子滑向新格子，中间会盖住指针，于是又
+ * 被判成「要挪到这张」，两张卡片来回跳。让它在拖动中直接落位，量到什么就是
+ * 什么。松手之后（不在拖动中）换位照旧滑过去。 */
+.album-grid-dragging .album-card-move {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .album-card-move {
+    transition: none;
+  }
+}
+</style>

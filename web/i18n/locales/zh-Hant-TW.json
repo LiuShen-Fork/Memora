@@ -839,9 +839,16 @@
       "title": "相簿管理",
       "subtitle": "建立和管理您的照片相簿",
       "createButton": "建立相簿",
-      "actions": {
-        "moveUp": "上移",
-        "moveDown": "下移"
+      "menu": {
+        "label": "相簿操作",
+        "view": "在相簿中檢視"
+      },
+      "order": {
+        "start": "排序",
+        "done": "完成",
+        "hint": "拖曳卡片調整順序，也可以點卡片上的 ◀ ▶ 逐位移動。排好之後點「完成」。",
+        "moveEarlier": "前移一位",
+        "moveLater": "後移一位"
       },
       "noAlbums": "還沒有相簿",
       "noAlbumsTip": "建立您的第一個相簿來組織您的照片",
@@ -1865,7 +1872,7 @@
     },
     "albumActions": {
       "title": "管理已有相簿",
-      "description": "使用這組按鈕調整相簿順序、編輯相簿資訊或刪除相簿。編輯時可設定封面和訪問保護。"
+      "description": "每張相簿卡片右上角的選單可以編輯相簿資訊或刪除相簿；要調整順序，點頁面右上角的「排序」。"
     },
     "avatar": {
       "title": "設定網站頭像",

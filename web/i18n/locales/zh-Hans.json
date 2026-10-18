@@ -913,9 +913,16 @@
       "title": "相簿管理",
       "subtitle": "创建和管理您的照片相簿",
       "createButton": "创建相簿",
-      "actions": {
-        "moveUp": "上移",
-        "moveDown": "下移"
+      "menu": {
+        "label": "相册操作",
+        "view": "在相册中查看"
+      },
+      "order": {
+        "start": "排序",
+        "done": "完成",
+        "hint": "拖动卡片调整顺序，也可以点卡片上的 ◀ ▶ 逐位移动。排好之后点「完成」。",
+        "moveEarlier": "前移一位",
+        "moveLater": "后移一位"
       },
       "noAlbums": "还没有相簿",
       "noAlbumsTip": "创建您的第一个相簿来组织您的照片",
@@ -1865,7 +1872,7 @@
     },
     "albumActions": {
       "title": "管理已有相册",
-      "description": "使用这组按钮调整相册顺序、编辑相册信息或删除相册。编辑时可设置封面和访问保护。"
+      "description": "每张相册卡片右上角的菜单可以编辑相册信息或删除相册；要调整顺序，点页面右上角的「排序」。"
     },
     "avatar": {
       "title": "设置站点头像",
