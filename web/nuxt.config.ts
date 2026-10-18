@@ -38,6 +38,15 @@ export default defineNuxtConfig({
   // components ask for are named in app.config.ts, so the scan is told to read
   // .ts as well; otherwise a select draws no chevron and a toast no close
   // button, because the static frontend has no icon service to fetch from.
+  //
+  // This has to stay the only `icon` key in this file. There was a second one
+  // at the bottom — `icon: { clientBundle: { scan: true } }`, whose `scan` means
+  // "the module's own globs" rather than "this object" — and a duplicate key in
+  // an object literal means the later one wins, so this block never ran and the
+  // `.ts` was never in the glob. Nothing was visibly missing because of it (the
+  // generated bundle holds the same 166 tabler icons either way), but the file
+  // said one thing and did another, and the next person to change this glob
+  // would have changed nothing at all.
   icon: {
     clientBundle: {
       scan: {
@@ -268,12 +277,6 @@ export default defineNuxtConfig({
   colorMode: {
     // preference: process.env.NUXT_PUBLIC_COLOR_MODE_PREFERENCE || 'dark',
     storageKey: 'cframe-color-mode',
-  },
-
-  icon: {
-    clientBundle: {
-      scan: true,
-    },
   },
 
   dayjs: {
