@@ -77,6 +77,14 @@ const columnCount = () => {
 const itemKey = (item: T, index: number) =>
   props.keyMapper?.(item, 0, 0, index) ?? index
 
+// columns 里的下标是上一次排布留下的。条目一旦变少——换了筛选条件、或者登录状态
+// 变了导致整份列表换掉——重排要等一次 nextTick，而组件在这之前就会先渲染一帧。
+// 那一帧里这些下标落在数组外面，slot 收到 undefined，父组件的 keyMapper 去读它的
+// id 就抛错；渲染函数中途抛出，Vue 会整个更新都放弃，页面上别处（正是那次点击引发
+// 的）改动就都停在旧样子上。渲染时把越界的下标裁掉，等新排布算好再补回来。
+const itemsIn = (column: number[]) =>
+  column.filter((index) => index < props.items.length)
+
 const isAppend = (previous: T[], next: T[]) => {
   if (next.length <= previous.length || previous.length === 0) return false
   return previous.every((item, index) => Object.is(itemKey(item, index), itemKey(next[index]!, index)))
@@ -206,7 +214,7 @@ onUnmounted(() => {
       }"
     >
       <div
-        v-for="(itemIndex, row) in column"
+        v-for="(itemIndex, row) in itemsIn(column)"
         :key="itemKey(items[itemIndex]!, itemIndex)"
         class="masonry-item"
         :data-masonry-item-index="itemIndex"
