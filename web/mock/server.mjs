@@ -673,6 +673,26 @@ function albumPayload(album, withPhotos) {
   return base
 }
 
+// The one thing here that has to be read off the request rather than looked up.
+// Unreadable or malformed JSON comes back as null, and the route that asked for
+// it turns that into the same 400 the real decode gives.
+function readJSON(req) {
+  return new Promise((resolve) => {
+    const chunks = []
+    req.on('data', (chunk) => chunks.push(chunk))
+    req.on('end', () => {
+      try {
+        resolve(
+          JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null'),
+        )
+      } catch {
+        resolve(null)
+      }
+    })
+    req.on('error', () => resolve(null))
+  })
+}
+
 function route(req, res, url) {
   const path = url.pathname
   const method = req.method
@@ -942,6 +962,33 @@ function route(req, res, url) {
   if (path === '/api/albums/protection' && method === 'GET') {
     return send(res, 200, { locked: false })
   }
+  // Ahead of the /api/albums/<id> block below, which would read "reorder" as an
+  // album id and 404. The real route stores a position per album and reads the
+  // list back in that order; here the array IS the order, so writing it back in
+  // the order asked for is the same thing. It validates what the real one
+  // validates, so a bad request fails here the same way it would there.
+  if (path === '/api/albums/reorder' && method === 'PUT') {
+    return readJSON(req).then((body) => {
+      const ids = Array.isArray(body?.albumIds) ? body.albumIds : []
+      if (ids.length === 0 || ids.length > 1000) {
+        return fail(res, 400, 'albumIds must contain between 1 and 1000 items')
+      }
+      const seen = new Set()
+      for (const id of ids) {
+        if (!Number.isInteger(id) || id <= 0 || seen.has(id)) {
+          return fail(res, 400, 'albumIds must be unique positive album IDs')
+        }
+        seen.add(id)
+      }
+      // An id that names no album is a no-op rather than an error, which is
+      // what the UPDATE behind the real route does with one.
+      const byId = new Map(albums.map((album) => [album.id, album]))
+      const ordered = ids.map((id) => byId.get(id)).filter(Boolean)
+      const rest = albums.filter((album) => !seen.has(album.id))
+      albums.splice(0, albums.length, ...ordered, ...rest)
+      return send(res, 200, { success: true })
+    })
+  }
   if (path.startsWith('/api/albums/')) {
     const rest = decodeURIComponent(path.slice('/api/albums/'.length))
     const [rawId, sub] = rest.split('/')
@@ -1025,12 +1072,16 @@ export function createMockApi() {
     if (process.env.MOCK_QUIET !== '1') {
       console.log(`${req.method} ${url.pathname}${url.search}`)
     }
-    try {
-      route(req, res, url)
-    } catch (error) {
-      console.error(error)
-      fail(res, 500, String(error && error.message))
-    }
+    // Most routes answer and return nothing; the reorder one has to read the
+    // request body first, which only comes in through events, so it hands back
+    // a promise instead. Waiting on both here keeps that difference from
+    // leaking out. A failure that already sent its own answer is left alone.
+    Promise.resolve()
+      .then(() => route(req, res, url))
+      .catch((error) => {
+        console.error(error)
+        if (!res.headersSent) fail(res, 500, String(error && error.message))
+      })
   })
 }
 
