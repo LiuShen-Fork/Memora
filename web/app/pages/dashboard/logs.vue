@@ -50,6 +50,15 @@ const ROW_HEIGHT = 28
 const VIRTUAL_OVERSCAN = 20
 const VIRTUAL_BOTTOM_PADDING = 8
 
+// 一行日志的高度。
+//
+// 窄屏上时间与来源挪到正文上面一行（见模板），一条日志于是占两行。虚拟滚动
+// 是按固定行高算位置的，而这个高度要跟着布局走，所以下面那一串计算都读
+// rowHeight，不再直接读 ROW_HEIGHT。
+const ROW_HEIGHT_NARROW = 46
+const isNarrow = useMediaQuery('(max-width: 640px)')
+const rowHeight = computed(() => (isNarrow.value ? ROW_HEIGHT_NARROW : ROW_HEIGHT))
+
 let resizeObserver: ResizeObserver | null = null
 
 // EventSource 连接
@@ -155,24 +164,24 @@ const availableScopes = computed(() => {
 })
 
 const totalVirtualHeight = computed(
-  () => filteredLogs.value.length * ROW_HEIGHT + VIRTUAL_BOTTOM_PADDING,
+  () => filteredLogs.value.length * rowHeight.value + VIRTUAL_BOTTOM_PADDING,
 )
 
 const virtualStart = computed(() => {
-  const start = Math.floor(scrollTop.value / ROW_HEIGHT) - VIRTUAL_OVERSCAN
+  const start = Math.floor(scrollTop.value / rowHeight.value) - VIRTUAL_OVERSCAN
   return Math.max(0, start)
 })
 
 const virtualEnd = computed(() => {
   const visibleCount =
-    Math.ceil(containerHeight.value / ROW_HEIGHT) + VIRTUAL_OVERSCAN * 2
+    Math.ceil(containerHeight.value / rowHeight.value) + VIRTUAL_OVERSCAN * 2
   return Math.min(
     filteredLogs.value.length,
     virtualStart.value + Math.max(visibleCount, 1),
   )
 })
 
-const virtualOffset = computed(() => virtualStart.value * ROW_HEIGHT)
+const virtualOffset = computed(() => virtualStart.value * rowHeight.value)
 
 const visibleLogs = computed(() => {
   return filteredLogs.value.slice(virtualStart.value, virtualEnd.value)
@@ -499,31 +508,46 @@ onUnmounted(() => {
               <div
                 v-for="(log, index) in visibleLogs"
                 :key="`${virtualStart + index}-${log.raw}`"
-                class="flex items-center gap-3 px-4 text-xs transition-colors hover:bg-elevated/60"
-                :style="{ height: `${ROW_HEIGHT}px` }"
+                class="flex gap-3 px-4 text-xs transition-colors hover:bg-elevated/60"
+                :class="
+                  isNarrow
+                    ? 'flex-col justify-center gap-0.5'
+                    : 'items-center'
+                "
+                :style="{ height: `${rowHeight}px` }"
               >
-                <!-- 时间 -->
-                <span
-                  class="w-[100px] shrink-0 whitespace-nowrap tabular text-dimmed"
-                >
-                  {{ log.time ? $dayjs(log.time).format('MM-DD HH:mm:ss') : '' }}
-                </span>
+                <!-- 窄屏上时间与来源合成正文上面的一行。正文才是要读的东西，
+                     而它在 390px 上只分得到一百来个像素——一行里挤不下第三
+                     列。宽屏上这一层不占地方，里面的两格按原来的宽度并排。 -->
+                <div class="flex shrink-0 items-center gap-3">
+                  <!-- 时间 -->
+                  <span
+                    class="whitespace-nowrap tabular text-dimmed"
+                    :class="isNarrow ? '' : 'w-[100px]'"
+                  >
+                    {{
+                      log.time ? $dayjs(log.time).format('MM-DD HH:mm:ss') : ''
+                    }}
+                  </span>
 
-                <!-- 来源 -->
-                <span
-                  v-if="log.scope"
-                  class="w-[76px] shrink-0 truncate rounded bg-elevated px-1.5 py-0.5 text-center text-[11px] text-toned"
-                >
-                  {{ log.scope }}
-                </span>
-                <span
-                  v-else
-                  class="w-[76px] shrink-0"
-                />
+                  <!-- 来源 -->
+                  <span
+                    v-if="log.scope"
+                    class="truncate rounded bg-elevated px-1.5 py-0.5 text-center text-[11px] text-toned"
+                    :class="isNarrow ? '' : 'w-[76px]'"
+                  >
+                    {{ log.scope }}
+                  </span>
+                  <span
+                    v-else
+                    :class="isNarrow ? 'hidden' : 'w-[76px]'"
+                  />
+                </div>
 
                 <!-- 正文 -->
                 <span
-                  class="min-w-0 flex-1 truncate text-default"
+                  class="min-w-0 truncate text-default"
+                  :class="isNarrow ? 'w-full' : 'flex-1'"
                   :title="log.message"
                 >
                   <template
@@ -533,7 +557,7 @@ onUnmounted(() => {
                     <mark
                       v-if="segment.hit"
                       class="rounded-xs bg-warning/30 px-0.5 text-inherit"
-                      >{{ segment.text }}</mark
+                    >{{ segment.text }}</mark
                     >
                     <template v-else>{{ segment.text }}</template>
                   </template>
