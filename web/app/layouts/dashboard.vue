@@ -210,7 +210,13 @@ const handleLogin = () => {
       </template>
 
       <template #footer="{ collapsed }">
-        <div class="flex w-full flex-col gap-1.5">
+        <!-- 昵称和它那三个键并成一行：名字占满剩下的宽度，所以这一行不会
+             留出一块空的；三个键各是一个圆，图标在正中间。竖成图标栏以后
+             一行放不下四个，就叠成一列。 -->
+        <div
+          class="flex w-full items-center gap-1"
+          :class="collapsed ? 'flex-col' : ''"
+        >
           <UButton
             :avatar="{
               src: user?.avatar || '',
@@ -218,18 +224,27 @@ const handleLogin = () => {
               icon: 'tabler:user',
             }"
             :label="collapsed ? undefined : user?.username || 'User'"
+            to="/dashboard/settings/general"
             size="sm"
             color="neutral"
             variant="ghost"
-            class="h-9 w-full min-w-0 justify-start px-2"
-            :class="collapsed ? 'justify-center px-0' : ''"
+            :ui="{ label: 'truncate' }"
+            class="h-8 shrink-0 rounded-full px-1.5"
+            :class="
+              collapsed
+                ? 'w-8 justify-center'
+                : 'min-w-0 flex-1 justify-start'
+            "
           />
 
           <div
-            class="mx-auto flex items-center gap-0.5"
+            class="flex items-center gap-1.5"
             :class="collapsed ? 'flex-col' : ''"
           >
-            <LanguageSwitcher compact />
+            <LanguageSwitcher
+              compact
+              button-class="size-8 shrink-0 justify-center rounded-full p-0"
+            />
             <UTooltip
               :text="$t('ui.action.theme.tooltip')"
               ignore-non-keyboard-focus
@@ -238,9 +253,8 @@ const handleLogin = () => {
                 :icon="isDark ? 'tabler:sun' : 'tabler:moon'"
                 color="neutral"
                 variant="ghost"
-                size="xs"
                 square
-                class="size-7 p-0"
+                class="size-8 shrink-0 rounded-full p-0"
                 :aria-label="$t('ui.action.theme.tooltip')"
                 @click="toggleColorMode"
               />
@@ -256,9 +270,8 @@ const handleLogin = () => {
                 rel="noopener noreferrer"
                 color="neutral"
                 variant="ghost"
-                size="xs"
                 square
-                class="size-7 p-0"
+                class="size-8 shrink-0 rounded-full p-0"
                 aria-label="LiuShen-Fork/Memora"
               />
             </UTooltip>
