@@ -75,15 +75,6 @@ jobs:
             echo EOF
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create release tag
-        env:
-          VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git tag -a "v${VERSION}" -m "Release v${VERSION}"
-          git push origin "v${VERSION}"
-
       - name: Build release binaries
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -131,6 +122,21 @@ jobs:
           build-args: |
             MEMORA_VERSION=${{ steps.release.outputs.version }}
           tags: ${{ steps.release.outputs.docker_tags }}
+
+      # Last, not first. The tag used to be pushed before anything was built,
+      # so a failed frontend or Docker build left v$VERSION pointing at a
+      # commit that cannot be released, and the next run refused to touch it
+      # ("Tag v$VERSION already exists") — the run needed a human to delete the
+      # tag before it could be retried. Building first means a failure leaves
+      # nothing behind to clean up.
+      - name: Create release tag
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
 
       - name: Create GitHub release
         env:
