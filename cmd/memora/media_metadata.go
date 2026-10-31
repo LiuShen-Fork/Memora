@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -107,6 +110,30 @@ func (a *App) reverseGeocode(ctx context.Context, photoID string, latitude, long
 			return a.reverseGeocodeMapbox(ctx, photoID, value, language, latitude, longitude)
 		}
 		return fmt.Errorf("mapbox reverse geocoding token is not configured")
+	}
+	if provider == "tencent" {
+		// The browser map key is the same key, so an installation that only
+		// filled in the map settings still gets place names; what it cannot
+		// borrow is the signing secret, which only the location settings hold.
+		key := a.geocodingSetting("location", "tencent.key")
+		if key == "" {
+			key = a.geocodingSetting("map", "tencent.key")
+		}
+		secret := a.geocodingSetting("location", "tencent.secretKey")
+		if key == "" {
+			return fmt.Errorf("tencent reverse geocoding key is not configured")
+		}
+		return a.reverseGeocodeTencent(ctx, photoID, key, secret, latitude, longitude)
+	}
+	if provider == "tianditu" {
+		key := a.geocodingSetting("location", "tianditu.key")
+		if key == "" {
+			key = a.geocodingSetting("map", "tianditu.key")
+		}
+		if key == "" {
+			return fmt.Errorf("tianditu reverse geocoding key is not configured")
+		}
+		return a.reverseGeocodeTianditu(ctx, photoID, key, a.geocodingSetting("location", "tianditu.securityKey"), latitude, longitude)
 	}
 	base := strings.TrimRight(a.cfg.NominatimURL, "/")
 	if base == "" {
@@ -271,6 +298,192 @@ func (a *App) reverseGeocodeMapbox(ctx context.Context, photoID, token, language
 		}
 	}
 	_, err = a.db.Exec(`UPDATE photos SET country=?,city=?,location_name=? WHERE id=?`, nullIfEmpty(country), nullIfEmpty(city), nullIfEmpty(feature.PlaceName), photoID)
+	return err
+}
+
+// geocodingSetting reads one settings row as text, and "" when it is unset.
+func (a *App) geocodingSetting(namespace, key string) string {
+	var value any
+	if !a.readSetting(namespace, key, &value) || value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
+}
+
+// The two lookups that are tested against a local server rather than the real
+// one. The address is a variable for that reason and for nothing else.
+var (
+	tencentGeocoderURL  = "https://apis.map.qq.com/ws/geocoder/v1"
+	tiandituGeocoderURL = "https://api.tianditu.gov.cn/geocoder"
+)
+
+// tencentSignature is the value Tencent wants in `sig`.
+//
+// The string signed is the request path, then the parameters sorted by name and
+// left exactly as they will be sent — no percent-encoding — then the secret.
+// The digest is lowercase hex. The parameters must go out in the same encoded
+// form afterwards; Tencent re-sorts and re-joins on its side before checking.
+func tencentSignature(path string, params map[string]string, secret string) string {
+	names := make([]string, 0, len(params))
+	for name := range params {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	pairs := make([]string, 0, len(names))
+	for _, name := range names {
+		pairs = append(pairs, name+"="+params[name])
+	}
+	sum := md5.Sum([]byte(path + "?" + strings.Join(pairs, "&") + secret))
+	return hex.EncodeToString(sum[:])
+}
+
+// reverseGeocodeTencent asks Tencent's place lookup what is at a coordinate.
+//
+// Tencent draws the mainland, Hong Kong and Macau on GCJ-02 and Taiwan on
+// WGS-84, and its `location` is latitude first. Everything else is close to
+// what the Mapbox lookup already stores: a country, a city and a line of prose.
+func (a *App) reverseGeocodeTencent(ctx context.Context, photoID, key, secret string, latitude, longitude float64) error {
+	lng, lat := wgs84ToGcj02(longitude, latitude)
+	params := map[string]string{
+		"key":      key,
+		"location": strconv.FormatFloat(lat, 'f', 6, 64) + "," + strconv.FormatFloat(lng, 'f', 6, 64),
+	}
+	query := url.Values{}
+	for name, value := range params {
+		query.Set(name, value)
+	}
+	if secret != "" {
+		query.Set("sig", tencentSignature("/ws/geocoder/v1", params, secret))
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(lookupCtx, http.MethodGet, tencentGeocoderURL+"?"+query.Encode(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := externalHTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("tencent reverse geocoding: %s", resp.Status)
+	}
+	var result struct {
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+		Result  struct {
+			Address   string `json:"address"`
+			Component struct {
+				Nation   string `json:"nation"`
+				Province string `json:"province"`
+				City     string `json:"city"`
+				District string `json:"district"`
+			} `json:"address_component"`
+			Formatted struct {
+				Recommend string `json:"recommend"`
+			} `json:"formatted_addresses"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&result); err != nil {
+		return err
+	}
+	if result.Status != 0 {
+		return fmt.Errorf("tencent reverse geocoding: %s", result.Message)
+	}
+	city := result.Result.Component.City
+	if city == "" {
+		city = result.Result.Component.Province
+	}
+	if city == "" {
+		city = result.Result.Component.District
+	}
+	// `recommend` is the human answer ("天安门"), which is what belongs beside a
+	// photograph; `address` is the administrative one kept as the fallback.
+	name := result.Result.Formatted.Recommend
+	if name == "" {
+		name = result.Result.Address
+	}
+	_, err = a.db.Exec(`UPDATE photos SET country=?,city=?,location_name=? WHERE id=?`,
+		nullIfEmpty(result.Result.Component.Nation), nullIfEmpty(city), nullIfEmpty(name), photoID)
+	return err
+}
+
+// reverseGeocodeTianditu asks the national service what is at a coordinate.
+//
+// Tianditu draws on WGS-84, so the coordinate is sent as recorded. It only
+// covers China, and it answers in Chinese. The security key is part of the
+// request rather than something the server adds: a key configured with one is
+// refused without it.
+func (a *App) reverseGeocodeTianditu(ctx context.Context, photoID, key, securityKey string, latitude, longitude float64) error {
+	postStr := fmt.Sprintf(`{"lon":%s,"lat":%s,"ver":1}`,
+		strconv.FormatFloat(longitude, 'f', 8, 64),
+		strconv.FormatFloat(latitude, 'f', 8, 64))
+	query := url.Values{"postStr": {postStr}, "type": {"geocode"}, "tk": {key}}
+	if securityKey != "" {
+		query.Set("sk", securityKey)
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(lookupCtx, http.MethodGet, tiandituGeocoderURL+"?"+query.Encode(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := externalHTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		// The refusals that matter here are the specific ones — a key of the
+		// wrong type, a missing security key — and they are stated in the body
+		// as `resolve`. Reporting only "403 Forbidden" leaves the administrator
+		// with nothing to act on.
+		var failure struct {
+			Resolve string `json:"resolve"`
+			Msg     string `json:"msg"`
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+		_ = json.Unmarshal(body, &failure)
+		detail := failure.Resolve
+		if detail == "" {
+			detail = failure.Msg
+		}
+		if detail == "" {
+			detail = resp.Status
+		}
+		return fmt.Errorf("tianditu reverse geocoding: %s", detail)
+	}
+	var result struct {
+		// Older responses carry the status as a string and the permission
+		// errors as a number, so it is read as whatever it is.
+		Status  any `json:"status"`
+		Msg     any `json:"msg"`
+		Resolve any `json:"resolve"`
+		Result  struct {
+			FormattedAddress string `json:"formatted_address"`
+			Component        struct {
+				City    string `json:"city"`
+				Address string `json:"address"`
+			} `json:"addressComponent"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&result); err != nil {
+		return err
+	}
+	if status := strings.TrimSpace(fmt.Sprint(result.Status)); status != "0" {
+		message := fmt.Sprint(result.Msg)
+		if message == "" || message == "<nil>" {
+			message = fmt.Sprint(result.Resolve)
+		}
+		return fmt.Errorf("tianditu reverse geocoding: status %s: %s", status, message)
+	}
+	name := result.Result.FormattedAddress
+	if name == "" {
+		name = result.Result.Component.Address
+	}
+	_, err = a.db.Exec(`UPDATE photos SET country=NULL,city=?,location_name=? WHERE id=?`,
+		nullIfEmpty(result.Result.Component.City), nullIfEmpty(name), photoID)
 	return err
 }
 

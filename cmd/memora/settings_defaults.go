@@ -47,17 +47,28 @@ var defaultSettings = []settingDefault{
 	{Namespace: "system", Key: "auth.oauth.userInfoUrl", Type: "string", Default: "", Label: "settings.system.auth.oauth.userInfoUrl.label", Description: "settings.system.auth.oauth.userInfoUrl.description"},
 	{Namespace: "system", Key: "auth.oauth.scope", Type: "string", Default: "openid profile email", Label: "settings.system.auth.oauth.scope.label", Description: "settings.system.auth.oauth.scope.description"},
 	{Namespace: "privacy", Key: "upload.autoEraseLocation", Type: "boolean", Default: false, Public: true, Label: "settings.privacy.upload.autoEraseLocation.label", Description: "settings.privacy.upload.autoEraseLocation.description"},
-	{Namespace: "map", Key: "provider", Type: "string", Default: "maplibre", Public: true, Enum: []string{"mapbox", "maplibre", "amap"}, Label: "settings.map.provider.label", Description: "settings.map.provider.description"},
+	{Namespace: "map", Key: "provider", Type: "string", Default: "maplibre", Public: true, Enum: []string{"mapbox", "maplibre", "amap", "tencent", "tianditu"}, Label: "settings.map.provider.label", Description: "settings.map.provider.description"},
 	{Namespace: "map", Key: "mapbox.token", Type: "string", Default: "", Public: true, Label: "settings.map.mapbox.token.label", Description: "settings.map.mapbox.token.description"},
 	{Namespace: "map", Key: "mapbox.style", Type: "string", Default: "", Public: true, Label: "settings.map.mapbox.style.label", Description: "settings.map.mapbox.style.description"},
 	{Namespace: "map", Key: "maplibre.token", Type: "string", Default: "", Public: true, Label: "settings.map.maplibre.token.label", Description: "settings.map.maplibre.token.description"},
 	{Namespace: "map", Key: "maplibre.style", Type: "string", Default: "", Public: true, Label: "settings.map.maplibre.style.label", Description: "settings.map.maplibre.style.description"},
 	{Namespace: "map", Key: "amap.key", Type: "string", Default: "", Public: true, Label: "settings.map.amap.key.label", Description: "settings.map.amap.key.description"},
 	{Namespace: "map", Key: "amap.securityCode", Type: "string", Default: "", Public: true, Secret: true, Label: "settings.map.amap.securityCode.label", Description: "settings.map.amap.securityCode.description"},
+	{Namespace: "map", Key: "tencent.key", Type: "string", Default: "", Public: true, Label: "settings.map.tencent.key.label", Description: "settings.map.tencent.key.description"},
+	{Namespace: "map", Key: "tianditu.key", Type: "string", Default: "", Public: true, Label: "settings.map.tianditu.key.label", Description: "settings.map.tianditu.key.description"},
+	// The security key is a browser value: the map script has to be told about
+	// it before it draws anything, so it cannot be kept on the server alone.
+	{Namespace: "map", Key: "tianditu.securityKey", Type: "string", Default: "", Public: true, Secret: true, Label: "settings.map.tianditu.securityKey.label", Description: "settings.map.tianditu.securityKey.description"},
 	{Namespace: "location", Key: "language", Type: "string", Default: "en", Public: true, Enum: []string{"zh-CN", "en", "ja", "ru"}, Label: "settings.location.language.label", Description: "settings.location.language.description"},
-	{Namespace: "location", Key: "provider", Type: "string", Default: "nominatim", Public: true, Enum: []string{"nominatim", "mapbox", "amap"}, Label: "settings.location.provider.label", Description: "settings.location.provider.description"},
+	{Namespace: "location", Key: "provider", Type: "string", Default: "nominatim", Public: true, Enum: []string{"nominatim", "mapbox", "amap", "tencent", "tianditu"}, Label: "settings.location.provider.label", Description: "settings.location.provider.description"},
 	{Namespace: "location", Key: "mapbox.token", Type: "string", Default: "", Public: true, Label: "settings.location.mapbox.token.label", Description: "settings.location.mapbox.token.description"},
 	{Namespace: "location", Key: "amap.key", Type: "string", Default: "", Secret: true, Label: "settings.location.amap.key.label", Description: "settings.location.amap.key.description"},
+	// Tencent's WebService API is signed per request, so the key alone is not
+	// enough: the signing secret is what proves the request came from us.
+	{Namespace: "location", Key: "tencent.key", Type: "string", Default: "", Secret: true, Label: "settings.location.tencent.key.label", Description: "settings.location.tencent.key.description"},
+	{Namespace: "location", Key: "tencent.secretKey", Type: "string", Default: "", Secret: true, Label: "settings.location.tencent.secretKey.label", Description: "settings.location.tencent.secretKey.description"},
+	{Namespace: "location", Key: "tianditu.key", Type: "string", Default: "", Secret: true, Label: "settings.location.tianditu.key.label", Description: "settings.location.tianditu.key.description"},
+	{Namespace: "location", Key: "tianditu.securityKey", Type: "string", Default: "", Secret: true, Label: "settings.location.tianditu.securityKey.label", Description: "settings.location.tianditu.securityKey.description"},
 	{Namespace: "location", Key: "nominatim.baseUrl", Type: "string", Default: "", Public: true, Label: "settings.location.nominatim.baseUrl.label", Description: "settings.location.nominatim.baseUrl.description"},
 	{Namespace: "storage", Key: "provider", Type: "number", Default: nil, Label: "settings.storage_provider.provider.label", Description: "settings.storage_provider.provider.description"},
 	{Namespace: "analytics", Key: "headScripts", Type: "string", Default: "", Public: true, Label: "settings.analytics.headScripts.label", Description: "settings.analytics.headScripts.description"},
@@ -184,7 +195,8 @@ func settingUI(namespace, key, typ string, enum []string) map[string]any {
 		ui["min"] = minQueueWorkers
 		ui["max"] = maxQueueWorkers
 	}
-	if strings.HasSuffix(key, ".clientSecret") || strings.HasSuffix(key, ".token") {
+	if strings.HasSuffix(key, ".clientSecret") || strings.HasSuffix(key, ".token") ||
+		strings.HasSuffix(key, ".secretKey") || strings.HasSuffix(key, ".securityKey") {
 		ui["type"] = "password"
 	}
 	if len(enum) > 0 {

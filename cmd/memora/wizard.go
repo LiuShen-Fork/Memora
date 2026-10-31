@@ -101,7 +101,7 @@ func wizardFields(namespace string) []map[string]any {
 			field("openlist.pathField", "string", "settings.storage.openlist.pathField.label", "path", visible("openlist", false, false)),
 		}
 	case "map":
-		providerOptions := []map[string]any{{"label": "MapBox", "value": "mapbox"}, {"label": "MapLibre", "value": "maplibre"}, {"label": "AMap", "value": "amap"}}
+		providerOptions := []map[string]any{{"label": "MapBox", "value": "mapbox"}, {"label": "MapLibre", "value": "maplibre"}, {"label": "AMap", "value": "amap"}, {"label": "Tencent", "value": "tencent"}, {"label": "Tianditu", "value": "tianditu"}}
 		visible := func(provider, typ string, required bool) map[string]any {
 			return map[string]any{"type": typ, "required": required, "visibleIf": map[string]any{"fieldKey": "provider", "value": provider}}
 		}
@@ -113,6 +113,9 @@ func wizardFields(namespace string) []map[string]any {
 			field("maplibre.style", "string", "settings.map.maplibre.style.label", env("NUXT_PUBLIC_MAP_MAPLIBRE_STYLE", ""), visible("maplibre", "input", false)),
 			field("amap.key", "string", "settings.map.amap.key.label", env("NUXT_PUBLIC_MAP_AMAP_KEY", ""), visible("amap", "input", false)),
 			field("amap.securityCode", "string", "settings.map.amap.securityCode.label", env("NUXT_PUBLIC_MAP_AMAP_SECURITY_CODE", ""), visible("amap", "password", false)),
+			field("tencent.key", "string", "settings.map.tencent.key.label", env("NUXT_PUBLIC_MAP_TENCENT_KEY", ""), visible("tencent", "input", false)),
+			field("tianditu.key", "string", "settings.map.tianditu.key.label", env("NUXT_PUBLIC_MAP_TIANDITU_KEY", ""), visible("tianditu", "input", false)),
+			field("tianditu.securityKey", "string", "settings.map.tianditu.securityKey.label", env("NUXT_PUBLIC_MAP_TIANDITU_SECURITY_KEY", ""), visible("tianditu", "password", false)),
 		}
 	default:
 		return nil
