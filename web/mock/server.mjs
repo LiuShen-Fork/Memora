@@ -738,8 +738,24 @@ function route(req, res, url) {
   if (path === '/api/system/settings/schema' && method === 'GET') {
     return send(res, 200, settingsSchema)
   }
+  // Settings the dashboard writes are kept, so a change made on the settings
+  // page is still there after a reload — which is the whole point of the page
+  // and the only way to try out a map provider without editing fixtures.
   if (path === '/api/system/settings/batch' && method === 'PUT') {
-    return send(res, 200, { ok: true })
+    return readJSON(req).then((body) => {
+      const updates = Array.isArray(body?.updates) ? body.updates : []
+      let updated = 0
+      for (const update of updates) {
+        const namespace = String(update?.namespace || '')
+        const key = String(update?.key || '')
+        if (!settingValues[namespace] || !(key in settingValues[namespace])) {
+          continue
+        }
+        settingValues[namespace][key] = update.value
+        updated += 1
+      }
+      return send(res, 200, { success: true, updated })
+    })
   }
   if (path === '/api/system/settings/storage' && method === 'GET') {
     return send(res, 200, {

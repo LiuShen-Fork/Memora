@@ -338,7 +338,9 @@
     "enum": [
       "mapbox",
       "maplibre",
-      "amap"
+      "amap",
+      "tencent",
+      "tianditu"
     ],
     "isPublic": true,
     "isReadonly": false,
@@ -416,6 +418,58 @@
   },
   {
     "defaultValue": "",
+    "description": "settings.location.tencent.key.description",
+    "enum": null,
+    "isPublic": false,
+    "isReadonly": false,
+    "isSecret": true,
+    "key": "tencent.key",
+    "label": "settings.location.tencent.key.label",
+    "namespace": "location",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
+    "description": "settings.location.tencent.secretKey.description",
+    "enum": null,
+    "isPublic": false,
+    "isReadonly": false,
+    "isSecret": true,
+    "key": "tencent.secretKey",
+    "label": "settings.location.tencent.secretKey.label",
+    "namespace": "location",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
+    "description": "settings.location.tianditu.key.description",
+    "enum": null,
+    "isPublic": false,
+    "isReadonly": false,
+    "isSecret": true,
+    "key": "tianditu.key",
+    "label": "settings.location.tianditu.key.label",
+    "namespace": "location",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
+    "description": "settings.location.tianditu.securityKey.description",
+    "enum": null,
+    "isPublic": false,
+    "isReadonly": false,
+    "isSecret": true,
+    "key": "tianditu.securityKey",
+    "label": "settings.location.tianditu.securityKey.label",
+    "namespace": "location",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
     "description": "settings.map.amap.securityCode.description",
     "enum": null,
     "isPublic": true,
@@ -423,6 +477,45 @@
     "isSecret": true,
     "key": "amap.securityCode",
     "label": "settings.map.amap.securityCode.label",
+    "namespace": "map",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
+    "description": "settings.map.tencent.key.description",
+    "enum": null,
+    "isPublic": true,
+    "isReadonly": false,
+    "isSecret": false,
+    "key": "tencent.key",
+    "label": "settings.map.tencent.key.label",
+    "namespace": "map",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
+    "description": "settings.map.tianditu.key.description",
+    "enum": null,
+    "isPublic": true,
+    "isReadonly": false,
+    "isSecret": false,
+    "key": "tianditu.key",
+    "label": "settings.map.tianditu.key.label",
+    "namespace": "map",
+    "type": "string",
+    "value": ""
+  },
+  {
+    "defaultValue": "",
+    "description": "settings.map.tianditu.securityKey.description",
+    "enum": null,
+    "isPublic": true,
+    "isReadonly": false,
+    "isSecret": true,
+    "key": "tianditu.securityKey",
+    "label": "settings.map.tianditu.securityKey.label",
     "namespace": "map",
     "type": "string",
     "value": ""
@@ -449,9 +542,11 @@
     "defaultValue": "nominatim",
     "description": "settings.location.provider.description",
     "enum": [
-      "nominatim",
       "mapbox",
-      "amap"
+      "maplibre",
+      "amap",
+      "tencent",
+      "tianditu"
     ],
     "isPublic": true,
     "isReadonly": false,
