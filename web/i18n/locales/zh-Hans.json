@@ -5,9 +5,15 @@
   "map": {
     "setupNotice": {
       "title": "地图服务尚未配置",
-      "description": "此地图需要 MapTiler 或 Mapbox 访问令牌、或高德地图 Key 才能加载。管理员可以在“地图和位置”设置中添加。也可以使用自定义 MapLibre 样式 URL 代替 MapTiler 令牌。",
+      "description": "此地图需要 MapTiler 或 Mapbox 访问令牌，或高德、腾讯、天地图的 Key 才能加载。管理员可以在“地图和位置”设置中添加。也可以使用自定义 MapLibre 样式 URL 代替 MapTiler 令牌。",
       "openSettings": "打开地图设置",
       "dismiss": "关闭"
+    },
+    "tencent": {
+      "missingKey": "请配置腾讯地图 Key 以显示地图"
+    },
+    "tianditu": {
+      "missingKey": "请配置天地图 Key 以显示地图"
     },
     "amap": {
       "missingKey": "请配置高德地图 Key 以显示地图"
@@ -1354,6 +1360,22 @@
           "description": "MapLibre 地图样式 URL"
         }
       },
+      "tencent": {
+        "key": {
+          "label": "腾讯地图 Key",
+          "description": "供浏览器地图使用的腾讯位置服务 JavaScript API 密钥"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "天地图 Key",
+          "description": "供浏览器地图使用的天地图 JavaScript API 4.0 密钥"
+        },
+        "securityKey": {
+          "label": "天地图安全密钥",
+          "description": "天地图为这个 Key 配置的安全密钥；开启之后瓦片请求需要它才能通过校验"
+        }
+      },
       "amap": {
         "key": {
           "label": "高德地图 Web JS Key",
@@ -1388,6 +1410,26 @@
           "label": "Nominatim 基础 URL",
           "description": "Nominatim 反向地理编码 API 的基础 URL",
           "help": "留空则默认使用公共 Nominatim 服务"
+        }
+      },
+      "tencent": {
+        "key": {
+          "label": "腾讯位置服务 WebService Key",
+          "description": "供服务器反向地理编码使用的腾讯位置服务密钥"
+        },
+        "secretKey": {
+          "label": "腾讯位置服务签名密钥",
+          "description": "Key 开启签名校验时生成的 Secret Key，用于为每次请求计算签名"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "天地图服务端 Key",
+          "description": "供服务器反向地理编码使用的天地图密钥。天地图把浏览器端和服务端的 Key 分开，这里要用服务端 Key"
+        },
+        "securityKey": {
+          "label": "天地图安全密钥",
+          "description": "服务端 Key 配置的安全密钥；没有配置可以留空"
         }
       },
       "amap": {

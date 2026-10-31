@@ -5,9 +5,15 @@
   "map": {
     "setupNotice": {
       "title": "地圖服務尚未設定",
-      "description": "此地圖需要 MapTiler 或 Mapbox 存取權杖、或高德地圖 Key 才能載入。管理員可以在「地圖和位置」設定中新增。也可以使用自訂 MapLibre 樣式 URL 代替 MapTiler 權杖。",
+      "description": "呢個地圖要有 MapTiler 或者 Mapbox 存取權杖，或者高德、騰訊、天地圖嘅 Key 先載入到。管理員可以喺「地圖與位置」設定入面加。亦可以用自訂 MapLibre 樣式 URL 代替 MapTiler 權杖。",
       "openSettings": "開啟地圖設定",
       "dismiss": "關閉"
+    },
+    "tencent": {
+      "missingKey": "請設定騰訊地圖 Key 先顯示到地圖"
+    },
+    "tianditu": {
+      "missingKey": "請設定天地圖 Key 先顯示到地圖"
     },
     "amap": {
       "missingKey": "請設定高德地圖 Key 以顯示地圖"
@@ -1280,6 +1286,22 @@
           "description": "MapLibre 地圖樣式 URL"
         }
       },
+      "tencent": {
+        "key": {
+          "label": "騰訊地圖 Key",
+          "description": "畀瀏覽器地圖用嘅騰訊位置服務 JavaScript API 金鑰"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "天地圖 Key",
+          "description": "畀瀏覽器地圖用嘅天地圖 JavaScript API 4.0 金鑰"
+        },
+        "securityKey": {
+          "label": "天地圖安全金鑰",
+          "description": "天地圖為呢個 Key 設定嘅安全金鑰；開咗之後瓦片請求要有佢先過到驗證"
+        }
+      },
       "amap": {
         "key": {
           "label": "高德地圖 Web JS Key",
@@ -1314,6 +1336,26 @@
           "label": "Nominatim 基礎 URL",
           "description": "Nominatim 反向地理編碼 API 嘅基礎 URL",
           "help": "留空則預設使用公開 Nominatim 服務"
+        }
+      },
+      "tencent": {
+        "key": {
+          "label": "騰訊位置服務 WebService Key",
+          "description": "畀伺服器反向地理編碼用嘅騰訊位置服務金鑰"
+        },
+        "secretKey": {
+          "label": "騰訊位置服務簽章金鑰",
+          "description": "Key 開咗簽章驗證時產生嘅 Secret Key，用嚟為每次請求計簽章"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "天地圖伺服端 Key",
+          "description": "畀伺服器反向地理編碼用嘅天地圖金鑰。天地圖將瀏覽器端同伺服端嘅 Key 分開，呢度要用伺服端 Key"
+        },
+        "securityKey": {
+          "label": "天地圖安全金鑰",
+          "description": "伺服端 Key 設定嘅安全金鑰；冇設定可以留空"
         }
       },
       "amap": {

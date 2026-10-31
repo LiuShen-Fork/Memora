@@ -198,9 +198,15 @@
   "map": {
     "setupNotice": {
       "title": "地図サービスが未設定です",
-      "description": "この地図を表示するには MapTiler または Mapbox のアクセストークン、あるいは AMap キーが必要です。管理者は「地図と場所」の設定から追加できます。MapTiler トークンの代わりに、カスタム MapLibre スタイル URL を使うこともできます。",
+      "description": "この地図を表示するには MapTiler または Mapbox のトークン、あるいは AMap・Tencent マップ・天地図のキーが必要です。管理者は「地図と位置情報」設定で追加できます。MapTiler のトークンの代わりに独自の MapLibre スタイル URL を使うこともできます。",
       "openSettings": "地図設定を開く",
       "dismiss": "閉じる"
+    },
+    "tencent": {
+      "missingKey": "地図を表示するには Tencent マップのキーを設定してください"
+    },
+    "tianditu": {
+      "missingKey": "地図を表示するには天地図のキーを設定してください"
     },
     "amap": {
       "missingKey": "地図を表示するには AMap キーを設定してください"
@@ -1280,6 +1286,22 @@
           "description": "MapLibre 地図スタイル URL"
         }
       },
+      "tencent": {
+        "key": {
+          "label": "Tencent マップのキー",
+          "description": "ブラウザで表示する地図に使う Tencent の JavaScript API キー"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "天地図のキー",
+          "description": "ブラウザで表示する地図に使う天地図 JavaScript API 4.0 のキー"
+        },
+        "securityKey": {
+          "label": "天地図のセキュリティキー",
+          "description": "このキーに設定したセキュリティキー。有効にするとタイルの取得に必要になります"
+        }
+      },
       "amap": {
         "key": {
           "label": "AMap Web JS キー",
@@ -1314,6 +1336,26 @@
           "label": "Nominatim ベース URL",
           "description": "Nominatim リバースジオコーディング API のベース URL",
           "help": "空のままにすると、デフォルトで公開 Nominatim サービスを使用します"
+        }
+      },
+      "tencent": {
+        "key": {
+          "label": "Tencent WebService のキー",
+          "description": "サーバーの逆ジオコーディングに使う Tencent マップのキー"
+        },
+        "secretKey": {
+          "label": "Tencent の署名用シークレット",
+          "description": "キーで署名検証を有効にしたときに発行される Secret Key。各リクエストの署名に使います"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "天地図のサーバー用キー",
+          "description": "サーバーの逆ジオコーディングに使う天地図のキー。天地図はブラウザ用とサーバー用のキーを分けているため、ここにはサーバー用のキーが必要です"
+        },
+        "securityKey": {
+          "label": "天地図のセキュリティキー",
+          "description": "サーバー用キーに設定したセキュリティキー。設定していなければ空のままで構いません"
         }
       },
       "amap": {

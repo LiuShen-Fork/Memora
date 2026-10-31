@@ -22,6 +22,14 @@ export function isMapServiceConfigured(config: MapServiceConfig): boolean {
     return text(config, 'amap.key').length > 0
   }
 
+  if (provider === 'tencent') {
+    return text(config, 'tencent.key').length > 0
+  }
+
+  if (provider === 'tianditu') {
+    return text(config, 'tianditu.key').length > 0
+  }
+
   return (
     text(config, 'maplibre.token').length > 0 ||
     text(config, 'maplibre.style').length > 0

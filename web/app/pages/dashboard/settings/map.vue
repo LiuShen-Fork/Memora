@@ -35,6 +35,8 @@ const mapProviderTabs = [
   { label: 'Mapbox', value: 'mapbox' },
   { label: 'MapLibre', value: 'maplibre' },
   { label: 'AMap', value: 'amap' },
+  { label: 'Tencent', value: 'tencent' },
+  { label: 'Tianditu', value: 'tianditu' },
 ]
 
 const locationProvider = computed({
@@ -48,6 +50,8 @@ const locationProviderTabs = [
   { label: 'Nominatim', value: 'nominatim' },
   { label: 'Mapbox', value: 'mapbox' },
   { label: 'AMap', value: 'amap' },
+  { label: 'Tencent', value: 'tencent' },
+  { label: 'Tianditu', value: 'tianditu' },
 ]
 
 const visibleMapFields = computed(() =>

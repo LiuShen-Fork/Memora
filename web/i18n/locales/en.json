@@ -198,9 +198,15 @@
   "map": {
     "setupNotice": {
       "title": "Map service is not set up",
-      "description": "This map needs a MapTiler or Mapbox access token, or an AMap key, before it can load. An administrator can add one in Map & Location settings. A custom MapLibre style URL can be used instead of a MapTiler token.",
+      "description": "This map needs a MapTiler or Mapbox token, or a key for AMap, Tencent Maps or Tianditu, before it can load. An administrator can add one in Map and location settings. A custom MapLibre style URL can be used instead of a MapTiler token.",
       "openSettings": "Open map settings",
       "dismiss": "Close"
+    },
+    "tencent": {
+      "missingKey": "Add a Tencent Maps key to show the map"
+    },
+    "tianditu": {
+      "missingKey": "Add a Tianditu key to show the map"
     },
     "amap": {
       "missingKey": "Configure an AMap key to display this map"
@@ -1354,6 +1360,22 @@
           "description": "MapLibre map style URL"
         }
       },
+      "tencent": {
+        "key": {
+          "label": "Tencent Maps key",
+          "description": "JavaScript API key for the Tencent map drawn in the browser"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "Tianditu key",
+          "description": "Tianditu JavaScript API 4.0 key for the map drawn in the browser"
+        },
+        "securityKey": {
+          "label": "Tianditu security key",
+          "description": "Security key set for this Tianditu key; once it is enabled, tile requests need it to pass the check"
+        }
+      },
       "amap": {
         "key": {
           "label": "AMap Web JS Key",
@@ -1388,6 +1410,26 @@
           "label": "Nominatim Base URL",
           "description": "Base URL for Nominatim reverse geocoding API",
           "help": "Leave empty to use the public Nominatim service by default"
+        }
+      },
+      "tencent": {
+        "key": {
+          "label": "Tencent WebService key",
+          "description": "Tencent Maps key used by the server for reverse geocoding"
+        },
+        "secretKey": {
+          "label": "Tencent signing secret",
+          "description": "Secret key generated when signing is enabled on the key; used to sign every request"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "Tianditu server key",
+          "description": "Tianditu key used by the server for reverse geocoding. Tianditu separates browser keys from server keys, and this needs a server key"
+        },
+        "securityKey": {
+          "label": "Tianditu security key",
+          "description": "Security key set for the server key; leave empty when there is none"
         }
       },
       "amap": {

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { motion } from 'motion-v'
 import { isMapboxMap, type MapInstance } from '~~/shared/types/map'
-import { transformCoordinate } from '~/utils/coordinate-transform'
+import { transformCoordinate, usesGcj02 } from '~/utils/coordinate-transform'
 
 const props = defineProps<{
   photo: Photo
@@ -11,7 +11,12 @@ const props = defineProps<{
 
 const MAPID = 'minimap-info-panel'
 
-const config = useRuntimeConfig()
+// 当前生效的地图服务在设置里，不在 runtimeConfig 里——后者只是构建时的默认值。
+const mapConfig = computed(() => {
+  const config = getSetting('map')
+  return typeof config === 'object' && config ? config : {}
+})
+const mapProvider = computed(() => mapConfig.value.provider || 'maplibre')
 
 const loaded = ref(false)
 const isAnimating = ref(false)
@@ -21,7 +26,7 @@ let animationTimer: ReturnType<typeof setTimeout> | null = null
 const onMapLoad = (map: MapInstance) => {
   mapInstance.value = map
   const anyMap: any = map
-  const center = config.public.map.provider === 'amap'
+  const center = usesGcj02(mapProvider.value)
     ? transformCoordinate(props.longitude, props.latitude, 'amap')
     : [props.longitude, props.latitude]
   if (typeof anyMap.setZoomAndCenter === 'function') {
@@ -46,7 +51,7 @@ const moveMapTo = (newLat: number, newLng: number) => {
 
     isAnimating.value = true
     const map: any = mapInstance.value
-    const center = config.public.map.provider === 'amap'
+    const center = usesGcj02(mapProvider.value)
       ? transformCoordinate(newLng, newLat, 'amap')
       : [newLng, newLat]
     if (typeof map.flyTo === 'function') {
@@ -75,7 +80,7 @@ watch([() => props.latitude, () => props.longitude], ([newLat, newLng]) => {
   moveMapTo(newLat, newLng)
   const map = mapInstance.value
   // Only available with Mapbox
-  if (map && isMapboxMap(map as any, config.public.map.provider)) {
+  if (map && isMapboxMap(map as any, mapProvider.value)) {
     // 根据拍摄时间决定四种 lightPreset: dawn / day / dusk / night
     const photoDate = new Date(props.photo.dateTaken || 0)
     const hours = photoDate.getHours()

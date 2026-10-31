@@ -11,6 +11,16 @@ const route = useRoute()
 const router = useRouter()
 const dayjs = useDayjs()
 
+/**
+ * 当前用的地图服务。坐标要不要挪一下由它决定——高德和腾讯画在 GCJ-02 上，
+ * 从照片里读出来的 WGS-84 得先换算，其余几家原样交给它们。
+ */
+const mapConfig = computed(() => {
+  const config = getSetting('map')
+  return typeof config === 'object' && config ? config : {}
+})
+const mapProvider = computed(() => mapConfig.value.provider || 'maplibre')
+
 const { photos } = usePhotos()
 
 const selectedPhotoId = computed(() => {
@@ -497,7 +507,7 @@ const focusPhoto = (map: any, photo: Photo) => {
   if (typeof map.setZoomAndCenter === 'function') {
     map.setZoomAndCenter(
       17,
-      transformCoordinate(center[0], center[1], 'amap'),
+      transformCoordinate(center[0], center[1], mapProvider.value),
       false,
       1200,
     )
@@ -572,7 +582,7 @@ const resetMap = () => {
     } else if (typeof mapInstance.value.setZoomAndCenter === 'function') {
       mapInstance.value.setZoomAndCenter(
         mapViewState.value.zoom,
-        transformCoordinate(center[0], center[1], 'amap'),
+        transformCoordinate(center[0], center[1], mapProvider.value),
         true,
         1000,
       )

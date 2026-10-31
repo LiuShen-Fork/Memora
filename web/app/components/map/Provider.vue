@@ -46,9 +46,11 @@ const provider = computed(() => mapConfig.value.provider || 'maplibre')
 const isConfigured = computed(() =>
   isMapServiceConfigured(mapConfig.value as Record<string, unknown>),
 )
-// AMap 自己会说明缺了 Key，不去替它说。
+// 自带 Key 缺省提示的那几家自己会说明缺了什么，不去替它们说。
 const hasBlankCanvas = computed(
-  () => !isConfigured.value && provider.value !== 'amap',
+  () =>
+    !isConfigured.value &&
+    !['amap', 'tencent', 'tianditu'].includes(provider.value),
 )
 
 // 地图画不出来时，说清楚为什么，并指向能把它配好的地方。只有地球页需要这段话，
@@ -162,6 +164,34 @@ const mapStyle = computed(() => {
           <slot :map="map" />
         </template>
       </MapAMapProvider>
+      <MapTencentProvider
+        v-else-if="provider === 'tencent'"
+        class="h-full w-full"
+        :map-id="mapId"
+        :center
+        :zoom
+        :interactive
+        @load="emit('load', $event)"
+        @zoom="emit('zoom')"
+      >
+        <template #default="{ map }">
+          <slot :map="map" />
+        </template>
+      </MapTencentProvider>
+      <MapTiandituProvider
+        v-else-if="provider === 'tianditu'"
+        class="h-full w-full"
+        :map-id="mapId"
+        :center
+        :zoom
+        :interactive
+        @load="emit('load', $event)"
+        @zoom="emit('zoom')"
+      >
+        <template #default="{ map }">
+          <slot :map="map" />
+        </template>
+      </MapTiandituProvider>
     </ClientOnly>
   </div>
 </template>

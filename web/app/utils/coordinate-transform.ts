@@ -57,10 +57,22 @@ export function gcj02ToWgs84(lng: number, lat: number): [number, number] {
   return [lng * 2 - mgLng, lat * 2 - mgLat]
 }
 
+/**
+ * Whether a provider draws on the GCJ-02 grid.
+ *
+ * AMap and Tencent both do: a coordinate recorded by a camera (WGS-84) has to
+ * be shifted before it is placed, or the pin lands a few hundred metres away
+ * from the place it names. MapLibre, Mapbox and Tianditu draw on WGS-84 and
+ * take the coordinate as it is.
+ */
+export function usesGcj02(provider: string): boolean {
+  return provider === 'amap' || provider === 'tencent'
+}
+
 export function transformCoordinate(
   lng: number,
   lat: number,
   provider: string,
 ): [number, number] {
-  return provider === 'amap' ? wgs84ToGcj02(lng, lat) : [lng, lat]
+  return usesGcj02(provider) ? wgs84ToGcj02(lng, lat) : [lng, lat]
 }

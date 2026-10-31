@@ -1,7 +1,11 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { MapInstance } from '~~/shared/types/map'
-import { gcj02ToWgs84, transformCoordinate } from '~/utils/coordinate-transform'
+import {
+  gcj02ToWgs84,
+  transformCoordinate,
+  usesGcj02,
+} from '~/utils/coordinate-transform'
 
 const props = withDefaults(
   defineProps<{
@@ -62,7 +66,7 @@ const updateValue = (
   longitude: number,
   shouldEmitPick = true,
 ) => {
-  if (provider.value === 'amap') {
+  if (usesGcj02(provider.value)) {
     const [wgsLongitude, wgsLatitude] = gcj02ToWgs84(longitude, latitude)
     latitude = wgsLatitude
     longitude = wgsLongitude
@@ -77,6 +81,8 @@ const updateValue = (
 const handleMapClick = (event: any) => {
   const point =
     event?.lngLat ||
+    // 腾讯的点击事件把它拼成 latLng，大小写和上面那个不一样。
+    event?.latLng ||
     event?.lnglat ||
     event?.latlng ||
     (Array.isArray(event) ? { lng: event[0], lat: event[1] } : null)

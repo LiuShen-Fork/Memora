@@ -198,9 +198,15 @@
   "map": {
     "setupNotice": {
       "title": "Картографический сервис не настроен",
-      "description": "Этой карте нужен токен доступа MapTiler или Mapbox либо ключ AMap. Администратор может добавить его в разделе «Карта и геолокация». Вместо токена MapTiler можно указать собственный URL стиля MapLibre.",
+      "description": "Для загрузки карты нужен токен MapTiler или Mapbox либо ключ AMap, Tencent Maps или Tianditu. Администратор может добавить его в настройках «Карта и местоположение». Вместо токена MapTiler можно указать собственный URL стиля MapLibre.",
       "openSettings": "Открыть настройки карты",
       "dismiss": "Закрыть"
+    },
+    "tencent": {
+      "missingKey": "Добавьте ключ Tencent Maps, чтобы показать карту"
+    },
+    "tianditu": {
+      "missingKey": "Добавьте ключ Tianditu, чтобы показать карту"
     },
     "amap": {
       "missingKey": "Настройте ключ AMap, чтобы отображать карту"
@@ -1354,6 +1360,22 @@
           "description": "URL стиля карты MapLibre"
         }
       },
+      "tencent": {
+        "key": {
+          "label": "Ключ Tencent Maps",
+          "description": "Ключ JavaScript API для карты Tencent, рисуемой в браузере"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "Ключ Tianditu",
+          "description": "Ключ JavaScript API 4.0 для карты Tianditu, рисуемой в браузере"
+        },
+        "securityKey": {
+          "label": "Секретный ключ Tianditu",
+          "description": "Секретный ключ, заданный для этого ключа Tianditu; после его включения запросы тайлов без него не проходят проверку"
+        }
+      },
       "amap": {
         "key": {
           "label": "Ключ AMap Web JS",
@@ -1388,6 +1410,26 @@
           "label": "Базовый URL Nominatim",
           "description": "Базовый URL API обратного геокодирования Nominatim",
           "help": "Оставьте поле пустым, чтобы использовать общедоступный сервис Nominatim"
+        }
+      },
+      "tencent": {
+        "key": {
+          "label": "Ключ Tencent WebService",
+          "description": "Ключ Tencent Maps, которым сервер пользуется для обратного геокодирования"
+        },
+        "secretKey": {
+          "label": "Секрет подписи Tencent",
+          "description": "Секретный ключ, выдаваемый при включении подписи; им подписывается каждый запрос"
+        }
+      },
+      "tianditu": {
+        "key": {
+          "label": "Серверный ключ Tianditu",
+          "description": "Ключ Tianditu, которым сервер пользуется для обратного геокодирования. Tianditu разделяет браузерные и серверные ключи, здесь нужен серверный"
+        },
+        "securityKey": {
+          "label": "Секретный ключ Tianditu",
+          "description": "Секретный ключ, заданный для серверного ключа; оставьте пустым, если его нет"
         }
       },
       "amap": {
