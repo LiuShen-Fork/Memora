@@ -16,6 +16,9 @@ const toast = useToast()
 
 // 状态管理
 const isLoading = ref(false)
+// 正在删除的任务 id。连点两次时第二次直接忽略：第一次请求已经把任务删掉，
+// 第二次只会收到 404，再弹一条与事实不符的失败提示。
+const deletingTaskIds = ref<Set<number>>(new Set())
 const selectedTasks = ref<number[]>([])
 const statusFilter = ref<string>('all')
 const typeFilter = ref<string>('all')
@@ -204,6 +207,8 @@ const retryAllFailedTasks = async () => {
 
 // 删除单个任务（仅适用于失败任务）
 const deleteTask = async (taskId: number) => {
+  if (deletingTaskIds.value.has(taskId)) return
+  deletingTaskIds.value.add(taskId)
   try {
     await $fetch(`/api/queue/failed/${taskId}`, {
       method: 'DELETE',
@@ -222,6 +227,8 @@ const deleteTask = async (taskId: number) => {
       description: error?.message || $t('dashboard.queue.messages.deleteFailed'),
       color: 'error',
     })
+  } finally {
+    deletingTaskIds.value.delete(taskId)
   }
 }
 
@@ -682,6 +689,7 @@ useIntervalFn(
                       color="error"
                       :square="isMobile"
                       :title="$t('dashboard.queue.buttons.delete')"
+                      :loading="deletingTaskIds.has(row.original.id)"
                       @click="deleteTask(row.original.id)"
                     >
                       <span class="hidden sm:inline">
