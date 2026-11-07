@@ -53,6 +53,31 @@ func newTestApp(t *testing.T) *App {
 	return app
 }
 
+// testUser inserts a user with the given administrator flag and answers with
+// the id a session can name.
+func testUser(t *testing.T, app *App, name string, admin bool) int64 {
+	t.Helper()
+	result, err := app.db.Exec(`INSERT INTO users(name,email,password,created_at,is_admin) VALUES(?,?,?,unixepoch(),?)`, name, name+"@example.com", "password", boolInt(admin))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// signedRequest is a request carrying the session of the given user.
+func signedRequest(t *testing.T, app *App, id int64, method, path string, body io.Reader) *http.Request {
+	t.Helper()
+	request := httptest.NewRequest(method, path, body)
+	recorder := httptest.NewRecorder()
+	app.setSession(recorder, id)
+	request.AddCookie(recorder.Result().Cookies()[0])
+	return request
+}
+
 func TestNormalizeFirstLaunchForExistingDatabase(t *testing.T) {
 	app := newTestApp(t)
 	if _, err := app.db.Exec(`INSERT INTO users(name,email,password,created_at,is_admin) VALUES('legacy','legacy@example.com','password',unixepoch(),1)`); err != nil {

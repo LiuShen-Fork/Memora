@@ -102,6 +102,12 @@ func (a *App) settingsRoute(w http.ResponseWriter, r *http.Request, rest string)
 		return
 	}
 	if len(parts) >= 2 && r.Method == http.MethodGet {
+		// A single key bypasses the public snapshot, so it has to be guarded
+		// the same way the namespace read is. Otherwise anyone could ask for
+		// system:auth.github.clientSecret by name.
+		if !a.requireAdmin(w, r) {
+			return
+		}
 		var value any
 		if !a.readSetting(parts[0], strings.Join(parts[1:], "."), &value) {
 			errorJSON(w, http.StatusNotFound, "Setting not found")
