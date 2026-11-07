@@ -38,7 +38,14 @@ type App struct {
 	settingsMu     sync.RWMutex
 	settingsLoadMu sync.Mutex
 	publicSettings map[string]map[string]any
-	mediaSlots     chan struct{}
+	// wizardMu guards setup: it keeps the first-run endpoints serialized and
+	// bounds how often an unauthenticated client may try them. A request holds
+	// it from the first-launch check until its handler returns, so setup cannot
+	// be modified by a request that arrived before the last step.
+	wizardMu          sync.Mutex
+	wizardWindowStart time.Time
+	wizardAttempts    int
+	mediaSlots        chan struct{}
 	// uploadsMu guards the uploads in progress: the files that arrive in parts,
 	// and the multipart uploads an object store is holding for them.
 	uploadsMu sync.Mutex

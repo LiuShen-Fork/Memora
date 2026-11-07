@@ -3,11 +3,58 @@ package main
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+// wizardAttemptLimit bounds how many setup requests one minute may carry. The
+// window is global rather than per address because forwarded headers can be
+// spoofed, and setup itself needs only a handful of requests.
+const wizardAttemptLimit = 60
+
+// beginWizard admits a setup request and keeps the lock until the caller has
+// finished answering it. Two things depend on that:
+//
+//   - firstLaunch is checked while the lock is held, so a request that arrived
+//     before the final step cannot change the administrator, storage or site
+//     after setup has completed;
+//   - the attempt window is advanced under the same lock, so concurrent
+//     requests cannot each spend their own budget.
+//
+// A missing firstLaunch row fails closed: only an explicit true opens setup.
+func (a *App) beginWizard(w http.ResponseWriter) bool {
+	a.wizardMu.Lock()
+	now := time.Now()
+	if a.wizardWindowStart.IsZero() || now.Sub(a.wizardWindowStart) >= time.Minute {
+		a.wizardWindowStart = now
+		a.wizardAttempts = 0
+	}
+	a.wizardAttempts++
+	if a.wizardAttempts > wizardAttemptLimit {
+		a.wizardMu.Unlock()
+		errorJSON(w, http.StatusTooManyRequests, "Too many setup requests")
+		return false
+	}
+	var firstLaunch any
+	if !a.readSetting("system", "firstLaunch", &firstLaunch) {
+		a.wizardMu.Unlock()
+		errorJSON(w, http.StatusForbidden, "Setup already completed")
+		return false
+	}
+	if enabled, _ := firstLaunch.(bool); !enabled {
+		a.wizardMu.Unlock()
+		errorJSON(w, http.StatusForbidden, "Setup already completed")
+		return false
+	}
+	return true
+}
+
 func (a *App) wizardRoute(w http.ResponseWriter, r *http.Request, rest string) {
+	if !a.beginWizard(w) {
+		return
+	}
+	defer a.wizardMu.Unlock()
 	switch {
 	case rest == "schema" && r.Method == http.MethodGet:
 		a.wizardSchema(w, r)
