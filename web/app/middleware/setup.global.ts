@@ -21,7 +21,9 @@ export default defineNuxtRouteMiddleware(async (to, _from) => {
     }
   } else {
     if (isOnboarding) {
-      // ignore
+      // Setup is finished: the wizard's endpoints are closed, so a stale tab
+      // left on one of its pages has nothing to do there.
+      return navigateTo('/')
     }
   }
 })
