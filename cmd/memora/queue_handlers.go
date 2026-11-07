@@ -69,8 +69,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	errorJSON(w, 404, "Not Found")
 }
 func (a *App) addTask(w http.ResponseWriter, r *http.Request, batch bool) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	var body struct {
@@ -302,8 +301,7 @@ func (a *App) queueConcurrencyState() map[string]any {
 }
 
 func (a *App) queueStats(w http.ResponseWriter, r *http.Request, id int64) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	if id > 0 {
@@ -375,8 +373,7 @@ type recentPhoto struct {
 // photo it worked on either directly or, for an upload, by the storage key the
 // photo was named after.
 func (a *App) recentTasks(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	rows, err := a.db.Query(`SELECT id,COALESCE(json_extract(payload,'$.type'),''),status,COALESCE(status_stage,''),COALESCE(error_message,''),created_at,completed_at,COALESCE(json_extract(payload,'$.storageKey'),''),COALESCE(json_extract(payload,'$.photoId'),'') FROM pipeline_queue ORDER BY created_at DESC, id DESC LIMIT ?`, recentTaskLimit)
@@ -456,8 +453,7 @@ func (a *App) recentTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	statusFilter := r.URL.Query().Get("status")
@@ -552,8 +548,7 @@ func (a *App) taskList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"success": true, "data": out, "page": page, "pageSize": pageSize, "total": total, "totalPages": (total + pageSize - 1) / pageSize, "stats": stats})
 }
 func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	includeCompleted := r.URL.Query().Get("includeCompleted") != "false"
@@ -611,8 +606,7 @@ func (a *App) taskClear(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 func (a *App) taskRetry(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	var b struct {
@@ -646,8 +640,7 @@ func (a *App) taskRetry(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"success": true, "message": fmt.Sprintf("Task %d has been reset and will be retried", b.TaskID), "taskId": b.TaskID, "payload": map[string]any{"type": parsed["type"], "storageKey": parsed["storageKey"]}})
 }
 func (a *App) taskRetryBatch(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	var b struct {
@@ -712,8 +705,7 @@ func (a *App) taskRetryBatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) taskDeleteFailed(w http.ResponseWriter, r *http.Request, idText string) {
-	if _, ok := a.require(r); !ok {
-		errorJSON(w, http.StatusUnauthorized, "Unauthorized")
+	if !a.requireAdmin(w, r) {
 		return
 	}
 	id, err := strconv.ParseInt(idText, 10, 64)
