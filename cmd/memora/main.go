@@ -175,6 +175,16 @@ func (a *App) ensureSchema() error {
 	if err := a.migrateSchema(); err != nil {
 		return err
 	}
+	// The slug schema follows migrateSchema because its index covers a column
+	// that only exists once the migration above has added it.
+	for _, statement := range albumSlugStatements {
+		if _, err := a.db.Exec(statement); err != nil {
+			return fmt.Errorf("schema: %w", err)
+		}
+	}
+	if err := a.backfillAlbumSlugs(); err != nil {
+		return err
+	}
 	return a.migrateData()
 }
 

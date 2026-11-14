@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -46,7 +45,7 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	rows, err := a.db.QueryContext(r.Context(), `
-		SELECT al.id,al.title,al.description,al.cover_photo_id,al.is_hidden,al.created_at,al.updated_at,al.position,al.password_hash,ap.photo_id
+		SELECT al.id,al.title,al.description,al.cover_photo_id,al.is_hidden,al.created_at,al.updated_at,al.position,al.password_hash,al.slug,ap.photo_id
 		FROM albums al
 		LEFT JOIN album_photos ap ON ap.album_id=al.id
 		ORDER BY al.position ASC,al.created_at DESC,al.id DESC,ap.position ASC,ap.id ASC`)
@@ -61,14 +60,14 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		hidden             int
 		created, updated   int64
 		position           float64
-		password           sql.NullString
+		password, slug     sql.NullString
 		photoIDs           []string
 	}
 	albumRows := []albumRow{}
 	for rows.Next() {
 		var album albumRow
 		var photoID sql.NullString
-		if err := rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated, &album.position, &album.password, &photoID); err != nil {
+		if err := rows.Scan(&album.id, &album.title, &album.description, &album.cover, &album.hidden, &album.created, &album.updated, &album.position, &album.password, &album.slug, &photoID); err != nil {
 			_ = rows.Close()
 			errorJSON(w, http.StatusInternalServerError, "Unable to read albums")
 			return
@@ -108,7 +107,7 @@ func (a *App) albums(w http.ResponseWriter, r *http.Request) {
 		} else {
 			cover = nil
 		}
-		out = append(out, map[string]any{"id": album.id, "title": album.title, "description": nullString(album.description), "coverPhotoId": cover, "isHidden": album.hidden == 1, "hasPassword": target.locked(), "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "position": album.position, "photoIds": photoIDs})
+		out = append(out, map[string]any{"id": album.id, "title": album.title, "slug": album.slug.String, "description": nullString(album.description), "coverPhotoId": cover, "isHidden": album.hidden == 1, "hasPassword": target.locked(), "createdAt": time.Unix(album.created, 0), "updatedAt": time.Unix(album.updated, 0), "position": album.position, "photoIds": photoIDs})
 	}
 	writeJSON(w, 200, out)
 }
@@ -165,6 +164,13 @@ func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := res.LastInsertId()
+	requestedSlug, _ := b["slug"].(string)
+	slug, slugErr := a.claimAlbumSlug(tx, id, title, requestedSlug)
+	if slugErr != nil {
+		_ = tx.Rollback()
+		writeAlbumSlugError(w, slugErr)
+		return
+	}
 	if _, err := insertAlbumPhotos(tx, id, photoIDs, 1000010); err != nil {
 		_ = tx.Rollback()
 		errorJSON(w, http.StatusBadRequest, "Unable to add photos to album")
@@ -179,7 +185,7 @@ func (a *App) createAlbum(w http.ResponseWriter, r *http.Request) {
 		errorJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"id": id, "title": title, "description": description, "coverPhotoId": coverPhotoID, "isHidden": isHidden, "hasPassword": passwordHash != nil, "position": position, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
+	writeJSON(w, http.StatusOK, map[string]any{"id": id, "title": title, "slug": slug, "description": description, "coverPhotoId": coverPhotoID, "isHidden": isHidden, "hasPassword": passwordHash != nil, "position": position, "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
 }
 
 // reorderAlbums stores the album list order the dashboard is showing. The
@@ -282,6 +288,14 @@ func decodeAlbumPayload(r *http.Request) (map[string]any, error) {
 			return nil, fmt.Errorf("Invalid isHidden")
 		}
 	}
+	// An empty slug asks for a new one made from the title; anything else is
+	// checked where the album is written, because whether it is still free
+	// depends on the other albums.
+	if value, ok := body["slug"]; ok {
+		if _, valid := value.(string); !valid {
+			return nil, fmt.Errorf("Invalid slug")
+		}
+	}
 	// An empty password means "no password" and is the only way to remove one,
 	// so it is accepted here even though the number of characters below is not
 	// enough to set one.
@@ -355,13 +369,12 @@ func (a *App) albumRoute(w http.ResponseWriter, r *http.Request, rest string) {
 	if len(parts) == 0 {
 		return
 	}
-	if parts[0] == "" || strings.Trim(parts[0], "0123456789") != "" {
-		errorJSON(w, http.StatusBadRequest, "Invalid album ID")
-		return
-	}
-	id, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		errorJSON(w, http.StatusBadRequest, "Invalid album ID")
+	// The first segment is either an album ID or the slug the album answers to.
+	// Both land on the same album, so every route below keeps working whichever
+	// address the page happened to be opened through.
+	id, _, _, ok := a.resolveAlbumSegment(parts[0])
+	if !ok {
+		errorJSON(w, http.StatusNotFound, "Album not found")
 		return
 	}
 	if len(parts) == 2 && parts[1] == "photos" && r.Method == http.MethodPut {
@@ -497,10 +510,10 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 	access := a.albumAccessFor(r)
 	var album albumAccessTarget
 	var title string
-	var description, cover sql.NullString
+	var description, cover, slug sql.NullString
 	var created, updated int64
 	var hidden int
-	if a.db.QueryRow(`SELECT id,title,description,cover_photo_id,is_hidden,created_at,updated_at,password_hash FROM albums WHERE id=?`, id).Scan(&album.id, &title, &description, &cover, &hidden, &created, &updated, &album.password) != nil {
+	if a.db.QueryRow(`SELECT id,title,description,cover_photo_id,is_hidden,created_at,updated_at,password_hash,slug FROM albums WHERE id=?`, id).Scan(&album.id, &title, &description, &cover, &hidden, &created, &updated, &album.password, &slug) != nil {
 		errorJSON(w, 404, "Album not found")
 		return
 	}
@@ -519,6 +532,7 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 			"error":  "Album password required",
 			"locked": true,
 			"title":  title,
+			"slug":   slug.String,
 		})
 		return
 	}
@@ -555,7 +569,7 @@ func (a *App) albumDetail(w http.ResponseWriter, r *http.Request, id int64) {
 		errorJSON(w, http.StatusInternalServerError, "Unable to read album photos")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "hasPassword": album.locked(), "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0), "photos": photos})
+	writeJSON(w, 200, map[string]any{"id": id, "title": title, "slug": slug.String, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "hasPassword": album.locked(), "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0), "photos": photos})
 }
 func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
 	if _, ok := a.require(r); !ok {
@@ -627,20 +641,36 @@ func (a *App) updateAlbum(w http.ResponseWriter, r *http.Request, id int64) {
 		errorJSON(w, http.StatusInternalServerError, "Failed to update album")
 		return
 	}
+	// The slug is decided last: a slug left empty is made from the title the
+	// album has now, which may be the one just written above.
+	var title string
+	var currentSlug sql.NullString
+	if err := tx.QueryRow(`SELECT title,slug FROM albums WHERE id=?`, id).Scan(&title, &currentSlug); err != nil {
+		errorJSON(w, http.StatusNotFound, "Album not found")
+		return
+	}
+	slug := currentSlug.String
+	if requested, ok := b["slug"].(string); ok {
+		claimed, claimErr := a.claimAlbumSlug(tx, id, title, requested)
+		if claimErr != nil {
+			writeAlbumSlugError(w, claimErr)
+			return
+		}
+		slug = claimed
+	}
 	if err := tx.Commit(); err != nil {
 		errorJSON(w, http.StatusInternalServerError, "Failed to update album")
 		return
 	}
-	var title string
 	var description, cover sql.NullString
 	var hidden int
 	var created, updated int64
 	var password sql.NullString
-	if err := a.db.QueryRow(`SELECT title,description,cover_photo_id,is_hidden,created_at,updated_at,password_hash FROM albums WHERE id=?`, id).Scan(&title, &description, &cover, &hidden, &created, &updated, &password); err != nil {
+	if err := a.db.QueryRow(`SELECT description,cover_photo_id,is_hidden,created_at,updated_at,password_hash FROM albums WHERE id=?`, id).Scan(&description, &cover, &hidden, &created, &updated, &password); err != nil {
 		errorJSON(w, http.StatusNotFound, "Album not found")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"id": id, "title": title, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "hasPassword": password.Valid && password.String != "", "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
+	writeJSON(w, 200, map[string]any{"id": id, "title": title, "slug": slug, "description": nullString(description), "coverPhotoId": nullString(cover), "isHidden": hidden == 1, "hasPassword": password.Valid && password.String != "", "createdAt": time.Unix(created, 0), "updatedAt": time.Unix(updated, 0)})
 }
 func keyToColumn(key string) string {
 	if key == "coverPhotoId" {
