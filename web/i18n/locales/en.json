@@ -1271,6 +1271,13 @@
           "system": "System"
         }
       },
+      "homeView": {
+        "label": "Home view",
+        "description": "What visitors see when they open the site",
+        "help": "Photos opens the gallery straight away; Albums opens the album list first.",
+        "photos": "Photos",
+        "albums": "Albums"
+      },
       "reactions": {
         "enabled": {
           "label": "Visitor reactions",

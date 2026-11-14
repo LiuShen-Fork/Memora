@@ -1197,6 +1197,13 @@
           "system": "系統"
         }
       },
+      "homeView": {
+        "label": "首頁檢視",
+        "description": "訪客打開站點時看到的內容",
+        "help": "相片會直接打開相片牆；相簿會先展示相簿列表。",
+        "photos": "相片",
+        "albums": "相簿"
+      },
       "reactions": {
         "enabled": {
           "label": "訪客表態",

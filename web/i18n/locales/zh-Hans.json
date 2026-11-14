@@ -1271,6 +1271,13 @@
           "system": "系统"
         }
       },
+      "homeView": {
+        "label": "首页视图",
+        "description": "访客打开站点时看到的内容",
+        "help": "照片会直接打开照片墙；相册会先展示相册列表。",
+        "photos": "照片",
+        "albums": "相册"
+      },
       "reactions": {
         "enabled": {
           "label": "访客表态",
