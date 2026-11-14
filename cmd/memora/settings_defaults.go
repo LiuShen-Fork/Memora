@@ -29,6 +29,9 @@ var defaultSettings = []settingDefault{
 	{Namespace: "app", Key: "avatarUrl", Type: "string", Default: "", Public: true, Label: "settings.app.avatarUrl.label", Description: "settings.app.avatarUrl.description"},
 	{Namespace: "app", Key: "footerLinkText", Type: "string", Default: "", Public: true, Label: "settings.app.footerLinkText.label", Description: "settings.app.footerLinkText.description"},
 	{Namespace: "app", Key: "footerLinkUrl", Type: "string", Default: "", Public: true, Label: "settings.app.footerLinkUrl.label", Description: "settings.app.footerLinkUrl.description"},
+	// Social links are a short JSON array of profile URLs, drawn as icons in
+	// the footer. Empty means the wall shows no icons at all.
+	{Namespace: "app", Key: "socialLinks", Type: "string", Default: "", Public: true, Label: "settings.app.socialLinks.label", Description: "settings.app.socialLinks.description"},
 	{Namespace: "app", Key: "appearance.theme", Type: "string", Default: "system", Public: true, Enum: []string{"light", "dark", "system"}, Label: "settings.app.appearance.theme.label", Description: "settings.app.appearance.theme.description"},
 	// The compact bar is what the fork has always shown, so it stays the
 	// default; the other two are the ways the wall can open on a large header.

@@ -330,6 +330,15 @@ func (a *App) updateSetting(ns, key string, value any, updatedBy any, sudo bool)
 			return fmt.Errorf("queueConcurrency must be a number between %d and %d", minQueueWorkers, maxQueueWorkers)
 		}
 	}
+	if ns == "app" && key == "socialLinks" {
+		// The links are read back by every visitor's browser, so they are
+		// checked and rewritten here, once, instead of at each read.
+		normalized, err := normalizeSocialLinks(value)
+		if err != nil {
+			return err
+		}
+		value = normalized
+	}
 	serialized := serializeSetting(typ, value)
 	if updatedBy == nil {
 		_, err := a.db.Exec(`UPDATE settings SET value=?,updated_at=unixepoch() WHERE namespace=? AND key=?`, serialized, ns, key)
