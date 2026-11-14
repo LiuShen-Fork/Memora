@@ -1269,6 +1269,14 @@
           "light": "Light",
           "dark": "Dark",
           "system": "System"
+        },
+        "homeHeaderLayout": {
+          "label": "Home header",
+          "description": "How the top of the photo wall is laid out",
+          "help": "The avatar, name and buttons stay the same — only what scrolls away changes",
+          "compact": "Compact bar",
+          "embedded": "Scrolls away",
+          "fixed": "Stays pinned"
         }
       },
       "homeView": {

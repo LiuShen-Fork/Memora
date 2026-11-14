@@ -1195,6 +1195,14 @@
           "light": "淺色",
           "dark": "深色",
           "system": "系統"
+        },
+        "homeHeaderLayout": {
+          "label": "首頁頁首",
+          "description": "相片牆頂部區域的樣式",
+          "help": "大頭貼、站名和按鈕都一樣，差別只在頁首會不會跟著頁面捲走",
+          "compact": "精簡頂欄",
+          "embedded": "隨頁捲動",
+          "fixed": "固定置頂"
         }
       },
       "homeView": {

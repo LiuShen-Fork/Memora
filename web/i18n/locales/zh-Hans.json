@@ -1269,6 +1269,14 @@
           "light": "浅色",
           "dark": "深色",
           "system": "系统"
+        },
+        "homeHeaderLayout": {
+          "label": "首页页头",
+          "description": "照片墙顶部区域的样式",
+          "help": "头像、站名和按钮都一样，区别只在于页头会不会跟着页面滚走",
+          "compact": "紧凑顶栏",
+          "embedded": "随页滚动",
+          "fixed": "固定置顶"
         }
       },
       "homeView": {

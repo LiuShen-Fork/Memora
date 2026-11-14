@@ -1195,6 +1195,14 @@
           "light": "淺色",
           "dark": "深色",
           "system": "系統"
+        },
+        "homeHeaderLayout": {
+          "label": "首頁頁頭",
+          "description": "相片牆頂部區域嘅樣式",
+          "help": "頭像、站名同按鈕都一樣，分別只係頁頭會唔會跟住頁面捲走",
+          "compact": "緊湊頂欄",
+          "embedded": "隨頁捲動",
+          "fixed": "固定置頂"
         }
       },
       "homeView": {

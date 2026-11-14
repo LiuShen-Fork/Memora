@@ -1195,6 +1195,14 @@
           "light": "ライト",
           "dark": "ダーク",
           "system": "システム"
+        },
+        "homeHeaderLayout": {
+          "label": "ホームヘッダー",
+          "description": "写真ウォール上部のレイアウト",
+          "help": "アバター・タイトル・ボタンは同じで、スクロールしたときにどうなるかだけが変わります",
+          "compact": "コンパクトバー",
+          "embedded": "一緒にスクロール",
+          "fixed": "上に固定"
         }
       },
       "homeView": {
