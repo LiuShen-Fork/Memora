@@ -452,10 +452,44 @@ func (a *App) photoStatus(w http.ResponseWriter, r *http.Request) {
 		"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
 	})
 }
+
+// reactionsAllowed reports whether visitors may still react. The setting is
+// read on every request so switching reactions off takes effect at once, and a
+// database that never gained the row keeps reactions on: the setting only turns
+// them off, it does not turn them on.
+func (a *App) reactionsAllowed() bool {
+	var configured any
+	if !a.readSetting("app", "reactions.enabled", &configured) {
+		return true
+	}
+	enabled, ok := configured.(bool)
+	return !ok || enabled
+}
+
+// isAdminRequest reports whether the request carries an administrator session,
+// without writing anything when it does not.
+func (a *App) isAdminRequest(r *http.Request) bool {
+	user, ok := a.require(r)
+	if !ok {
+		return false
+	}
+	admin, _ := user["isAdmin"].(int)
+	return admin == 1
+}
+
 func (a *App) reactions(w http.ResponseWriter, r *http.Request) {
 	ids := r.URL.Query()["ids"]
 	if len(ids) == 0 || (len(ids) == 1 && strings.TrimSpace(ids[0]) == "") {
 		errorJSON(w, http.StatusBadRequest, "ids is required")
+		return
+	}
+	// Turning reactions off takes the counts out of the gallery with them. The
+	// rows stay where they are, so turning reactions back on brings the counts
+	// back as they were. Whoever looks after the site still sees the counts:
+	// the switch is about what visitors are offered, and the history is what an
+	// administrator is deciding on.
+	if !a.reactionsAllowed() && !a.isAdminRequest(r) {
+		writeJSON(w, http.StatusOK, map[string]map[string]int{})
 		return
 	}
 	if len(ids) == 1 {
@@ -813,6 +847,14 @@ func (a *App) photoReaction(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	if len(seen) == 0 {
 		errorJSON(w, http.StatusNotFound, "Photo not found")
+		return
+	}
+	// With reactions switched off the route is closed rather than hidden: a
+	// client that still asks is told why, and nothing is written or read. The
+	// order matters — a photo out of sight is still answered as absent, so the
+	// refusal never names a photo the visitor may not see.
+	if !a.reactionsAllowed() {
+		errorJSON(w, http.StatusForbidden, "Reactions are turned off")
 		return
 	}
 	fingerprint := reactionFingerprint(r)
