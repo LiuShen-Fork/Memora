@@ -65,8 +65,16 @@ const totalReactions = computed(() => {
   )
 })
 
+// 管理员关掉表态后，按钮和计数一起消失，历史数据留在服务端
+const reactionsEnabled = useSettingRef('app:reactions.enabled')
+
 // 加载照片表态数据
 const loadPhotoReactions = async (photoId: string) => {
+  if (reactionsEnabled.value === false) {
+    selectedReaction.value = null
+    reactionCounts.value = {}
+    return
+  }
   try {
     const data = (await $fetch(`/api/photos/${photoId}/reactions`)) as any
     selectedReaction.value = data.userReaction || null
@@ -515,6 +523,17 @@ watch(
   { immediate: true },
 )
 
+// 站长在另一个标签页里改设置时，打开着的查看器也跟着收起表态入口
+watch(reactionsEnabled, (enabled) => {
+  if (enabled === false) {
+    showReactionPicker.value = false
+    selectedReaction.value = null
+    reactionCounts.value = {}
+  } else if (currentPhoto.value?.id) {
+    loadPhotoReactions(currentPhoto.value.id)
+  }
+})
+
 defineShortcuts({
   escape: () => {
     // 分享面板盖在看图器之上，Esc 先关它，否则会连着看图器一起关掉。
@@ -842,7 +861,11 @@ const swiperModules = [Navigation, Keyboard, Virtual]
                     <!-- 表态按钮 -->
                     <AnimatePresence>
                       <motion.div
-                        v-if="!isImageZoomed && !isLivePhotoPlaying"
+                        v-if="
+                          reactionsEnabled !== false &&
+                          !isImageZoomed &&
+                          !isLivePhotoPlaying
+                        "
                         :initial="{ opacity: 0, scale: 0.8, y: 20 }"
                         :animate="{ opacity: 1, scale: 1, y: 0 }"
                         :exit="{ opacity: 0, scale: 0.8, y: 20 }"
