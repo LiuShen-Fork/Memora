@@ -5,14 +5,30 @@ interface Props {
   };
   dateRangeText: string;
   locations?: string;
+  /** 页面滚过首屏，紧凑顶栏借此把标语换成眼前的日期与地点。 */
   isScrolled?: boolean;
+  /**
+   * 首页页头的形状，由站点的 `app:appearance.homeHeaderLayout` 决定。
+   *
+   * - `compact`：一直吸在顶部的一条细栏，滚动时中间换内容。这是默认，也是
+   *   这个项目一直以来的样子。
+   * - `embedded`：一块随页面滚走的大页头，排在照片墙最前面。
+   * - `fixed`：同样的大页头，但吸在顶部，滚过之后收成一行。
+   */
+  layout?: "compact" | "embedded" | "fixed";
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   stats: () => ({ total: 0 }),
   locations: "",
   isScrolled: false,
+  layout: "compact",
 });
+
+// fixed 的页头滚过首屏后收成一行：站名留在左边，按钮挪到右边。
+const isCollapsedHero = computed(
+  () => props.layout === "fixed" && Boolean(props.isScrolled),
+);
 
 const router = useRouter();
 const route = useRoute();
@@ -33,8 +49,6 @@ const photoCountLabel = computed(() => {
       return "张作品";
   }
 });
-
-const { themeIcon, cycleTheme } = useThemeCycle();
 
 const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
 const customFooterLinkText = computed(() =>
@@ -62,11 +76,15 @@ const footerLinkUrl = computed(() => {
   return defaultFooterLinkUrl;
 });
 
-const openLogin = () => router.push("/signin");
+// 照片墙可能开在 `/`，也可能开在 `/photos`（首页选了相册时）。
+const isWallPath = computed(() => ["/", "/photos"].includes(route.path));
 </script>
 
 <template>
-  <header class="masonry-topbar">
+  <header
+    v-if="layout === 'compact'"
+    class="masonry-topbar"
+  >
     <div class="masonry-topbar__inner">
       <div
         class="masonry-topbar__identity"
@@ -104,133 +122,51 @@ const openLogin = () => router.push("/signin");
         </Transition>
       </div>
 
-      <AuthState>
-        <template #default="{ loggedIn, clear }">
-          <div class="masonry-topbar__actions">
-            <div class="masonry-topbar__group masonry-topbar__functional-group">
-              <UTooltip :text="$t('ui.action.theme.tooltip')" ignore-non-keyboard-focus>
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  :icon="themeIcon"
-                  size="sm"
-                  :aria-label="$t('ui.action.theme.tooltip')"
-                  @click="cycleTheme"
-                />
-              </UTooltip>
-              <LanguageSwitcher compact button-class="masonry-topbar__button" />
-              <MasonryItemTopbarSortMenu />
-              <MasonryItemTopbarFilterMenu />
-            </div>
-
-            <div class="masonry-topbar__compact-functions masonry-topbar__group">
-              <UPopover>
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  icon="tabler:dots-vertical"
-                  size="sm"
-                  aria-label="More actions"
-                />
-                <template #content>
-                  <UCard
-                    variant="glassmorphism"
-                    class="max-w-[calc(100vw-1rem)]"
-                    :ui="{ body: 'p-1 sm:p-1' }"
-                  >
-                    <div class="masonry-topbar__compact-function-row">
-                      <UTooltip :text="$t('ui.action.theme.tooltip')" ignore-non-keyboard-focus>
-                        <UButton
-                          variant="ghost"
-                          color="neutral"
-                          class="masonry-topbar__button"
-                          :icon="themeIcon"
-                          size="sm"
-                          :aria-label="$t('ui.action.theme.tooltip')"
-                          @click="cycleTheme"
-                        />
-                      </UTooltip>
-                      <LanguageSwitcher compact button-class="masonry-topbar__button" />
-                      <MasonryItemTopbarSortMenu />
-                      <MasonryItemTopbarFilterMenu />
-                    </div>
-                  </UCard>
-                </template>
-              </UPopover>
-            </div>
-
-            <div class="masonry-topbar__group masonry-topbar__types">
-              <UTooltip :text="$t('ui.action.globe.tooltip')" ignore-non-keyboard-focus>
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  icon="tabler:map-pin-2"
-                  size="sm"
-                  :aria-label="$t('ui.action.globe.tooltip')"
-                  to="/globe"
-                />
-              </UTooltip>
-              <UTooltip :text="$t('title.albums')" ignore-non-keyboard-focus>
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  icon="tabler:photo"
-                  size="sm"
-                  :aria-label="$t('title.albums')"
-                  to="/albums"
-                />
-              </UTooltip>
-            </div>
-
-            <div class="masonry-topbar__group">
-              <template v-if="loggedIn">
-                <UTooltip :text="$t('ui.action.dashboard.tooltip')" ignore-non-keyboard-focus>
-                  <UButton
-                    data-tour="home-dashboard"
-                    variant="ghost"
-                    color="neutral"
-                    class="masonry-topbar__button"
-                    icon="tabler:dashboard"
-                    size="sm"
-                    :aria-label="$t('ui.action.dashboard.tooltip')"
-                    to="/dashboard"
-                  />
-                </UTooltip>
-                <UTooltip :text="$t('ui.action.logout.tooltip')" ignore-non-keyboard-focus>
-                  <UButton
-                    variant="ghost"
-                    color="neutral"
-                    class="masonry-topbar__button"
-                    icon="tabler:logout"
-                    size="sm"
-                    :aria-label="$t('ui.action.logout.tooltip')"
-                    @click="clear"
-                  />
-                </UTooltip>
-              </template>
-              <UTooltip v-else :text="$t('auth.form.signin.title')" ignore-non-keyboard-focus>
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  class="masonry-topbar__button"
-                  icon="tabler:login"
-                  size="sm"
-                  :aria-label="$t('auth.form.signin.title')"
-                  @click="openLogin"
-                />
-              </UTooltip>
-            </div>
-          </div>
-        </template>
-      </AuthState>
+      <MasonryItemTopbarActions />
     </div>
   </header>
+
+  <!--
+    大页头：头像、站名、标语和照片总量竖着居中排在照片墙最前面。
+    `fixed` 的时候它 sticky 在顶部，滚过之后收成一行；`embedded` 的时候
+    就留在页面里，跟着照片一起滚走。
+  -->
+  <header
+    v-else
+    class="masonry-hero"
+    :class="{ 'is-fixed': layout === 'fixed', 'is-compact': isCollapsedHero }"
+    data-tour="home-avatar"
+  >
+    <div class="masonry-hero__inner">
+      <img
+        :src="(getSetting('app:avatarUrl') as string) || '/web-app-manifest-192x192.png'"
+        class="masonry-hero__avatar"
+        :alt="$t('ui.photo.avatarAlt')"
+      />
+      <h1 class="masonry-hero__title">
+        {{ getSetting("app:title") }}
+      </h1>
+      <p v-if="getSetting('app:slogan')" class="masonry-hero__slogan">
+        {{ getSetting("app:slogan") }}
+      </p>
+      <p class="masonry-hero__meta">
+        <span>{{ stats.total }}{{ photoCountLabel }}</span>
+        <span v-if="getSetting('app:author')" class="masonry-hero__author">
+          · @{{ getSetting("app:author") }}
+        </span>
+        <span v-if="dateRangeText" class="masonry-hero__dates">
+          · {{ dateRangeText }}
+        </span>
+      </p>
+      <MasonryItemTopbarActions
+        :align="isCollapsedHero ? 'end' : 'center'"
+        class="masonry-hero__actions"
+      />
+    </div>
+  </header>
+
   <a
-    v-if="route.path === '/'"
+    v-if="isWallPath"
     :href="footerLinkUrl"
     target="_blank"
     rel="noopener noreferrer"
@@ -242,6 +178,8 @@ const openLogin = () => router.push("/signin");
 </template>
 
 <style scoped>
+/* ── 紧凑顶栏 ─────────────────────────────────────────────── */
+
 .masonry-topbar {
   position: fixed;
   inset: 0 0 auto;
@@ -374,35 +312,6 @@ const openLogin = () => router.push("/signin");
   color: rgb(212 212 216 / 72%);
 }
 
-.masonry-topbar__actions {
-  display: flex;
-  flex: 1 1 0%;
-  justify-content: flex-end;
-  gap: 0.35rem;
-  min-width: 0;
-  pointer-events: auto;
-}
-
-.masonry-topbar__group {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0.12rem;
-  border: 1px solid rgb(255 255 255 / 35%);
-  border-radius: 0.55rem;
-  background: rgb(255 255 255 / 62%);
-  box-shadow: 0 5px 18px rgb(0 0 0 / 5%);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-}
-
-.dark .masonry-topbar__group {
-  border-color: rgb(255 255 255 / 10%);
-  background: rgb(24 24 27 / 55%);
-  box-shadow: 0 5px 18px rgb(0 0 0 / 18%);
-}
-
 .dark .masonry-topbar {
   background: transparent;
 }
@@ -416,42 +325,145 @@ const openLogin = () => router.push("/signin");
   );
 }
 
-:deep(.masonry-topbar__button) {
-  width: 1.8rem;
-  height: 1.8rem;
-  flex: 0 0 auto;
-  cursor: pointer;
-  justify-content: center;
-  border-radius: 0.4rem;
-  background: transparent !important;
-  padding: 0 !important;
+/* ── 大页头（embedded / fixed）────────────────────────────── */
+
+.masonry-hero {
+  position: relative;
+  z-index: 40;
+  padding: 2.5rem 1rem 1.5rem;
+}
+
+/* fixed：吸在顶部。背后的照片从页头下面穿过去，所以垫一层模糊的白。 */
+.masonry-hero.is-fixed {
+  position: sticky;
+  top: 0;
+}
+
+.masonry-hero.is-fixed::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-bottom: 1px solid rgb(0 0 0 / 6%);
+  background: rgb(255 255 255 / 82%);
+  content: "";
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  transition: background-color 200ms ease;
+}
+
+.dark .masonry-hero.is-fixed::before {
+  border-bottom-color: rgb(255 255 255 / 8%);
+  background: rgb(9 9 11 / 78%);
+}
+
+.masonry-hero__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.masonry-hero__avatar {
+  width: 4.25rem;
+  height: 4.25rem;
+  margin-bottom: 0.35rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  object-fit: cover;
+  box-shadow: 0 8px 26px rgb(0 0 0 / 12%);
   transition:
-    background-color 150ms ease,
-    color 150ms ease;
+    width 240ms ease,
+    height 240ms ease,
+    margin 240ms ease,
+    opacity 160ms ease;
 }
 
-:deep(.masonry-topbar__button:hover),
-:deep(.masonry-topbar__button:focus-visible),
-:deep(.masonry-topbar__button[data-state="open"]) {
-  background: rgb(0 0 0 / 8%) !important;
+.dark .masonry-hero__avatar {
+  box-shadow: 0 8px 26px rgb(0 0 0 / 45%);
+  outline: 1px solid rgb(255 255 255 / 12%);
 }
 
-.dark :deep(.masonry-topbar__button:hover),
-.dark :deep(.masonry-topbar__button:focus-visible),
-.dark :deep(.masonry-topbar__button[data-state="open"]) {
-  background: rgb(255 255 255 / 12%) !important;
+.masonry-hero__title {
+  color: rgb(23 23 23);
+  font-size: clamp(1.45rem, 1.1rem + 1.6vw, 2.15rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  transition: font-size 240ms ease;
 }
 
-.masonry-topbar__compact-functions {
+.dark .masonry-hero__title {
+  color: rgb(250 250 250);
+}
+
+.masonry-hero__slogan {
+  color: rgb(63 63 70 / 82%);
+  font-family: Pacifico, cursive;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.dark .masonry-hero__slogan {
+  color: rgb(228 228 231 / 72%);
+}
+
+.masonry-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: rgb(82 82 91 / 88%);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.dark .masonry-hero__meta {
+  color: rgb(212 212 216 / 72%);
+}
+
+.masonry-hero__actions {
+  margin-top: 0.5rem;
+}
+
+/* 滚过首屏之后收成一行：头像、标语和统计让位，只留下站名和按钮 ——
+   站名靠左，按钮靠右，和紧凑顶栏对齐。 */
+.masonry-hero.is-compact {
+  padding: 0.55rem 0.75rem 0.6rem;
+}
+
+.masonry-hero.is-compact .masonry-hero__inner {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.masonry-hero.is-compact .masonry-hero__avatar,
+.masonry-hero.is-compact .masonry-hero__slogan,
+.masonry-hero.is-compact .masonry-hero__meta {
   display: none;
 }
 
-.masonry-topbar__compact-function-row {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
+.masonry-hero.is-compact .masonry-hero__title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.masonry-hero.is-compact .masonry-hero__actions {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+/* ── 页脚那枚小胶囊 ────────────────────────────────────────── */
 
 .masonry-page-footer {
   position: fixed;
@@ -515,27 +527,13 @@ const openLogin = () => router.push("/signin");
     font-size: 0.72rem;
   }
 
-  .masonry-topbar__actions {
-    flex: 0 1 auto;
-    max-width: none;
-    gap: 0.2rem;
-    overflow-x: auto;
-    padding-bottom: 1px;
-    scrollbar-width: none;
+  .masonry-hero {
+    padding: 2rem 0.85rem 1.25rem;
   }
 
-  .masonry-topbar__actions::-webkit-scrollbar {
-    display: none;
-  }
-
-  .masonry-topbar__group {
-    padding: 0.12rem;
-    border-radius: 0.5rem;
-  }
-
-  :deep(.masonry-topbar__button) {
-    width: 1.65rem;
-    height: 1.65rem;
+  .masonry-hero__avatar {
+    width: 3.5rem;
+    height: 3.5rem;
   }
 
   .masonry-page-footer {
@@ -549,21 +547,13 @@ const openLogin = () => router.push("/signin");
     display: none;
   }
 
-  .masonry-topbar__functional-group {
-    display: none;
-  }
-
-  .masonry-topbar__compact-functions {
-    display: inline-flex;
-  }
-
   .masonry-topbar__identity {
     flex: 1 1 auto;
   }
 
-  .masonry-topbar__actions {
-    flex: 0 1 auto;
-    max-width: none;
+  .masonry-hero__author,
+  .masonry-hero__dates {
+    display: none;
   }
 }
 </style>

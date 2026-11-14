@@ -170,6 +170,14 @@ const dateRangeText = computed(() => {
 
 const headerDateRangeText = computed(() => dateRange.value || dateRangeText.value)
 
+// 首页页头的形状由设置决定，未知值一律回到紧凑顶栏 —— 它是这个项目一直
+// 以来的样子，也是升级后没人动过设置时应该看到的样子。
+const headerLayoutSetting = useSettingRef('app:appearance.homeHeaderLayout')
+const headerLayout = computed<'compact' | 'embedded' | 'fixed'>(() => {
+  const value = headerLayoutSetting.value
+  return value === 'embedded' || value === 'fixed' ? value : 'compact'
+})
+
 const handleVisibilityChange = ({
   index,
   isVisible,
@@ -382,16 +390,19 @@ watch(currentPhotoIndex, (newIndex) => {
         ref="masonryWrapper"
         class="relative"
       >
+        <!-- 紧凑顶栏是浮在照片上的，所以在照片墙前面留出它的高度；
+             大页头自己占位置，不需要这块留白。 -->
         <div
+          v-if="headerLayout === 'compact'"
           class="masonry-header-wrapper"
-        >
-          <MasonryItemHeader
-            :stats="photoStats"
-            :date-range-text="headerDateRangeText"
-            :locations="visibleCities"
-            :is-scrolled="showFloatingActions"
-          />
-        </div>
+        />
+        <MasonryItemHeader
+          :layout="headerLayout"
+          :stats="photoStats"
+          :date-range-text="headerDateRangeText"
+          :locations="visibleCities"
+          :is-scrolled="showFloatingActions"
+        />
 
         <!-- Masonry Wall -->
         <MasonryStableWall
