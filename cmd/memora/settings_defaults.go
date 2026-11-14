@@ -30,6 +30,7 @@ var defaultSettings = []settingDefault{
 	{Namespace: "app", Key: "footerLinkText", Type: "string", Default: "", Public: true, Label: "settings.app.footerLinkText.label", Description: "settings.app.footerLinkText.description"},
 	{Namespace: "app", Key: "footerLinkUrl", Type: "string", Default: "", Public: true, Label: "settings.app.footerLinkUrl.label", Description: "settings.app.footerLinkUrl.description"},
 	{Namespace: "app", Key: "appearance.theme", Type: "string", Default: "system", Public: true, Enum: []string{"light", "dark", "system"}, Label: "settings.app.appearance.theme.label", Description: "settings.app.appearance.theme.description"},
+	{Namespace: "app", Key: "homeView", Type: "string", Default: "photos", Public: true, Enum: []string{"photos", "albums"}, Label: "settings.app.homeView.label", Description: "settings.app.homeView.description"},
 	{Namespace: "app", Key: "reactions.enabled", Type: "boolean", Default: true, Public: true, Label: "settings.app.reactions.enabled.label", Description: "settings.app.reactions.enabled.description"},
 	{Namespace: "system", Key: "upload.maxFileSize", Type: "number", Default: 32, Public: true, Label: "settings.app.upload.maxFileSize.label", Description: "settings.app.upload.maxFileSize.description"},
 	{Namespace: "system", Key: "upload.duplicateCheck.enabled", Type: "boolean", Default: true, Public: true, Label: "settings.system.upload.duplicateCheck.enabled.label", Description: "settings.system.upload.duplicateCheck.enabled.description"},
