@@ -159,6 +159,10 @@ func (a *App) ensureSchema() error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_namespace_key ON settings(namespace, key)`,
 		`CREATE TABLE IF NOT EXISTS settings_storage_providers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, provider TEXT NOT NULL, config TEXT NOT NULL, created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()))`,
 		`CREATE INDEX IF NOT EXISTS photos_date_taken_idx ON photos(date_taken DESC)`,
+		// The gallery walks the wall newest first and breaks ties on the id.
+		// Without the id in the index SQLite orders the rows and then sorts
+		// every page again; with it the page is a slice of the index.
+		`CREATE INDEX IF NOT EXISTS photos_date_taken_id_idx ON photos(date_taken DESC, id DESC)`,
 		`CREATE INDEX IF NOT EXISTS photos_last_modified_idx ON photos(last_modified DESC)`,
 		`CREATE INDEX IF NOT EXISTS album_photos_photo_idx ON album_photos(photo_id,album_id)`,
 		`CREATE TABLE IF NOT EXISTS tour_progress (tour_id TEXT PRIMARY KEY, status TEXT NOT NULL, updated_at INTEGER NOT NULL DEFAULT (unixepoch()))`,
