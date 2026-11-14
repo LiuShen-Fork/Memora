@@ -47,6 +47,47 @@ func TestSingleSettingReadRequiresAnAdministrator(t *testing.T) {
 	}
 }
 
+// The home header is choosable for the same reason the home view is, and the
+// compact bar has to stay the default: an installation that upgrades without
+// touching this setting must open on exactly the header it had before.
+func TestTheHomeHeaderDefaultsToTheCompactBarAndCanBeChanged(t *testing.T) {
+	app := newTestApp(t)
+
+	public := httptest.NewRecorder()
+	app.ServeHTTP(public, httptest.NewRequest(http.MethodGet, "/api/system/settings/all", nil))
+	var initial struct {
+		Data struct {
+			App map[string]any `json:"app"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(public.Body.Bytes(), &initial); err != nil {
+		t.Fatal(err)
+	}
+	if got := initial.Data.App["appearance.homeHeaderLayout"]; got != "compact" {
+		t.Fatalf("default home header = %v, want compact", got)
+	}
+
+	cases := []struct {
+		value  string
+		status int
+	}{
+		{"embedded", http.StatusOK},
+		{"fixed", http.StatusOK},
+		{"compact", http.StatusOK},
+		{"sidebar", http.StatusBadRequest},
+	}
+	for _, c := range cases {
+		t.Run(c.value, func(t *testing.T) {
+			request := adminRequest(t, app, http.MethodPut, "/api/system/settings/app/appearance.homeHeaderLayout", []byte(`{"value":"`+c.value+`"}`))
+			response := httptest.NewRecorder()
+			app.ServeHTTP(response, request)
+			if response.Code != c.status {
+				t.Fatalf("saving home header = %d, want %d (%s)", response.Code, c.status, response.Body.String())
+			}
+		})
+	}
+}
+
 // The home page opens on the photo wall or on the album list, and the choice
 // travels in the public snapshot: a visitor must not be sent to the home page
 // the site no longer uses. Only those two views are accepted.
