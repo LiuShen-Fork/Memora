@@ -84,6 +84,13 @@ const handleImageError = () => {
 }
 
 // LivePhoto video handling - 优化的交互逻辑
+let livePhotoTimer: ReturnType<typeof setTimeout> | null = null
+function stopLivePhotoTimer() {
+  if (livePhotoTimer) clearTimeout(livePhotoTimer)
+  livePhotoTimer = null
+}
+onBeforeUnmount(() => stopLivePhotoTimer())
+
 const handleMouseEnter = async () => {
   // Skip mouse events on mobile devices
   if (isMobile.value) return
@@ -97,8 +104,11 @@ const handleMouseEnter = async () => {
   if (videoBlob.value && videoBlobUrl.value && isVideoLoaded.value) {
     playLivePhotoVideo()
   } else if (!processingState.value?.isProcessing) {
-    // 如果视频还未处理，立即开始处理
-    processLivePhotoWhenVisible()
+    // 视频体积可达数 MB，扫过整面墙不该把每一张都拉一遍；指针停留片刻才开始取。
+    stopLivePhotoTimer()
+    livePhotoTimer = setTimeout(() => {
+      if (isHovering.value) processLivePhotoWhenVisible()
+    }, 220)
   }
 }
 
@@ -106,6 +116,7 @@ const handleMouseLeave = () => {
   // Skip mouse events on mobile devices
   if (isMobile.value) return
 
+  stopLivePhotoTimer()
   isHovering.value = false
   if (videoRef.value && !videoRef.value.paused) {
     videoRef.value.pause()
@@ -199,7 +210,7 @@ const handleVideoEnded = () => {
 
 // Mobile touch handlers for LivePhoto
 const handleTouchStart = (event: TouchEvent) => {
-  if (!isMobile.value || !props.photo.isLivePhoto || !videoBlobUrl.value) return
+  if (!isMobile.value || !props.photo.isLivePhoto) return
 
   touchCount.value = event.touches.length
 
@@ -214,7 +225,12 @@ const handleTouchStart = (event: TouchEvent) => {
       longPressTimer.value = setTimeout(() => {
         // Double check: only play if still single touch and touching
         if (isTouching.value && touchCount.value === 1) {
-          playLivePhotoVideo()
+          if (videoBlobUrl.value) {
+            playLivePhotoVideo()
+          } else if (!processingState.value?.isProcessing) {
+            // 手指按住才去取,取到后 processLivePhotoWhenVisible 会接着播放
+            processLivePhotoWhenVisible()
+          }
         }
       }, 350)
     }
@@ -329,12 +345,12 @@ const processLivePhotoWhenVisible = async () => {
         videoRef.value.load()
       }
 
-      // The first hover can arrive while the MP4 is being prepared. Continue
-      // playback once the video element has been mounted, as long as the
-      // pointer is still over this photo.
-      if (isHovering.value) {
+      // The first hover or long press can arrive while the MP4 is being
+      // prepared. Continue playback once the video element has been mounted,
+      // as long as the pointer or the finger is still on this photo.
+      if (isHovering.value || isTouching.value) {
         await nextTick()
-        if (isHovering.value) {
+        if (isHovering.value || isTouching.value) {
           playLivePhotoVideo()
         }
       }
@@ -428,12 +444,9 @@ onMounted(() => {
                 date: props.photo.dateTaken || new Date().toISOString(),
               })
 
-              // Process LivePhoto when it becomes visible
-              if (newVisibility) {
-                nextTick(() => {
-                  processLivePhotoWhenVisible()
-                })
-              }
+              // Scrolling past a Live Photo used to fetch its whole clip. The
+              // clip is only wanted when the pointer rests on the card or a
+              // finger holds it, so the fetch waits for that.
             }
           })
         },

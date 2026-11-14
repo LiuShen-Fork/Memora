@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
-import { livePhotoVideoSource } from '~/utils/live-photo'
 interface Props {
   photos: Photo[]
   columns?: number | 'auto'
@@ -45,7 +44,6 @@ const visiblePhotos = ref(new Set<number>())
 const animatedPhotoIds = ref(new Set<string>())
 
 const isMobile = useMediaQuery('(max-width: 768px)')
-const { batchProcessLivePhotos } = useLivePhotoProcessor()
 const { columns: layoutColumns } = useMasonryLayout()
 const {
   loadMore,
@@ -54,7 +52,6 @@ const {
   totalCount,
 } = usePhotos()
 
-const processedBatch = ref(new Set<string>())
 const columnWidth = computed(() => {
   if (props.columns === 'auto') {
     return 180
@@ -193,39 +190,6 @@ const handleVisibilityChange = ({
   }
   updateDateRange()
 
-  // Process LivePhotos for visible photos
-  nextTick(() => {
-    processVisibleLivePhotos()
-  })
-}
-
-// Process LivePhotos for currently visible photos
-const processVisibleLivePhotos = async () => {
-  const visiblePhotosArray = Array.from(visiblePhotos.value)
-  const livePhotosToProcess = visiblePhotosArray
-    .map((index) => displayPhotos.value[index])
-    .filter(
-      (photo): photo is Photo =>
-        photo != null &&
-        Boolean(photo.isLivePhoto) &&
-        Boolean(livePhotoVideoSource(photo)) &&
-        !processedBatch.value.has(photo.id),
-    )
-
-  if (livePhotosToProcess.length === 0) return
-
-  // Mark as processed to avoid reprocessing
-  livePhotosToProcess.forEach((photo) => {
-    processedBatch.value.add(photo.id)
-  })
-
-  // Start background processing
-  batchProcessLivePhotos(
-    livePhotosToProcess.map((photo) => ({
-      id: photo.id,
-      livePhotoVideoUrl: livePhotoVideoSource(photo)!,
-    })),
-  )
 }
 
 const updateDateRange = () => {
