@@ -50,32 +50,6 @@ const photoCountLabel = computed(() => {
   }
 });
 
-const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
-const customFooterLinkText = computed(() =>
-  String(getSetting("app:footerLinkText") || "").trim(),
-);
-const customFooterLinkUrl = computed(() =>
-  String(getSetting("app:footerLinkUrl") || "").trim(),
-);
-const hasCustomFooterLink = computed(
-  () => Boolean(customFooterLinkText.value || customFooterLinkUrl.value),
-);
-const footerLinkText = computed(() => {
-  return customFooterLinkText.value || "Memora";
-});
-const footerLinkUrl = computed(() => {
-  const value = customFooterLinkUrl.value;
-  try {
-    const parsed = new URL(value);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      return parsed.toString();
-    }
-  } catch {
-    // Invalid custom URLs use the project repository.
-  }
-  return defaultFooterLinkUrl;
-});
-
 // 照片墙可能开在 `/`，也可能开在 `/photos`（首页选了相册时）。
 const isWallPath = computed(() => ["/", "/photos"].includes(route.path));
 </script>
@@ -165,16 +139,7 @@ const isWallPath = computed(() => ["/", "/photos"].includes(route.path));
     </div>
   </header>
 
-  <a
-    v-if="isWallPath"
-    :href="footerLinkUrl"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="masonry-page-footer"
-  >
-    <Icon v-if="!hasCustomFooterLink" name="tabler:brand-github" class="size-3.5" />
-    <span class="max-w-36 truncate">{{ footerLinkText }}</span>
-  </a>
+  <MasonryItemFooterLinks v-if="isWallPath" />
 </template>
 
 <style scoped>
@@ -463,36 +428,6 @@ const isWallPath = computed(() => ["/", "/photos"].includes(route.path));
   flex: 0 0 auto;
 }
 
-/* ── 页脚那枚小胶囊 ────────────────────────────────────────── */
-
-.masonry-page-footer {
-  position: fixed;
-  z-index: 35;
-  left: 0.75rem;
-  bottom: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  max-width: 10rem;
-  padding: 0.35rem 0.6rem;
-  border: 1px solid rgb(255 255 255 / 30%);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 48%);
-  color: rgb(63 63 70 / 92%);
-  font-size: 0.68rem;
-  font-weight: 500;
-  box-shadow: 0 5px 18px rgb(0 0 0 / 6%);
-  pointer-events: auto;
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-}
-
-.dark .masonry-page-footer {
-  border-color: rgb(255 255 255 / 10%);
-  background: rgb(24 24 27 / 58%);
-  color: rgb(228 228 231 / 82%);
-}
-
 @media (max-width: 900px) {
   .masonry-topbar__status {
     display: none;
@@ -534,11 +469,6 @@ const isWallPath = computed(() => ["/", "/photos"].includes(route.path));
   .masonry-hero__avatar {
     width: 3.5rem;
     height: 3.5rem;
-  }
-
-  .masonry-page-footer {
-    left: 0.5rem;
-    bottom: 0.5rem;
   }
 }
 
