@@ -1264,6 +1264,13 @@
           "system": "System"
         }
       },
+      "reactions": {
+        "enabled": {
+          "label": "Visitor reactions",
+          "description": "Let visitors leave a reaction on a photo",
+          "help": "Turning this off hides reactions and their counts from the gallery and refuses new ones. Reactions already left are kept, and come back when you turn this on again."
+        }
+      },
       "upload": {
         "maxFileSize": {
           "label": "Max Upload File Size",
@@ -1659,7 +1666,8 @@
     },
     "general": {
       "sections": {
-        "site": "Site details"
+        "site": "Site details",
+        "reactions": "Visitor reactions"
       },
       "description": "Manage the site's basic information and display appearance. Changes will immediately affect the dashboard and public-facing display."
     },

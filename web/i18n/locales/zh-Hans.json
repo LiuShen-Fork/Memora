@@ -1264,6 +1264,13 @@
           "system": "系统"
         }
       },
+      "reactions": {
+        "enabled": {
+          "label": "访客表态",
+          "description": "允许访客对照片留下表态",
+          "help": "关闭后画廊里不再显示表态入口和计数，也不再接受新的表态；已经留下的表态会保留，重新开启后恢复显示。"
+        }
+      },
       "upload": {
         "maxFileSize": {
           "label": "最大上传文件大小",
@@ -1659,7 +1666,8 @@
     },
     "general": {
       "sections": {
-        "site": "站点信息"
+        "site": "站点信息",
+        "reactions": "访客表态"
       },
       "description": "管理站点基础信息与展示外观。更改会立即影响控制台和前台展示。"
     },

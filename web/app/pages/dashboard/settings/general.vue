@@ -15,9 +15,16 @@ const { fields, state, submit, loading } = useSettingsForm('app')
 // 也避免重置按钮把已上传的图片退回旧地址。
 const AVATAR_KEY = 'avatarUrl'
 
+const reactionFields = computed(() =>
+  fields.value.filter((f) => f.key.startsWith('reactions.')),
+)
+
 const appFields = computed(() =>
   fields.value.filter(
-    (f) => !f.key.startsWith('appearance.') && f.key !== AVATAR_KEY,
+    (f) =>
+      !f.key.startsWith('appearance.') &&
+      !f.key.startsWith('reactions.') &&
+      f.key !== AVATAR_KEY,
   ),
 )
 
@@ -55,12 +62,35 @@ const resetAppearanceSettings = () => {
   })
 }
 
+const isReactionsDirty = computed(() =>
+  reactionFields.value.some((field) =>
+    !sameValue(state[field.key], getDefaultFieldValue(field)),
+  ),
+)
+
+const resetReactionSettings = () => {
+  reactionFields.value.forEach((field) => {
+    state[field.key] = getDefaultFieldValue(field)
+  })
+}
+
 const handleAppSettingsSubmit = async () => {
   const appData = Object.fromEntries(
     appFields.value.map((f) => [f.key, state[f.key]]),
   )
   try {
     await submit(appData)
+  } catch {
+    /* empty */
+  }
+}
+
+const handleReactionSettingsSubmit = async () => {
+  const reactionData = Object.fromEntries(
+    reactionFields.value.map((f) => [f.key, state[f.key]]),
+  )
+  try {
+    await submit(reactionData)
   } catch {
     /* empty */
   }
@@ -124,6 +154,35 @@ const handleAppearanceSettingsSubmit = async () => {
               />
             </UForm>
           </div>
+        </SettingCard>
+
+        <SettingSkeleton
+          v-if="loading && reactionFields.length === 0"
+          :rows="1"
+        />
+
+        <SettingCard
+          v-else
+          :title="$t('settings.general.sections.reactions')"
+          icon="tabler:mood-smile"
+          form-id="reactionSettingsForm"
+          :dirty="isReactionsDirty"
+          :loading="loading"
+          @reset="resetReactionSettings"
+        >
+          <UForm
+            id="reactionSettingsForm"
+            class="divide-y divide-default"
+            @submit="handleReactionSettingsSubmit"
+          >
+            <SettingField
+              v-for="field in reactionFields"
+              :key="field.key"
+              :field="field"
+              :model-value="state[field.key]"
+              @update:model-value="(val) => (state[field.key] = val)"
+            />
+          </UForm>
         </SettingCard>
 
         <SettingSkeleton
