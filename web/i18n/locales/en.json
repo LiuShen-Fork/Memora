@@ -1261,6 +1261,10 @@
         "description": "URL opened by the customizable homepage footer link",
         "help": "Leave empty to use the Memora repository"
       },
+      "socialLinks": {
+        "label": "Social links",
+        "description": "Profiles shown as icons beside the footer on the photo wall"
+      },
       "appearance": {
         "theme": {
           "label": "Theme",
@@ -1689,7 +1693,21 @@
     "general": {
       "sections": {
         "site": "Site details",
-        "reactions": "Visitor reactions"
+        "reactions": "Visitor reactions",
+        "socialLinks": "Social links"
+      },
+      "socialLinks": {
+        "hint": "Up to four public profile addresses. They appear as round icons beside the footer link at the bottom left of the photo wall; leave the list empty to show none.",
+        "none": "No social links yet.",
+        "placeholder": "https://github.com/your-name",
+        "add": "Add link",
+        "remove": "Remove link",
+        "empty": "Fill in the address or remove this row.",
+        "spaces": "Remove the spaces at the start or end of the address.",
+        "tooLong": "An address cannot be longer than 2048 characters.",
+        "invalid": "Enter a full address, like https://github.com/your-name.",
+        "https": "The address must start with https://.",
+        "duplicate": "This address is already in the list."
       },
       "description": "Manage the site's basic information and display appearance. Changes will immediately affect the dashboard and public-facing display."
     },

@@ -1261,6 +1261,10 @@
         "description": "首页页脚自定义链接打开的地址",
         "help": "留空则使用 Memora 仓库地址"
       },
+      "socialLinks": {
+        "label": "社交链接",
+        "description": "显示在照片墙页脚旁的社交账号图标"
+      },
       "appearance": {
         "theme": {
           "label": "主题",
@@ -1689,7 +1693,21 @@
     "general": {
       "sections": {
         "site": "站点信息",
-        "reactions": "访客表态"
+        "reactions": "访客表态",
+        "socialLinks": "社交链接"
+      },
+      "socialLinks": {
+        "hint": "最多四条公开的主页地址，会以小图标排在照片墙左下角页脚链接旁边；留空则不显示。",
+        "none": "还没有添加社交链接。",
+        "placeholder": "https://github.com/你的名字",
+        "add": "添加链接",
+        "remove": "删除链接",
+        "empty": "请填写地址，或删掉这一行。",
+        "spaces": "地址首尾不能有空格。",
+        "tooLong": "地址不能超过 2048 个字符。",
+        "invalid": "请输入完整地址，例如 https://github.com/your-name。",
+        "https": "地址必须以 https:// 开头。",
+        "duplicate": "这个地址已经在列表里了。"
       },
       "description": "管理站点基础信息与展示外观。更改会立即影响控制台和前台展示。"
     },

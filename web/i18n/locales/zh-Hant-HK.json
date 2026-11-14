@@ -1187,6 +1187,10 @@
         "description": "首頁頁尾自訂連結開啟嘅網址",
         "help": "留空就會使用 Memora 儲存庫網址"
       },
+      "socialLinks": {
+        "label": "社交連結",
+        "description": "顯示在照片牆頁尾旁的社交帳號圖示"
+      },
       "appearance": {
         "theme": {
           "label": "主題",
@@ -1615,7 +1619,21 @@
     "general": {
       "sections": {
         "site": "站點資訊",
-        "reactions": "訪客表態"
+        "reactions": "訪客表態",
+        "socialLinks": "社交連結"
+      },
+      "socialLinks": {
+        "hint": "最多四條公開的主頁地址，會以小圖示排在照片牆左下角頁尾連結旁邊；留空則不顯示。",
+        "none": "還沒有新增社交連結。",
+        "placeholder": "https://github.com/你的名字",
+        "add": "新增連結",
+        "remove": "刪除連結",
+        "empty": "請填寫地址，或刪掉這一行。",
+        "spaces": "地址首尾不能有空格。",
+        "tooLong": "地址不能超過 2048 個字元。",
+        "invalid": "請輸入完整地址，例如 https://github.com/your-name。",
+        "https": "地址必須以 https:// 開頭。",
+        "duplicate": "這個地址已經在清單裡了。"
       },
       "description": "管理站點基礎資訊與展示外觀。更改會立即影響控制台和前台展示。"
     },
