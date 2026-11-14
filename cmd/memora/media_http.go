@@ -308,6 +308,7 @@ func (a *App) serveIndex(w http.ResponseWriter, r *http.Request, file string) {
 		return
 	}
 	page = a.annotatePage(page, r)
+	page = injectSplash(page)
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Length", strconv.Itoa(len(page)))
