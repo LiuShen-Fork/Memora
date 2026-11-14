@@ -181,19 +181,43 @@ const controlWidth = computed(() =>
     :html-for="isToggleField ? undefined : inputId"
     :required="field.ui.required"
   >
+    <!--
+      开关不是一行文字，它是这一行的“是否”，所以停在最右边 —— 左边说清这是什么，
+      右边只看它开没开，读一整张卡片时视线不用在文字后面找那个小圆点。
+      别的控件从左边起，和标签的下一列对齐。
+    -->
+    <div
+      v-if="isToggleField"
+      class="flex justify-end pt-0.5"
+    >
+      <component
+        :is="componentName"
+        :model-value="modelValue"
+        v-bind="componentProps"
+        :aria-describedby="descriptionId"
+        @update:model-value="handleChange"
+      />
+    </div>
     <component
+      v-else
       :is="componentName"
-      :id="isToggleField ? undefined : inputId"
+      :id="inputId"
       :model-value="modelValue"
       v-bind="componentProps"
       class="w-full"
-      :class="isToggleField ? '' : controlWidth"
+      :class="controlWidth"
       :aria-describedby="descriptionId"
       @update:model-value="handleChange"
     />
     <p
-      v-if="field.ui.help"
+      v-if="field.ui.help && !isToggleField"
       class="mt-1.5 text-xs leading-relaxed text-dimmed"
+    >
+      {{ $t(field.ui.help) }}
+    </p>
+    <p
+      v-else-if="field.ui.help"
+      class="mt-1.5 text-right text-xs leading-relaxed text-dimmed"
     >
       {{ $t(field.ui.help) }}
     </p>
