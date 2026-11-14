@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import type { AttributionControlOptions, StyleSpecification } from 'maplibre-gl'
 import { twMerge } from 'tailwind-merge'
+// The map stylesheet travels with the map instead of with every page. The
+// nuxt-maplibre module registers it globally, so nuxt.config removes it from
+// the global styles and the map component brings it back.
+import 'maplibre-gl/dist/maplibre-gl.css'
 import type { MapboxMap, MapInstance, MaplibreMap } from '~~/shared/types/map'
 import { isMapServiceConfigured } from '~~/shared/utils/map-service'
 

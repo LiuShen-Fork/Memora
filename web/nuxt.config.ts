@@ -1,3 +1,4 @@
+import { useNuxt } from '@nuxt/kit'
 import pkg from './package.json'
 import type { AnalyticsConfig } from './shared/types/config'
 import i18n, { dayjsLocales } from './i18n/i18n.options'
@@ -227,15 +228,37 @@ export default defineNuxtConfig({
             if (!id.includes('node_modules')) {
               return
             }
+            // Stylesheets are not part of the lazy story: the entry imports
+            // them, and a stylesheet dragged into a chunk takes that whole
+            // chunk with it.
+            if (id.includes('.css')) {
+              return
+            }
 
+            // Only the map renderers themselves. The Nuxt modules and the Vue
+            // wrapper around them pull in Nuxt's own app runtime, and putting
+            // those in the same chunk makes the map chunk a dependency of every
+            // other chunk — the exact opposite of splitting it off.
             if (
               id.includes('/mapbox-gl/') ||
-              id.includes('/maplibre-gl/') ||
-              id.includes('/@indoorequal/vue-maplibre-gl/') ||
-              id.includes('/nuxt-mapbox/') ||
-              id.includes('/nuxt-maplibre/')
+              id.includes('/maplibre-gl/')
             ) {
               return 'vendor-map'
+            }
+            if (
+              id.includes('/@nuxt/ui/') ||
+              id.includes('/reka-ui/') ||
+              id.includes('/@floating-ui/') ||
+              id.includes('/tippy.js/')
+            ) {
+              return 'vendor-ui'
+            }
+            if (
+              id.includes('/@intlify/') ||
+              id.includes('/vue-i18n/') ||
+              id.includes('/dayjs/')
+            ) {
+              return 'vendor-i18n'
             }
           },
         },
@@ -290,6 +313,18 @@ export default defineNuxtConfig({
       'isBetween',
     ],
     defaultTimezone: 'Asia/Shanghai',
+  },
+
+  hooks: {
+    // nuxt-maplibre adds the map stylesheet to every page. The map itself is
+    // loaded on demand now, so the component brings its own stylesheet and the
+    // wall stops paying for it.
+    'modules:done'() {
+      const nuxt = useNuxt()
+      nuxt.options.css = nuxt.options.css.filter(
+        (entry) => !String(entry).includes('maplibre-gl'),
+      )
+    },
   },
 
   i18n,
