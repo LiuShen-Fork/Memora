@@ -5,9 +5,13 @@ const route = useRoute()
 const router = useRouter()
 const dayjs = useDayjs()
 
-const albumId = computed(() => {
-  const id = route.params.albumId as string
-  return parseInt(id, 10)
+// The segment after /albums/ is either the album's number or its slug, and the
+// server answers both, so an address handed out before slugs existed keeps
+// working. The address bar is rewritten once the album says which slug it uses,
+// which also replaces a retired one with the current one.
+const albumSegment = computed(() => {
+  const segment = route.params.albumId
+  return (Array.isArray(segment) ? segment[0] : segment) || ''
 })
 
 const {
@@ -15,16 +19,32 @@ const {
   error,
   pending,
   refresh,
-} = await useFetch(() => `/api/albums/${albumId.value}`, {
-  watch: [albumId],
-})
+} = await useFetch(
+  () => `/api/albums/${encodeURIComponent(albumSegment.value)}`,
+  {
+    watch: [albumSegment],
+  },
+)
 
 // A locked album refuses with 403 instead of pretending not to exist, so the
 // visitor is asked for the password rather than sent to a 404.
 const lockedAlbum = computed(() => {
   if (error.value?.statusCode !== 403) return null
-  const data = (error.value as { data?: { title?: string } }).data
-  return { title: data?.title || null }
+  const data = (error.value as { data?: { title?: string; slug?: string } })
+    .data
+  return { title: data?.title || null, slug: data?.slug || '' }
+})
+
+watchEffect(() => {
+  if (!import.meta.client) return
+  const slug = album.value?.slug || lockedAlbum.value?.slug
+  const segment = albumSegment.value
+  if (!slug || !segment || segment === slug) return
+  void router.replace({
+    path: `/albums/${encodeURIComponent(slug)}`,
+    query: route.query,
+    hash: route.hash,
+  })
 })
 
 if (error.value && !lockedAlbum.value) {
@@ -46,7 +66,7 @@ const unlockAlbum = async () => {
   isUnlocking.value = true
   unlockError.value = ''
   try {
-    await $fetch(`/api/albums/${albumId.value}/unlock`, {
+    await $fetch(`/api/albums/${encodeURIComponent(albumSegment.value)}/unlock`, {
       method: 'POST',
       body: { password: password.value },
     })
@@ -143,7 +163,7 @@ const handleOpenViewer = (index: number) => {
   const photos = albumData.value?.photos
   if (photos && photos[index]) {
     const { openViewer } = useViewerState()
-    const albumRoute = `/albums/${albumId.value}`
+    const albumRoute = `/albums/${encodeURIComponent(albumData.value?.slug || albumSegment.value)}`
     // Scope the viewer to the album's photos so prev/next stays within this album.
     // The fetched photos are serialized rows of the same shape as Photo.
     openViewer(index, albumRoute, photos as Photo[])

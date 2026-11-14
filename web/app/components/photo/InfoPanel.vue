@@ -459,8 +459,10 @@ const onTagClick = (tag: string) => {
   })
 }
 
-const onAlbumClick = (albumId: number) => {
-  window.open(`/albums/${albumId}`)
+const onAlbumClick = (album: Album) => {
+  // The slug is the readable address, and the album's number is kept only as
+  // the fallback for an entry the server did not give one.
+  window.open(`/albums/${album.slug || album.id}`)
 }
 </script>
 
@@ -566,7 +568,7 @@ const onAlbumClick = (albumId: number) => {
             v-for="album in albums"
             :key="album.id"
             class="p-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
-            @click="onAlbumClick(album.id)"
+            @click="onAlbumClick(album)"
           >
             <p class="text-sm text-white font-medium line-clamp-1">
               {{ album.title }}

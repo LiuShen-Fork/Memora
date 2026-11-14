@@ -220,7 +220,7 @@ const emptyAlbumIcon = (album: AlbumWithPhotos) =>
         <NuxtLink
           v-for="album in visibleAlbums"
           :key="album.id"
-          :to="`/albums/${album.id}`"
+          :to="`/albums/${album.slug || album.id}`"
           class="block"
           @mouseenter="hoveredAlbum = album.id"
           @mouseleave="hoveredAlbum = null"

@@ -40,6 +40,9 @@ export interface Photo {
 export interface Album {
   id: number
   title: string
+  // The readable half of the album's address. Always present on albums the
+  // server returns; optional here so older payloads still type-check.
+  slug?: string | null
   description?: string | null
   coverPhotoId?: string | null
   isHidden: boolean
