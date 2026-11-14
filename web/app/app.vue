@@ -37,6 +37,9 @@ const { loggedIn } = session
 const appTitle = useSettingRef('app:title')
 const GALLERY_PAGE_SIZE = 50
 const INITIAL_GALLERY_COUNT = 100
+// The wall shows at `/`, and again at `/photos` when the home page is set to
+// the album list instead.
+const WALL_PATHS = ['/', '/photos']
 
 useHead({
   titleTemplate: (title) =>
@@ -54,9 +57,10 @@ const shouldLoadPhotos = computed(() => {
   // returning home does not trigger a second full collection fetch.
   const isPhotoDetailRoute =
     /^\/[^/]+$/.test(path) &&
-    !['/signin', '/onboarding', '/dashboard'].includes(path)
+    !['/signin', '/onboarding', '/dashboard', '/photos'].includes(path)
   return (
     path === '/' ||
+    path === '/photos' ||
     path === '/albums' ||
     path === '/globe' ||
     path === '/dashboard/photos' ||
@@ -76,8 +80,15 @@ const isGalleryPagedRoute = computed(() => {
   const path = route.path
   const isPhotoDetailRoute =
     /^\/[^/]+$/.test(path) &&
-    !['/signin', '/onboarding', '/dashboard', '/albums', '/globe'].includes(path)
-  return path === '/' || isPhotoDetailRoute
+    ![
+      '/signin',
+      '/onboarding',
+      '/dashboard',
+      '/albums',
+      '/globe',
+      '/photos',
+    ].includes(path)
+  return path === '/' || path === '/photos' || isPhotoDetailRoute
 })
 const photoQuery = computed(() => {
   if (route.path === '/dashboard/photos') {
@@ -107,7 +118,7 @@ const initialGalleryPagePending = ref(false)
 const resetGalleryPages = () => {
   additionalPhotos.value = []
   nextGalleryPage.value = 2
-  initialGalleryPagePending.value = route.path === '/'
+  initialGalleryPagePending.value = WALL_PATHS.includes(route.path)
 }
 
 watch(
@@ -204,7 +215,8 @@ watch(
       }>(endpoint, {
         query: { page, pageSize: GALLERY_PAGE_SIZE },
       })
-      if (endpoint !== apiEndpoint.value || route.path !== '/') return
+      if (endpoint !== apiEndpoint.value || !WALL_PATHS.includes(route.path))
+        return
 
       const knownIds = new Set([
         ...basePhotos.value.map((photo) => photo.id),
@@ -282,24 +294,32 @@ const handleIndexChange = (newIndex: number) => {
   router.replace(`/${viewerPhotos.value[newIndex]?.id}`)
 }
 
+// Where the wall lives right now. With the home page set to the album list the
+// wall moved to /photos, so closing a directly opened photo should land there
+// instead of dropping the visitor on the album list.
+const homeView = useSettingRef('app:homeView')
+const wallPath = computed(() =>
+  homeView.value === 'albums' ? '/photos' : '/'
+)
+
 const handleClose = () => {
   closeViewer()
 
-  // 如果是直接访问详情页面，关闭时返回首页
+  // 如果是直接访问详情页面，关闭时返回照片墙
   if (isDirectAccess.value) {
     isDirectAccess.value = false
-    router.replace('/')
+    router.replace(wallPath.value)
   } else if (returnRoute.value) {
     // 如果有指定的返回路由，返回到该路由
     const destination = returnRoute.value
     clearReturnRoute()
     router.replace(destination)
   } else {
-    // 否则使用历史记录或默认返回首页
+    // 否则使用历史记录或默认返回照片墙
     if (window.history.length > 1) {
       router.back()
     } else {
-      router.replace('/')
+      router.replace(wallPath.value)
     }
   }
 }
