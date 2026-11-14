@@ -285,15 +285,11 @@ func (a *App) serveWeb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if info, err := os.Stat(file); err == nil && !info.IsDir() {
-		if strings.HasPrefix(path, "/_nuxt/") {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		}
 		if path == "/index.html" {
 			a.serveIndex(w, r, file)
 			return
 		}
-		w.Header().Set("Cache-Control", "no-store")
-		http.ServeFile(w, r, file)
+		a.serveStatic(w, r, file, info)
 		return
 	}
 	// A path that carries an extension but names no file still gets the client
