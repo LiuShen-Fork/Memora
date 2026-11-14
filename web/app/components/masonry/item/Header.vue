@@ -16,7 +16,6 @@ withDefaults(defineProps<Props>(), {
 
 const router = useRouter();
 const route = useRoute();
-const colorMode = useColorMode();
 const { locale } = useI18n();
 
 const photoCountLabel = computed(() => {
@@ -35,20 +34,7 @@ const photoCountLabel = computed(() => {
   }
 });
 
-const themeIcon = computed(() => {
-  if (colorMode.preference === "dark") return "tabler:sun"
-  if (colorMode.preference === "light") return "tabler:moon"
-  return "tabler:device-desktop"
-})
-
-const cycleTheme = () => {
-  const nextTheme = {
-    system: "light",
-    light: "dark",
-    dark: "system",
-  } as const
-  colorMode.preference = nextTheme[colorMode.preference as keyof typeof nextTheme] || "system"
-}
+const { themeIcon, cycleTheme } = useThemeCycle();
 
 const defaultFooterLinkUrl = "https://github.com/LiuShen-Fork/Memora";
 const customFooterLinkText = computed(() =>
