@@ -935,6 +935,12 @@
       "form": {
         "title": "Title",
         "titlePlaceholder": "Enter album title",
+        "slug": "URL slug",
+        "slugHint": "Leave it empty to build one from the title.",
+        "slugPlaceholder": "summer-trip",
+        "slugPrefix": "/albums/",
+        "slugInvalid": "Use letters and numbers, separated by single hyphens.",
+        "slugTooLong": "The URL slug can be at most 80 characters.",
         "titleRequired": "Please enter album title",
         "description": "Description",
         "descriptionPlaceholder": "Enter album description (optional)",
@@ -1012,6 +1018,7 @@
         "loadError": "Failed to load albums",
         "loadDetailError": "Failed to load album details",
         "loadPhotosError": "Failed to load photos",
+        "slugTaken": "Another album already uses that URL slug.",
         "reorderError": "Failed to reorder albums"
       },
       "photoCount": "{count} photos"

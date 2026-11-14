@@ -935,6 +935,12 @@
       "form": {
         "title": "标题",
         "titlePlaceholder": "输入相簿标题",
+        "slug": "URL 别名",
+        "slugHint": "留空将根据标题自动生成。",
+        "slugPlaceholder": "summer-trip",
+        "slugPrefix": "/albums/",
+        "slugInvalid": "只能使用字母、数字，并用单个连字符分隔。",
+        "slugTooLong": "URL 别名最多 80 个字符。",
         "titleRequired": "请输入相簿标题",
         "description": "描述",
         "descriptionPlaceholder": "输入相簿描述（可选）",
@@ -1012,6 +1018,7 @@
         "loadError": "加载相簿失败",
         "loadDetailError": "加载相簿详情失败",
         "loadPhotosError": "加载照片失败",
+        "slugTaken": "已有另一个相簿使用了该 URL 别名。",
         "reorderError": "相簿排序失败"
       },
       "photoCount": "{count} 张"

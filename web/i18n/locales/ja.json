@@ -861,6 +861,12 @@
       "form": {
         "title": "タイトル",
         "titlePlaceholder": "アルバムのタイトルを入力",
+        "slug": "URL スラッグ",
+        "slugHint": "空欄の場合はタイトルから自動で作成します。",
+        "slugPlaceholder": "summer-trip",
+        "slugPrefix": "/albums/",
+        "slugInvalid": "文字と数字を使用し、単一のハイフンで区切ってください。",
+        "slugTooLong": "URL スラッグは 80 文字以内で入力してください。",
         "titleRequired": "アルバムのタイトルを入力してください",
         "description": "説明",
         "descriptionPlaceholder": "アルバムの説明を入力（オプション）",
@@ -938,6 +944,7 @@
         "loadError": "アルバムの読み込みに失敗しました",
         "loadDetailError": "アルバムの詳細の読み込みに失敗しました",
         "loadPhotosError": "写真の読み込みに失敗しました",
+        "slugTaken": "別のアルバムがこの URL スラッグを使用しています。",
         "reorderError": "アルバムの並べ替えに失敗しました"
       },
       "photoCount": "{count} 枚"
