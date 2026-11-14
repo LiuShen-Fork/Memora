@@ -524,7 +524,9 @@ const onAlbumClick = (album: Album) => {
         {{ currentPhoto.description }}
       </div>
 
-      <PhotoMiniMap
+      <!-- Loaded on demand: the map libraries behind this preview are the
+           largest thing the site ships, and most photos have no location. -->
+      <LazyPhotoMiniMap
         v-if="gpsCoordinates"
         :photo="currentPhoto"
         :latitude="gpsCoordinates?.latitude"

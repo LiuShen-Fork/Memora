@@ -289,6 +289,35 @@ const {
 // album) when present, otherwise the global list.
 const viewerPhotos = computed(() => scopedPhotos.value ?? photos.value)
 
+// The viewer is the heaviest thing the site ships and most visits to the wall
+// never open it. It mounts on the first open and then stays mounted, so the
+// close animation and the remembered state behave exactly as before; only the
+// first paint of the wall is spared the download.
+const viewerMounted = ref(false)
+watch(
+  isViewerOpen,
+  (open) => {
+    if (open) viewerMounted.value = true
+  },
+  { immediate: true },
+)
+
+// Fetch the viewer chunk once the wall is idle, so the first click opens on
+// the spot instead of waiting for a megabyte. The click still works without it.
+let viewerPrefetched = false
+const prefetchViewer = () => {
+  if (!import.meta.client || viewerPrefetched) return
+  viewerPrefetched = true
+  void import('~/components/photo/Viewer.vue')
+}
+if (import.meta.client) {
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(prefetchViewer, { timeout: 4000 })
+  } else {
+    setTimeout(prefetchViewer, 2500)
+  }
+}
+
 const handleIndexChange = (newIndex: number) => {
   switchToIndex(newIndex)
   router.replace(`/${viewerPhotos.value[newIndex]?.id}`)
@@ -364,8 +393,8 @@ provide(
       </NuxtLayout>
       <ClientOnly>
         <AdminTours />
-        <PhotoViewer
-          v-if="route.path !== '/globe'"
+        <LazyPhotoViewer
+          v-if="viewerMounted && route.path !== '/globe'"
           :photos="viewerPhotos"
           :current-index="currentPhotoIndex"
           :is-open="isViewerOpen"
