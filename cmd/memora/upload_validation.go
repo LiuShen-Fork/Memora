@@ -31,7 +31,7 @@ var uploadContentTypes = map[string]string{
 }
 
 func (a *App) maxUploadBytes() int64 {
-	megabytes := envInt("CFRAME_MAX_UPLOAD_MB", 32)
+	megabytes := envInt("MEMORA_MAX_UPLOAD_MB", 32)
 	var configured any
 	if a.readSetting("system", "upload.maxFileSize", &configured) {
 		switch value := configured.(type) {

@@ -130,7 +130,7 @@ func TestQueueWorkersComeFromTheEnvironmentWhenItIsSet(t *testing.T) {
 	if workers := app.initialQueueWorkers(); workers != 3 {
 		t.Fatalf("initial workers = %d, want the stored 3", workers)
 	}
-	// CFRAME_WORKERS wins at startup and is clamped to what the queue can run.
+	// MEMORA_WORKERS wins at startup and is clamped to what the queue can run.
 	app.cfg.WorkerCount = 90
 	if workers := app.initialQueueWorkers(); workers != maxQueueWorkers {
 		t.Fatalf("initial workers = %d, want the ceiling %d", workers, maxQueueWorkers)

@@ -143,7 +143,7 @@ func cardLocaleOf(r *http.Request) string {
 
 // ogCardFonts is the type cards are set in: the Go family, which ships inside
 // the Go image library rather than as an asset of its own, unless the operator
-// names a font file of their own in CFRAME_OG_FONT.
+// names a font file of their own in MEMORA_OG_FONT.
 //
 // The Go family has no Chinese, Japanese or Korean letters, which is what many
 // of the sites this draws are named in. A card therefore also looks for a font
@@ -196,7 +196,7 @@ func loadCardFonts(fonts *ogCardFonts, named string, logs *LogBuffer) {
 		fonts.err = err
 		return
 	}
-	logs.Add("og", "link preview cards are drawn in the Go font, which has no Chinese, Japanese or Korean letters: a font this machine keeps stands in for those, and CFRAME_OG_FONT names a font of your own")
+	logs.Add("og", "link preview cards are drawn in the Go font, which has no Chinese, Japanese or Korean letters: a font this machine keeps stands in for those, and MEMORA_OG_FONT names a font of your own")
 }
 
 // cardFallbackFonts are the fonts a card looks for a font the machine already

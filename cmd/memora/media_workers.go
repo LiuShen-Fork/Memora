@@ -135,7 +135,7 @@ func (a *App) worker(id int, retire <-chan struct{}) {
 }
 
 // initialQueueWorkers is the concurrency the process starts with. An operator
-// who set CFRAME_WORKERS gets what they asked for; otherwise the setting the
+// who set MEMORA_WORKERS gets what they asked for; otherwise the setting the
 // dashboard writes decides.
 func (a *App) initialQueueWorkers() int {
 	if a.cfg.WorkerCount > 0 {

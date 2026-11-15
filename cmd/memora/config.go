@@ -64,17 +64,18 @@ type Config struct {
 }
 
 func env(key, fallback string) string {
-	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+	if value, ok := envValue(key); ok {
 		return value
 	}
 	return fallback
 }
 
 func envBool(key string, fallback bool) bool {
-	value := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
-	if value == "" {
+	value, ok := envValue(key)
+	if !ok {
 		return fallback
 	}
+	value = strings.ToLower(value)
 	return value == "1" || value == "true" || value == "yes"
 }
 
@@ -95,8 +96,8 @@ func envBytesMB(key string, fallback int64) int64 {
 }
 
 func envDuration(key string, fallback time.Duration) time.Duration {
-	value := strings.TrimSpace(os.Getenv(key))
-	if value == "" {
+	value, ok := envValue(key)
+	if !ok {
 		return fallback
 	}
 	duration, err := time.ParseDuration(value)
@@ -107,8 +108,8 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 }
 
 func loadConfig() Config {
-	dataDir := env("CFRAME_DATA_DIR", "./data")
-	webDir := env("CFRAME_WEB_DIR", defaultWebDir)
+	dataDir := env("MEMORA_DATA_DIR", "./data")
+	webDir := env("MEMORA_WEB_DIR", defaultWebDir)
 	// During the Nuxt-to-Go migration, older local commands commonly pointed at
 	// ./.output/public. Prefer the canonical web workspace when that stale
 	// bundle is still present so the server cannot silently serve an old UI.
@@ -119,19 +120,19 @@ func loadConfig() Config {
 		DBPath:         env("DATABASE_URL", filepath.Join(dataDir, "app.sqlite3")),
 		DataDir:        dataDir,
 		WebDir:         webDir,
-		Addr:           env("CFRAME_ADDR", ":3000"),
-		DBMaxOpenConns: envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
+		Addr:           env("MEMORA_ADDR", ":3000"),
+		DBMaxOpenConns: envInt("MEMORA_DB_MAX_OPEN_CONNS", 4),
 		// Zero means the operator has not asked for a number, and the queue uses
-		// its own setting instead. CFRAME_WORKERS is a starting point, not a
+		// its own setting instead. MEMORA_WORKERS is a starting point, not a
 		// limit: the dashboard changes the setting while the process runs.
-		WorkerCount:        envInt("CFRAME_WORKERS", 0),
-		MediaConcurrency:   envInt("CFRAME_MEDIA_CONCURRENCY", 1),
-		MediaMaxBytes:      envBytesMB("CFRAME_MEDIA_MAX_MB", 32),
-		MediaTimeout:       envDuration("CFRAME_MEDIA_TIMEOUT", 2*time.Minute),
-		FFmpeg:             env("CFRAME_FFMPEG_PATH", "ffmpeg"),
-		FFprobe:            env("CFRAME_FFPROBE_PATH", "ffprobe"),
+		WorkerCount:        envInt("MEMORA_WORKERS", 0),
+		MediaConcurrency:   envInt("MEMORA_MEDIA_CONCURRENCY", 1),
+		MediaMaxBytes:      envBytesMB("MEMORA_MEDIA_MAX_MB", 32),
+		MediaTimeout:       envDuration("MEMORA_MEDIA_TIMEOUT", 2*time.Minute),
+		FFmpeg:             env("MEMORA_FFMPEG_PATH", "ffmpeg"),
+		FFprobe:            env("MEMORA_FFPROBE_PATH", "ffprobe"),
 		ExifTool:           env("EXIFTOOL_PATH", "exiftool"),
-		OGFont:             env("CFRAME_OG_FONT", ""),
+		OGFont:             env("MEMORA_OG_FONT", ""),
 		NominatimURL:       env("NUXT_NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org"),
 		GithubClientID:     env("NUXT_OAUTH_GITHUB_CLIENT_ID", ""),
 		GithubClientSecret: env("NUXT_OAUTH_GITHUB_CLIENT_SECRET", ""),

@@ -48,12 +48,12 @@ USER memora
 EXPOSE 3000
 VOLUME ["/app/data"]
 
-ENV CFRAME_ADDR=:3000 \
-    CFRAME_DATA_DIR=/app/data \
-    CFRAME_WEB_DIR=/app/web \
+ENV MEMORA_ADDR=:3000 \
+    MEMORA_DATA_DIR=/app/data \
+    MEMORA_WEB_DIR=/app/web \
     DATABASE_URL=/app/data/app.sqlite3 \
-    CFRAME_FFMPEG_PATH=/usr/bin/ffmpeg \
-    CFRAME_FFPROBE_PATH=/usr/bin/ffprobe \
+    MEMORA_FFMPEG_PATH=/usr/bin/ffmpeg \
+    MEMORA_FFPROBE_PATH=/usr/bin/ffprobe \
     EXIFTOOL_PATH=/usr/bin/exiftool \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 

@@ -100,10 +100,10 @@ func wizardFields(namespace string) []map[string]any {
 	switch namespace {
 	case "admin":
 		return []map[string]any{
-			field("username", "string", "wizard.admin.username.label", env("CFRAME_ADMIN_NAME", "admin"), input(true, "admin")),
-			field("email", "string", "wizard.admin.email.label", env("CFRAME_ADMIN_EMAIL", ""), input(true, "admin@example.com")),
-			field("password", "string", "wizard.admin.password.label", env("CFRAME_ADMIN_PASSWORD", ""), map[string]any{"type": "password", "required": true}),
-			field("confirmPassword", "string", "wizard.admin.confirmPassword.label", env("CFRAME_ADMIN_PASSWORD", ""), map[string]any{"type": "password", "required": true}),
+			field("username", "string", "wizard.admin.username.label", env("MEMORA_ADMIN_NAME", "admin"), input(true, "admin")),
+			field("email", "string", "wizard.admin.email.label", env("MEMORA_ADMIN_EMAIL", ""), input(true, "admin@example.com")),
+			field("password", "string", "wizard.admin.password.label", env("MEMORA_ADMIN_PASSWORD", ""), map[string]any{"type": "password", "required": true}),
+			field("confirmPassword", "string", "wizard.admin.confirmPassword.label", env("MEMORA_ADMIN_PASSWORD", ""), map[string]any{"type": "password", "required": true}),
 		}
 	case "app":
 		return []map[string]any{
