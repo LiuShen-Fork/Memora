@@ -106,13 +106,46 @@ const itemHeights = () => {
 
 // Build a new assignment without clearing the rendered columns. This keeps
 // the old wall visible while sorting, resizing, or changing the column count.
+//
+// Measuring only works for items the previous assignment already put in the
+// DOM. A fresh page of results arrives all at once, and until it is rendered
+// none of it can be measured — read as 0, every one of those cards looks
+// weightless, so packing drops the whole page into whichever column happened to
+// be shortest, and that column ends up dozens of cards longer than its
+// neighbours. Give the unmeasured items a provisional frame in the layout
+// first, then measure for real.
 const rebuild = async () => {
   const token = ++redrawToken
   await nextTick()
   if (token !== redrawToken) return
 
   const count = columnCount()
-  const heights = itemHeights()
+  let heights = itemHeights()
+
+  if (heights.size < props.items.length) {
+    // Keep the cards already on screen where they are; only the newcomers
+    // need a slot for the measuring frame. When the column count changed the
+    // old assignment no longer fits, so seed a rough one with everything.
+    const keepExisting = columns.value.length === count
+    const provisional = keepExisting
+      ? columns.value.map((column) => [...column])
+      : createColumns(count)
+    props.items.forEach((_item, index) => {
+      if (keepExisting && heights.has(index)) return
+      ;(provisional[index % count] ||= []).push(index)
+    })
+    columns.value = provisional
+    await nextTick()
+    if (token !== redrawToken) return
+    heights = itemHeights()
+  }
+
+  // Anything still missing (a slot that renders nothing) shares the median
+  // height instead of weighing nothing.
+  const measured = [...heights.values()].sort((a, b) => a - b)
+  const fallback =
+    measured.length > 0 ? measured[Math.floor(measured.length / 2)]! : 0
+
   const nextColumns = createColumns(count)
   const nextHeights = Array.from({ length: count }, () => 0)
 
@@ -122,7 +155,7 @@ const rebuild = async () => {
       if (nextHeights[column]! < nextHeights[target]!) target = column
     }
     nextColumns[target]!.push(index)
-    nextHeights[target]! += (heights.get(index) || 0) + props.gap
+    nextHeights[target]! += (heights.get(index) ?? fallback) + props.gap
   })
 
   columns.value = nextColumns
