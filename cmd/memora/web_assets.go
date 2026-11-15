@@ -134,5 +134,19 @@ func (a *App) serveStatic(w http.ResponseWriter, r *http.Request, file string, i
 			return
 		}
 	}
-	http.ServeFile(w, r, file)
+	// Files too small to gain from compression still need their real type: the
+	// system mime table does not know every extension the frontend uses (the web
+	// app manifest, for one). ServeContent keeps whatever type is already set.
+	if contentType == "" {
+		http.ServeFile(w, r, file)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	opened, err := os.Open(file)
+	if err != nil {
+		http.ServeFile(w, r, file)
+		return
+	}
+	defer opened.Close()
+	http.ServeContent(w, r, file, info.ModTime(), opened)
 }

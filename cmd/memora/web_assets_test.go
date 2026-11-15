@@ -147,3 +147,24 @@ func TestTheOtherStaticFilesAreCachedForAnHour(t *testing.T) {
 		t.Fatalf("icon body differs (%q)", response.Body.String())
 	}
 }
+
+func TestASmallStaticFileKeepsItsOwnType(t *testing.T) {
+	manifest := `{"name":"Memora","icons":[]}`
+	app := frontendApp(t, map[string]string{"site.webmanifest": manifest})
+
+	for _, headers := range []map[string]string{nil, {"Accept-Encoding": "gzip"}} {
+		response := assetRequest(t, app, "/site.webmanifest", headers)
+		if response.Code != http.StatusOK {
+			t.Fatalf("manifest is answered %d", response.Code)
+		}
+		if kind := response.Header().Get("Content-Type"); kind != compressibleAssetTypes[".webmanifest"] {
+			t.Fatalf("manifest is served as %q", kind)
+		}
+		if response.Header().Get("Content-Encoding") != "" {
+			t.Fatalf("a %d byte file was compressed", len(manifest))
+		}
+		if response.Body.String() != manifest {
+			t.Fatalf("manifest body differs (%q)", response.Body.String())
+		}
+	}
+}
