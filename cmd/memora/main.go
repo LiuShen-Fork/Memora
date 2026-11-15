@@ -76,6 +76,13 @@ func main() {
 	// instead of a well-known constant.
 	secret, err := resolveSessionSecret(cfg.DataDir, os.Getenv)
 	if err != nil {
+		// A container whose data mount belongs to another user stops here,
+		// before the database is opened, and "permission denied" on its own
+		// does not say what to do. The image fixes this on start; say so for
+		// every other way of running the server.
+		if errors.Is(err, os.ErrPermission) {
+			log.Printf("make %s writable by the user the server runs as; the Docker entrypoint takes ownership of the mount on start unless --user overrides it", cfg.DataDir)
+		}
 		log.Fatal(err)
 	}
 	cfg.SessionKey = secret
