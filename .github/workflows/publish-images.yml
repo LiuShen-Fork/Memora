@@ -19,26 +19,25 @@ permissions:
 env:
   GHCR_REGISTRY: ghcr.io
   GHCR_USERNAME: liushen-fork
+  IMAGE: ghcr.io/liushen-fork/memora
 
 jobs:
-  release:
-    name: Release v${{ inputs.version }}
+  # On its own so a wrong version number fails in seconds instead of after an
+  # image has been built.
+  prepare:
+    name: Check v${{ inputs.version }}
     runs-on: ubuntu-24.04
-    # A release takes minutes. The default six-hour limit let one emulated
-    # build sit for two hours before anyone noticed; fail sooner instead.
-    timeout-minutes: 45
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      docker_tags: ${{ steps.release.outputs.docker_tags }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25.x'
-          cache: true
 
       - name: Validate version and collect commits
         id: release
@@ -70,38 +69,92 @@ jobs:
           echo "prerelease=$([[ "$VERSION" == *-* ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           {
             echo 'docker_tags<<EOF'
-            echo "ghcr.io/liushen-fork/memora:${VERSION}"
-            echo 'ghcr.io/liushen-fork/memora:nightly'
+            echo "${IMAGE}:${VERSION}"
+            echo "${IMAGE}:nightly"
             if [[ "$VERSION" != *-* ]]; then
-              echo 'ghcr.io/liushen-fork/memora:latest'
+              echo "${IMAGE}:latest"
             fi
             echo EOF
           } >> "$GITHUB_OUTPUT"
 
+      - name: Keep the release notes for the publishing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  # The release binaries and the container image share nothing but the source,
+  # so they run side by side on two runners instead of one after the other.
+  binaries:
+    name: Binaries
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache: true
+
       - name: Build release binaries
         env:
-          VERSION: ${{ steps.release.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
+          # All five targets cross-compile from the same module cache; there is
+          # no reason to wait for one platform before starting the next.
+          pids=()
           for target in \
             'linux amd64' \
             'linux arm64' \
             'windows amd64' \
             'darwin amd64' \
             'darwin arm64'; do
-            read -r goos goarch <<< "$target"
-            archive="memora-${VERSION}-${goos}-${goarch}"
-            binary='memora'
-            [[ "$goos" == 'windows' ]] && binary='memora.exe'
-            mkdir -p "build/${archive}"
-            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
-            go build -trimpath -ldflags='-s -w' -o "build/${archive}/${binary}" ./cmd/memora
-            tar -C "build/${archive}" -czf "dist/${archive}.tar.gz" .
-            rm -rf "build/${archive}"
+            (
+              read -r goos goarch <<< "$target"
+              archive="memora-${VERSION}-${goos}-${goarch}"
+              binary='memora'
+              [[ "$goos" == 'windows' ]] && binary='memora.exe'
+              mkdir -p "build/${archive}"
+              GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              go build -trimpath -ldflags='-s -w' -o "build/${archive}/${binary}" ./cmd/memora
+              tar -C "build/${archive}" -czf "dist/${archive}.tar.gz" .
+              rm -rf "build/${archive}"
+            ) &
+            pids+=($!)
           done
+
+          status=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || status=1
+          done
+          if [[ "$status" -ne 0 ]]; then
+            echo "At least one target failed to build" >&2
+            exit 1
+          fi
+
           sha256sum dist/*.tar.gz > dist/SHA256SUMS
+
+      - name: Keep the archives for the publishing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  image:
+    name: Image
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -127,21 +180,41 @@ jobs:
           # one build. Without these two lines every release re-ran pnpm
           # install, the Nuxt bundle and the Go module download from zero.
           # mode=max keeps the intermediate stages, which is where the time is.
-          cache-from: type=registry,ref=${{ env.GHCR_REGISTRY }}/liushen-fork/memora:buildcache
-          cache-to: type=registry,ref=${{ env.GHCR_REGISTRY }}/liushen-fork/memora:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
           build-args: |
-            MEMORA_VERSION=${{ steps.release.outputs.version }}
-          tags: ${{ steps.release.outputs.docker_tags }}
+            MEMORA_VERSION=${{ needs.prepare.outputs.version }}
+          tags: ${{ needs.prepare.outputs.docker_tags }}
 
-      # Last, not first. The tag used to be pushed before anything was built,
-      # so a failed frontend or Docker build left v$VERSION pointing at a
-      # commit that cannot be released, and the next run refused to touch it
-      # ("Tag v$VERSION already exists") — the run needed a human to delete the
-      # tag before it could be retried. Building first means a failure leaves
-      # nothing behind to clean up.
+  # Last, not first. The tag used to be pushed before anything was built, so a
+  # failed frontend or Docker build left v$VERSION pointing at a commit that
+  # cannot be released, and the next run refused to touch it ("Tag v$VERSION
+  # already exists") — the run needed a human to delete the tag before it could
+  # be retried. Building first means a failure leaves nothing behind to clean
+  # up, and this job only starts once both builds have succeeded.
+  publish:
+    name: Tag and release
+    needs: [prepare, binaries, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Fetch the archives
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Fetch the release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
       - name: Create release tag
         env:
-          VERSION: ${{ steps.release.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -151,8 +224,8 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.release.outputs.version }}
-          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
