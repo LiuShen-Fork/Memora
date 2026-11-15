@@ -1,8 +1,17 @@
-# Memora
+<p align="center">
+  <img src="web/public/favicon.svg" width="88" height="88" alt="Memora" />
+</p>
 
-[English](README.md) · **简体中文**
+<h1 align="center">Memora</h1>
+
+<p align="center">
+  <a href="https://xc.liushen.fun/"><b>在线示例</b></a> ·
+  <a href="README.md">English</a> · <b>简体中文</b>
+</p>
 
 自托管的照片相册：瀑布流浏览、相册整理、在地图上探索照片。支持 EXIF、反向地理编码、Live/Motion Photo、三种存储后端，桌面与手机自适应。
+
+示例站点 [xc.liushen.fun](https://xc.liushen.fun/) 就是一个跑着这份代码的真实相册，照片墙、相册和地图都能直接点开看。
 
 Memora 是用 Go 重写的 [HoshinoSuzumi/ChronoFrame](https://github.com/HoshinoSuzumi/ChronoFrame)。SQLite 结构和 `data/` 目录布局与原版一致，已有的 ChronoFrame 部署把新镜像挂到同一个数据卷即可迁移。
 

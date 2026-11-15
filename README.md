@@ -1,8 +1,17 @@
-# Memora
+<p align="center">
+  <img src="web/public/favicon.svg" width="88" height="88" alt="Memora" />
+</p>
 
-**English** · [简体中文](README_zh.md)
+<h1 align="center">Memora</h1>
+
+<p align="center">
+  <a href="https://xc.liushen.fun/"><b>Live demo</b></a> ·
+  <b>English</b> · <a href="README_zh.md">简体中文</a>
+</p>
 
 A self-hosted photo gallery: browse a masonry wall, organize albums, and explore your photos on a map. EXIF, reverse geocoding, Live/Motion Photos, three storage backends, and a responsive desktop/mobile UI.
+
+The demo at [xc.liushen.fun](https://xc.liushen.fun/) is a real gallery running this build — the wall, the albums, and the map are all live.
 
 Memora is a Go rewrite of [HoshinoSuzumi/ChronoFrame](https://github.com/HoshinoSuzumi/ChronoFrame). It keeps the same SQLite schema and the same `data/` layout, so an existing ChronoFrame deployment moves over by pointing the new image at the same volume.
 
