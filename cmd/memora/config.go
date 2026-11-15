@@ -108,7 +108,6 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 
 func loadConfig() Config {
 	dataDir := env("CFRAME_DATA_DIR", "./data")
-	secret := env("NUXT_SESSION_PASSWORD", env("CFRAME_SESSION_SECRET", "change-me-in-production"))
 	webDir := env("CFRAME_WEB_DIR", defaultWebDir)
 	// During the Nuxt-to-Go migration, older local commands commonly pointed at
 	// ./.output/public. Prefer the canonical web workspace when that stale
@@ -122,7 +121,6 @@ func loadConfig() Config {
 		WebDir:         webDir,
 		Addr:           env("CFRAME_ADDR", ":3000"),
 		DBMaxOpenConns: envInt("CFRAME_DB_MAX_OPEN_CONNS", 4),
-		SessionKey:     []byte(secret),
 		// Zero means the operator has not asked for a number, and the queue uses
 		// its own setting instead. CFRAME_WORKERS is a starting point, not a
 		// limit: the dashboard changes the setting while the process runs.

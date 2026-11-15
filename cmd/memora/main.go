@@ -71,6 +71,14 @@ func main() {
 	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
+	// The session key is resolved once the data directory exists: an install
+	// that never set the environment variable gets a generated key stored there
+	// instead of a well-known constant.
+	secret, err := resolveSessionSecret(cfg.DataDir, os.Getenv)
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg.SessionKey = secret
 	db, err := openDatabase(cfg.DBPath)
 	if err != nil {
 		log.Fatal(err)
