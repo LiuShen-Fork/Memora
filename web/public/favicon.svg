@@ -1,12 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Memora">
   <defs>
-    <linearGradient id="field" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+    <linearGradient id="memora" x1="88" y1="80" x2="424" y2="432" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#6366f1"/>
       <stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="118" fill="url(#field)"/>
-  <rect x="112" y="112" width="288" height="288" rx="44" fill="none" stroke="#ffffff" stroke-width="30"/>
-  <circle cx="322" cy="196" r="34" fill="#ffffff"/>
-  <path d="M136 352 L214 268 L268 330 L306 292 L376 366" fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="80" y="80" width="352" height="352" rx="110" fill="none" stroke="url(#memora)" stroke-width="40"/>
+  <circle cx="256" cy="256" r="60" fill="url(#memora)"/>
 </svg>
