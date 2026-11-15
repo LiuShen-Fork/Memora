@@ -16,7 +16,7 @@ go run ./cmd/memora
 
 The default database is `./data/app.sqlite3`. Docker deployments must keep the
 existing `./data:/app/data` mount. FFmpeg, FFprobe, and ExifTool are required
-for media processing; set `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and
+for media processing; set `MEMORA_FFMPEG_PATH`, `MEMORA_FFPROBE_PATH`, and
 `EXIFTOOL_PATH` when they are not on `PATH`.
 
 ## Structure

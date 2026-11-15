@@ -4,11 +4,13 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 
 ## Environment Variables List
 
+All process settings named `MEMORA_*` also answer to their old `CFRAME_*` spelling; the server logs a deprecation warning once per variable when the old name is used.
+
 | Environment Variable                     | Description                                                     | Default                               | Required                                             |
 | ---------------------------------------- | --------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- |
-| CFRAME_ADMIN_EMAIL                       | Initial admin user email                                        | `admin@memora.com`               | Yes                                                  |
-| CFRAME_ADMIN_NAME                        | Initial admin username                                          | `Memora`                              | No                                                   |
-| CFRAME_ADMIN_PASSWORD                    | Initial administrator password; set one of your own. There is no default, and the password ChronoFrame used to ship with is refused | None                                  | Required when creating the first administrator       |
+| MEMORA_ADMIN_EMAIL                       | Email the setup wizard starts with; it does not create an account on its own | None                                  | No                                                   |
+| MEMORA_ADMIN_NAME                        | Username the setup wizard starts with                           | `admin`                               | No                                                   |
+| MEMORA_ADMIN_PASSWORD                    | Password the setup wizard starts with; there is no default, and the password ChronoFrame used to ship with is refused | None                                  | No                                                   |
 | NUXT_PUBLIC_APP_TITLE                    | Application title                                               | `Memora`                         | No                                                   |
 | NUXT_PUBLIC_APP_SLOGAN                   | Application slogan                                              | None                                  | No                                                   |
 | NUXT_PUBLIC_APP_AUTHOR                   | Application author                                              | None                                  | No                                                   |
@@ -42,8 +44,8 @@ Whether using Docker or Docker Compose (.env) deployment, configuration is done 
 | NUXT_OAUTH_GITHUB_CLIENT_ID              | GitHub OAuth app Client ID                                      | None                                  | No (optional, for GitHub login)                      |
 | NUXT_OAUTH_GITHUB_CLIENT_SECRET          | GitHub OAuth app Client Secret                                  | None                                  | No (optional, for GitHub login)                      |
 | MEMORA_SESSION_SECRET                   | Key that signs session cookies. Unset, one is generated into `data/.session-secret` on first start. `NUXT_SESSION_PASSWORD` is read as the same key; `CFRAME_SESSION_SECRET` is deprecated but still read | Auto-generated | No |
-| CFRAME_WORKERS                           | How many tasks the queue runs at once (1-8) when the process starts. The queue page in the dashboard changes the same number while the server is running. | `5` | No |
-| CFRAME_OG_FONT                           | Font file a link preview card is drawn in. Empty draws it in the Go font, and in a font the machine keeps for Chinese, Japanese and Korean | None | No |
+| MEMORA_WORKERS                           | How many tasks the queue runs at once (1-8) when the process starts. The queue page in the dashboard changes the same number while the server is running. | `5` | No |
+| MEMORA_OG_FONT                           | Font file a link preview card is drawn in. Empty draws it in the Go font, and in a font the machine keeps for Chinese, Japanese and Korean | None | No |
 | NUXT_PUBLIC_GTAG_ID                      | Google Analytics Tracking ID                                    | None                                  | No                                                   |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_ENABLED     | Enable Matomo analytics tracking                                | `false`                               | No                                                   |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_URL         | Matomo instance URL (e.g., https://matomo.example.com)          | None                                  | No (required when Matomo is enabled)                 |
@@ -83,7 +85,7 @@ yourself — for a language neither of those has, or for a font that matches you
 design — name a `.ttf`, `.otf` or `.ttc` file:
 
 ```bash
-CFRAME_OG_FONT=/app/data/fonts/NotoSansSC-Regular.otf
+MEMORA_OG_FONT=/app/data/fonts/NotoSansSC-Regular.otf
 ```
 
 A named font sets the whole card, including the heavy lines. If the file cannot

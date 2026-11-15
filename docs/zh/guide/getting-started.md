@@ -39,11 +39,11 @@ docker pull ghcr.io/liushen-fork/memora:latest
 
 ```bash
 # 下面几项只会预填设置向导，都不会创建账号
-CFRAME_ADMIN_EMAIL=
+MEMORA_ADMIN_EMAIL=
 # 向导中显示的管理员用户名
-CFRAME_ADMIN_NAME=
+MEMORA_ADMIN_NAME=
 # 管理员密码（预填到首次设置向导；没有默认值，且会拒绝 ChronoFrame 曾内置的密码）
-CFRAME_ADMIN_PASSWORD=
+MEMORA_ADMIN_PASSWORD=
 
 # 站点信息（均可选）
 NUXT_PUBLIC_APP_TITLE=
@@ -67,7 +67,7 @@ NUXT_PROVIDER_LOCAL_PATH=/app/data/storage
 MEMORA_SESSION_SECRET=
 ```
 
-设置向导不接受空密码和过短的密码，也会拒绝 ChronoFrame 曾用来创建首个管理员的内置密码。已有账号即使正在使用该密码——无论是较早版本的 Memora 还是 ChronoFrame 创建的——也能照常登录；请在后台「设置 → 基本设置」中修改：那里的「密码」可以为当前登录的账号设置新密码。`CFRAME_ADMIN_PASSWORD` 只会预填向导，不会改动已有账号。
+设置向导不接受空密码和过短的密码，也会拒绝 ChronoFrame 曾用来创建首个管理员的内置密码。已有账号即使正在使用该密码——无论是较早版本的 Memora 还是 ChronoFrame 创建的——也能照常登录；请在后台「设置 → 基本设置」中修改：那里的「密码」可以为当前登录的账号设置新密码。`MEMORA_ADMIN_PASSWORD` 只会预填向导，不会改动已有账号。
 
 若选择使用 S3，请将存储部分替换为：
 

@@ -39,12 +39,12 @@ Below is the minimal configuration for running with local storage. For the compl
 
 ```bash
 # These only prefill the setup wizard; none of them creates an account.
-CFRAME_ADMIN_EMAIL=
+MEMORA_ADMIN_EMAIL=
 # Admin username shown in the wizard
-CFRAME_ADMIN_NAME=
+MEMORA_ADMIN_NAME=
 # Admin password (prefills the setup wizard; there is no default, and the
 # password ChronoFrame used to ship with is refused)
-CFRAME_ADMIN_PASSWORD=
+MEMORA_ADMIN_PASSWORD=
 
 # Site metadata (all optional)
 NUXT_PUBLIC_APP_TITLE=
@@ -72,7 +72,7 @@ NUXT_PROVIDER_LOCAL_PATH=/app/data/storage
 MEMORA_SESSION_SECRET=
 ```
 
-The setup wizard will not accept a blank or a short password, and it refuses the built-in password ChronoFrame used to create its first administrator with. An account that already has that password — created by an earlier Memora version or by ChronoFrame itself — keeps working; change it under **Settings → General Settings**, where the Password card sets a new password for the account you are signed in as. Setting `CFRAME_ADMIN_PASSWORD` only prefills the wizard and never touches an existing account.
+The setup wizard will not accept a blank or a short password, and it refuses the built-in password ChronoFrame used to create its first administrator with. An account that already has that password — created by an earlier Memora version or by ChronoFrame itself — keeps working; change it under **Settings → General Settings**, where the Password card sets a new password for the account you are signed in as. Setting `MEMORA_ADMIN_PASSWORD` only prefills the wizard and never touches an existing account.
 
 If you want to use S3 instead of local storage, replace the storage section with:
 

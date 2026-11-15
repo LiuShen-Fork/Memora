@@ -9,7 +9,7 @@ Memora is a static Nuxt 4 frontend served by a Go HTTP backend. SQLite schema an
 - `web/packages/memora-webgl-image/`: local WebGL viewer package.
 - `web/shared/`: client/server TypeScript contracts.
 
-The production process is one Go binary. It serves `web/.output/public` (or `CFRAME_WEB_DIR`) and owns all `/api`, `/storage`, `/image`, and `/thumb` routes. Do not add Nitro API routes or a second Node server.
+The production process is one Go binary. It serves `web/.output/public` (or `MEMORA_WEB_DIR`) and owns all `/api`, `/storage`, `/image`, and `/thumb` routes. Do not add Nitro API routes or a second Node server.
 
 ## Development
 
@@ -24,7 +24,7 @@ On PowerShell, use an absolute database path when the working directory may vary
 
 ```powershell
 $env:DATABASE_URL = (Resolve-Path "data/app.sqlite3").Path
-$env:CFRAME_WEB_DIR = (Resolve-Path "web/.output/public").Path
+$env:MEMORA_WEB_DIR = (Resolve-Path "web/.output/public").Path
 go run ./cmd/memora
 ```
 
@@ -41,7 +41,7 @@ Useful checks: `go test ./...`, `go test -race ./...`, `go vet ./...`, `pnpm --d
 
 ## Configuration
 
-FFmpeg, FFprobe, and ExifTool are runtime dependencies. Configure local binaries with `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and `EXIFTOOL_PATH`; the Docker image installs them at `/usr/bin/ffmpeg`, `/usr/bin/ffprobe`, and `/usr/bin/exiftool`.
+FFmpeg, FFprobe, and ExifTool are runtime dependencies. Configure local binaries with `MEMORA_FFMPEG_PATH`, `MEMORA_FFPROBE_PATH`, and `EXIFTOOL_PATH`; the Docker image installs them at `/usr/bin/ffmpeg`, `/usr/bin/ffprobe`, and `/usr/bin/exiftool`.
 
 Do not commit `data/`, database journals, generated JSON, executables, or build output. The Docker data mount must remain `./data:/app/data`.
 

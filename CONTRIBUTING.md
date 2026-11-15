@@ -25,7 +25,7 @@ working-directory surprises:
 
 ```powershell
 $env:DATABASE_URL = (Resolve-Path "data/app.sqlite3").Path
-$env:CFRAME_WEB_DIR = (Resolve-Path "web/.output/public").Path
+$env:MEMORA_WEB_DIR = (Resolve-Path "web/.output/public").Path
 go run ./cmd/memora
 ```
 

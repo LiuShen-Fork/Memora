@@ -52,15 +52,17 @@ services:
 | `MEMORA_SESSION_SECRET` | 自动生成到 `data/.session-secret` | 会话 Cookie 的签名密钥。多副本部署必须显式设置同一个值。 |
 | `NUXT_SESSION_PASSWORD` | — | 上游的同名变量，仍然可用。 |
 | `CFRAME_SESSION_SECRET` | — | 旧的兼容名字，使用时会输出弃用警告。 |
-| `CFRAME_ADMIN_NAME` / `CFRAME_ADMIN_EMAIL` / `CFRAME_ADMIN_PASSWORD` | `admin` / 空 / 空 | 预填安装向导；本身不会创建或修改账号。 |
+| `MEMORA_ADMIN_NAME` / `MEMORA_ADMIN_EMAIL` / `MEMORA_ADMIN_PASSWORD` | `admin` / 空 / 空 | 预填安装向导；本身不会创建或修改账号。 |
 | `DATABASE_URL` | `./data/app.sqlite3` | SQLite 文件。 |
-| `CFRAME_DATA_DIR` | `./data` | 数据目录。 |
-| `CFRAME_WEB_DIR` | `./web/.output/public` | 生成的前端目录。 |
-| `CFRAME_ADDR` | `:3000` | 监听地址。 |
-| `CFRAME_WORKERS` | 队列自身的设置 | 启动时的媒体工作进程数。 |
-| `CFRAME_MEDIA_MAX_MB` | `32` | 媒体处理的兜底上限。 |
-| `CFRAME_FFMPEG_PATH` / `CFRAME_FFPROBE_PATH` / `EXIFTOOL_PATH` | `ffmpeg` / `ffprobe` / `exiftool` | 媒体工具路径。 |
+| `MEMORA_DATA_DIR` | `./data` | 数据目录。 |
+| `MEMORA_WEB_DIR` | `./web/.output/public` | 生成的前端目录。 |
+| `MEMORA_ADDR` | `:3000` | 监听地址。 |
+| `MEMORA_WORKERS` | 队列自身的设置 | 启动时的媒体工作进程数。 |
+| `MEMORA_MEDIA_MAX_MB` | `32` | 媒体处理的兜底上限。 |
+| `MEMORA_FFMPEG_PATH` / `MEMORA_FFPROBE_PATH` / `EXIFTOOL_PATH` | `ffmpeg` / `ffprobe` / `exiftool` | 媒体工具路径。 |
 | `NUXT_OAUTH_GITHUB_CLIENT_ID` / `_SECRET` | 空 | 启用 GitHub 登录。 |
+
+所有 `MEMORA_*` 变量都兼容旧的 `CFRAME_*` 写法；仍在使用旧名字时，启动日志会输出一次弃用警告并指出新名字。
 
 会话密钥的取值顺序：环境变量 → `data/.session-secret` → 都没有就以 `0600` 权限生成并写入该文件。已有的密钥会被复用，重启不会让已登录的客户端掉线。
 

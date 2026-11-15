@@ -4,11 +4,13 @@
 
 ## 环境变量列表
 
+所有 `MEMORA_*` 进程设置都兼容旧的 `CFRAME_*` 写法；使用旧名字时服务会在日志里输出一次弃用警告。
+
 | 环境变量                                 | 说明                                                 | 默认值                                | 必需                                                                  |
 | ---------------------------------------- | ---------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| CFRAME_ADMIN_EMAIL                       | 初始管理员用户的邮箱                                 | `admin@memora.com`               | 是                                                                    |
-| CFRAME_ADMIN_NAME                        | 初始管理员用户的用户名                               | `Memora`                              | 否                                                                    |
-| CFRAME_ADMIN_PASSWORD                    | 初始管理员密码，请设置独有密码。没有默认值，且会拒绝 ChronoFrame 曾内置的密码 | 无                                    | 创建首个管理员时必需                                                  |
+| MEMORA_ADMIN_EMAIL                       | 设置向导预填的邮箱，本身不会创建账号                 | 无                                    | 否                                                                    |
+| MEMORA_ADMIN_NAME                        | 设置向导预填的用户名                                 | `admin`                               | 否                                                                    |
+| MEMORA_ADMIN_PASSWORD                    | 设置向导预填的密码，没有默认值，且会拒绝 ChronoFrame 曾内置的密码 | 无                        | 否                                                                    |
 | NUXT_PUBLIC_APP_TITLE                    | 应用标题                                             | `Memora`                         | 否                                                                    |
 | NUXT_PUBLIC_APP_SLOGAN                   | 应用口号                                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_APP_AUTHOR                   | 应用作者                                             | 无                                    | 否                                                                    |
@@ -42,8 +44,8 @@
 | NUXT_OAUTH_GITHUB_CLIENT_ID              | GitHub OAuth 应用的 Client ID                        | 无                                    | 否(可选,用于 GitHub 登录)                                             |
 | NUXT_OAUTH_GITHUB_CLIENT_SECRET          | GitHub OAuth 应用的 Client Secret                    | 无                                    | 否(可选,用于 GitHub 登录)                                             |
 | MEMORA_SESSION_SECRET                   | 会话 Cookie 的签名密钥。留空时首次启动会生成到 `data/.session-secret`。`NUXT_SESSION_PASSWORD` 视为同一个密钥；`CFRAME_SESSION_SECRET` 已弃用但仍可读取 | 自动生成 | 否 |
-| CFRAME_WORKERS                           | 进程启动时队列同时处理的任务数（1-8）。后台队列页面可以在运行中修改同一个数值。 | `5` | 否 |
-| CFRAME_OG_FONT                           | 绘制链接预览卡片所使用的字体文件。留空则使用 Go 字体，中日韩文字改用系统自带字体 | 无 | 否 |
+| MEMORA_WORKERS                           | 进程启动时队列同时处理的任务数（1-8）。后台队列页面可以在运行中修改同一个数值。 | `5` | 否 |
+| MEMORA_OG_FONT                           | 绘制链接预览卡片所使用的字体文件。留空则使用 Go 字体，中日韩文字改用系统自带字体 | 无 | 否 |
 | NUXT_PUBLIC_GTAG_ID                      | Google Analytics 追踪 ID                             | 无                                    | 否                                                                    |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_ENABLED     | 是否启用 Matomo 分析追踪                             | `false`                               | 否                                                                    |
 | NUXT_PUBLIC_ANALYTICS_MATOMO_URL         | Matomo 实例 URL 地址(如: https://matomo.example.com) | 无                                    | 否(启用 Matomo 时必需)                                                |
@@ -77,7 +79,7 @@
 语言，或希望字体与你的设计一致——请指定一个 `.ttf`、`.otf` 或 `.ttc` 文件：
 
 ```bash
-CFRAME_OG_FONT=/app/data/fonts/NotoSansSC-Regular.otf
+MEMORA_OG_FONT=/app/data/fonts/NotoSansSC-Regular.otf
 ```
 
 指定的字体会用于整张卡片，包括粗体行。若该文件读取失败，服务端会在系统日志

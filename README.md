@@ -52,15 +52,17 @@ Only these are worth setting by hand:
 | `MEMORA_SESSION_SECRET` | generated into `data/.session-secret` | Signs session cookies. Set it when several replicas must share sessions. |
 | `NUXT_SESSION_PASSWORD` | — | Upstream's name for the same secret, still accepted. |
 | `CFRAME_SESSION_SECRET` | — | Deprecated old name; the log warns when it is used. |
-| `CFRAME_ADMIN_NAME` / `CFRAME_ADMIN_EMAIL` / `CFRAME_ADMIN_PASSWORD` | `admin` / empty / empty | Pre-fills the setup wizard; it does not create or change an account by itself. |
+| `MEMORA_ADMIN_NAME` / `MEMORA_ADMIN_EMAIL` / `MEMORA_ADMIN_PASSWORD` | `admin` / empty / empty | Pre-fills the setup wizard; it does not create or change an account by itself. |
 | `DATABASE_URL` | `./data/app.sqlite3` | SQLite file. |
-| `CFRAME_DATA_DIR` | `./data` | Data directory. |
-| `CFRAME_WEB_DIR` | `./web/.output/public` | Generated frontend. |
-| `CFRAME_ADDR` | `:3000` | Listen address. |
-| `CFRAME_WORKERS` | the queue's own setting | Number of media workers to start with. |
-| `CFRAME_MEDIA_MAX_MB` | `32` | Fallback media processing limit. |
-| `CFRAME_FFMPEG_PATH` / `CFRAME_FFPROBE_PATH` / `EXIFTOOL_PATH` | `ffmpeg` / `ffprobe` / `exiftool` | Media tools. |
+| `MEMORA_DATA_DIR` | `./data` | Data directory. |
+| `MEMORA_WEB_DIR` | `./web/.output/public` | Generated frontend. |
+| `MEMORA_ADDR` | `:3000` | Listen address. |
+| `MEMORA_WORKERS` | the queue's own setting | Number of media workers to start with. |
+| `MEMORA_MEDIA_MAX_MB` | `32` | Fallback media processing limit. |
+| `MEMORA_FFMPEG_PATH` / `MEMORA_FFPROBE_PATH` / `EXIFTOOL_PATH` | `ffmpeg` / `ffprobe` / `exiftool` | Media tools. |
 | `NUXT_OAUTH_GITHUB_CLIENT_ID` / `_SECRET` | empty | Enables GitHub sign-in. |
+
+Every `MEMORA_*` name also answers to its old `CFRAME_*` spelling; the first start that still uses one logs a deprecation warning naming the new variable.
 
 The session secret is resolved in this order: an environment variable, then `data/.session-secret`, then a newly generated key written to that file with mode `0600`. A key that is already stored is reused, so restarts keep clients signed in.
 

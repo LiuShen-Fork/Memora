@@ -15,7 +15,7 @@ go run ./cmd/memora
 
 默认数据库为 `./data/app.sqlite3`。Docker 必须保留 `./data:/app/data` 挂载。
 媒体处理需要 FFmpeg、FFprobe 和 ExifTool；如果不在 `PATH` 中，请配置
-`CFRAME_FFMPEG_PATH`、`CFRAME_FFPROBE_PATH` 和 `EXIFTOOL_PATH`。
+`MEMORA_FFMPEG_PATH`、`MEMORA_FFPROBE_PATH` 和 `EXIFTOOL_PATH`。
 
 ## 目录
 
