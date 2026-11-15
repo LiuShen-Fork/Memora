@@ -4,8 +4,6 @@
 # their result instead of rebuilding it under QEMU — an emulated pnpm install
 # alone used to cost hours.
 FROM --platform=$BUILDPLATFORM node:22.22.3-alpine AS web-build
-ARG MEMORA_VERSION=dev
-ENV MEMORA_VERSION=$MEMORA_VERSION
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -16,6 +14,14 @@ COPY web/packages/memora-webgl-image/package.json ./packages/memora-webgl-image/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY web ./
+
+# Set here and not at the top of the stage on purpose. An ENV defined before
+# the install step changes the cache key of everything after it, so the
+# dependency install was thrown away on every release — the one thing that is
+# worth keeping.
+ARG MEMORA_VERSION=dev
+ENV MEMORA_VERSION=$MEMORA_VERSION
+
 RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build:deps \
     && NODE_OPTIONS="--max-old-space-size=8192" pnpm generate \
     && find .output/public -type f -name '*.map' -delete
@@ -34,6 +40,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # FFmpeg gained HEIC/HEIF reading in 7.0; the 6.1 build shipped with Alpine 3.22
 # cannot open HEIC uploads at all.
 FROM alpine:3.24 AS runtime
+# The packages come first because they are the slowest step here — on arm64 apk
+# runs under emulation. A release-specific label above this line would change
+# the cache key and reinstall them on every release.
+RUN apk add --no-cache ca-certificates ffmpeg perl exiftool \
+    && addgroup -S memora \
+    && adduser -S -G memora -h /app memora \
+    && mkdir -p /app/data /app/web \
+    && chown -R memora:memora /app
 # The label below is the only place the published image records which release it
 # is; without it GHCR shows a digest and nothing else.
 ARG MEMORA_VERSION=dev
@@ -42,11 +56,6 @@ LABEL org.opencontainers.image.title="Memora" \
     org.opencontainers.image.description="Self-hosted photo gallery with EXIF, maps and Live Photos" \
     org.opencontainers.image.source="https://github.com/LiuShen-Fork/Memora" \
     org.opencontainers.image.licenses="MIT"
-RUN apk add --no-cache ca-certificates ffmpeg perl exiftool \
-    && addgroup -S memora \
-    && adduser -S -G memora -h /app memora \
-    && mkdir -p /app/data /app/web \
-    && chown -R memora:memora /app
 WORKDIR /app
 
 COPY --from=go-build /out/memora /usr/local/bin/memora
