@@ -43,7 +43,7 @@ FROM alpine:3.24 AS runtime
 # The packages come first because they are the slowest step here — on arm64 apk
 # runs under emulation. A release-specific label above this line would change
 # the cache key and reinstall them on every release.
-RUN apk add --no-cache ca-certificates ffmpeg perl exiftool \
+RUN apk add --no-cache ca-certificates ffmpeg perl exiftool su-exec \
     && addgroup -S memora \
     && adduser -S -G memora -h /app memora \
     && mkdir -p /app/data /app/web \
@@ -60,8 +60,13 @@ WORKDIR /app
 
 COPY --from=go-build /out/memora /usr/local/bin/memora
 COPY --from=web-build /src/.output/public /app/web
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
 
-USER memora
+# No USER here on purpose: the entrypoint needs root for the one step that
+# takes ownership of the mounted data directory, and it execs the server as
+# memora. A container started with --user (or a Kubernetes securityContext)
+# runs the entrypoint as that user, which skips the ownership step.
 EXPOSE 3000
 VOLUME ["/app/data"]
 
@@ -77,4 +82,5 @@ ENV MEMORA_ADDR=:3000 \
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1
 
-ENTRYPOINT ["/usr/local/bin/memora"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/usr/local/bin/memora"]
