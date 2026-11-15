@@ -24,6 +24,9 @@ jobs:
   release:
     name: Release v${{ inputs.version }}
     runs-on: ubuntu-24.04
+    # A release takes minutes. The default six-hour limit let one emulated
+    # build sit for two hours before anyone noticed; fail sooner instead.
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -119,6 +122,13 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          # A hosted runner starts with an empty BuildKit store, and the
+          # --mount=type=cache directories inside the Dockerfile only survive
+          # one build. Without these two lines every release re-ran pnpm
+          # install, the Nuxt bundle and the Go module download from zero.
+          # mode=max keeps the intermediate stages, which is where the time is.
+          cache-from: type=registry,ref=${{ env.GHCR_REGISTRY }}/liushen-fork/memora:buildcache
+          cache-to: type=registry,ref=${{ env.GHCR_REGISTRY }}/liushen-fork/memora:buildcache,mode=max
           build-args: |
             MEMORA_VERSION=${{ steps.release.outputs.version }}
           tags: ${{ steps.release.outputs.docker_tags }}
