@@ -38,9 +38,9 @@ docker pull ghcr.io/liushen-fork/memora:latest
 Below is the minimal configuration for running with local storage. For the complete list, see the [Configuration Guide](/guide/configuration).
 
 ```bash
-# Admin email (required)
+# These only prefill the setup wizard; none of them creates an account.
 CFRAME_ADMIN_EMAIL=
-# Admin username (optional, default Memora)
+# Admin username shown in the wizard
 CFRAME_ADMIN_NAME=
 # Admin password (prefills the setup wizard; there is no default, and the
 # password ChronoFrame used to ship with is refused)
@@ -66,8 +66,10 @@ NUXT_PUBLIC_MAP_AMAP_SECURITY_CODE=
 NUXT_STORAGE_PROVIDER=local
 NUXT_PROVIDER_LOCAL_PATH=/app/data/storage
 
-# Session password (32‑char random string, required)
-NUXT_SESSION_PASSWORD=
+# Session signing key (32+ random characters). Leave it empty and one is
+# generated into data/.session-secret on first start — back that file up with
+# the data directory. Set it when several replicas must share sessions.
+MEMORA_SESSION_SECRET=
 ```
 
 The setup wizard will not accept a blank or a short password, and it refuses the built-in password ChronoFrame used to create its first administrator with. An account that already has that password — created by an earlier Memora version or by ChronoFrame itself — keeps working; change it under **Settings → General Settings**, where the Password card sets a new password for the account you are signed in as. Setting `CFRAME_ADMIN_PASSWORD` only prefills the wizard and never touches an existing account.
@@ -225,14 +227,18 @@ networks:
 
 ## Common Issues
 
-:::details How do I generate a random `NUXT_SESSION_PASSWORD`?
+:::details Do I need to set a session secret, and how do I generate one?
+
+No. Without `MEMORA_SESSION_SECRET` the server generates a key on first start and keeps it in `data/.session-secret` (mode `0600`). Set one yourself when several replicas share a database, or when the key must live outside the data directory:
 
 ```bash
 # Linux / macOS
-openssl rand -base64 32
+openssl rand -base64 48
 
 # Windows (PowerShell)
-[Convert]::ToBase64String((1..32|%{[byte](Get-Random -Max 256)}))
+[Convert]::ToBase64String((1..48|%{[byte](Get-Random -Max 256)}))
 ```
+
+`NUXT_SESSION_PASSWORD` is read as the same key, and the old `CFRAME_SESSION_SECRET` still works with a deprecation warning.
 
 :::

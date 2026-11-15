@@ -38,9 +38,9 @@ docker pull ghcr.io/liushen-fork/memora:latest
 创建 `.env` 文件。下面是使用本地存储的最小示例，完整配置请参阅 [配置说明](/zh/guide/configuration)。
 
 ```bash
-# 管理员邮箱（必须）
+# 下面几项只会预填设置向导，都不会创建账号
 CFRAME_ADMIN_EMAIL=
-# 管理员用户名（可选，默认 Memora）
+# 向导中显示的管理员用户名
 CFRAME_ADMIN_NAME=
 # 管理员密码（预填到首次设置向导；没有默认值，且会拒绝 ChronoFrame 曾内置的密码）
 CFRAME_ADMIN_PASSWORD=
@@ -62,8 +62,9 @@ NUXT_PUBLIC_MAPBOX_ACCESS_TOKEN=
 NUXT_STORAGE_PROVIDER=local
 NUXT_PROVIDER_LOCAL_PATH=/app/data/storage
 
-# 会话密码（必须，32 位随机字符串）
-NUXT_SESSION_PASSWORD=
+# 会话签名密钥（32 位以上随机字符）。留空时首次启动会生成到
+# data/.session-secret，请连同数据目录一起备份；多副本共用会话时显式设置
+MEMORA_SESSION_SECRET=
 ```
 
 设置向导不接受空密码和过短的密码，也会拒绝 ChronoFrame 曾用来创建首个管理员的内置密码。已有账号即使正在使用该密码——无论是较早版本的 Memora 还是 ChronoFrame 创建的——也能照常登录；请在后台「设置 → 基本设置」中修改：那里的「密码」可以为当前登录的账号设置新密码。`CFRAME_ADMIN_PASSWORD` 只会预填向导，不会改动已有账号。
@@ -234,14 +235,18 @@ networks:
 
 ## 常见问题
 
-:::details 如何生成随机的 `NUXT_SESSION_PASSWORD`？
+:::details 需要自己设置会话密钥吗？怎么生成？
+
+不需要。没有 `MEMORA_SESSION_SECRET` 时，服务首次启动会生成一个密钥并保存在 `data/.session-secret`（权限 `0600`）。只有多个副本共用一个数据库，或者希望密钥不放在数据目录里时，才需要自己设置：
 
 ```bash
 # Linux / macOS
-openssl rand -base64 32
+openssl rand -base64 48
 
 # Windows (pwsh)
-[Convert]::ToBase64String((1..32|%{[byte](Get-Random -Max 256)}))
+[Convert]::ToBase64String((1..48|%{[byte](Get-Random -Max 256)}))
 ```
+
+`NUXT_SESSION_PASSWORD` 视为同一个密钥，旧名 `CFRAME_SESSION_SECRET` 仍然可用但会输出弃用警告。
 
 :::

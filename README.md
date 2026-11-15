@@ -1,123 +1,109 @@
 # Memora
 
-Original project: [HoshinoSuzumi/chronoframe](https://github.com/HoshinoSuzumi/chronoframe)
+**English** · [简体中文](README_zh.md)
 
-Memora is a self-hosted photo gallery for browsing, organizing, and exploring photos on a map. It supports EXIF metadata, reverse geocoding, albums, Live/Motion Photos, multiple storage backends, and responsive desktop/mobile views.
+A self-hosted photo gallery: browse a masonry wall, organize albums, and explore your photos on a map. EXIF, reverse geocoding, Live/Motion Photos, three storage backends, and a responsive desktop/mobile UI.
 
-## What Is Different
-
-Memora is a substantial rewrite of the original Nuxt application:
-
-- The production server is a compact Go process serving the API and generated static frontend.
-- SQLite schema and Docker `/app/data` mounts remain compatible with existing ChronoFrame deployments.
-- FFmpeg handles thumbnails and Live/Motion Photo processing; ExifTool handles metadata extraction.
-- Node.js is only required to rebuild the frontend, not to run production.
-
-The maintained repository is [LiuShen-Fork/Memora](https://github.com/LiuShen-Fork/Memora). The published image is `ghcr.io/liushen-fork/memora` (Docker image names are conventionally lowercase).
+Memora is a Go rewrite of [HoshinoSuzumi/ChronoFrame](https://github.com/HoshinoSuzumi/ChronoFrame). It keeps the same SQLite schema and the same `data/` layout, so an existing ChronoFrame deployment moves over by pointing the new image at the same volume.
 
 ## Features
 
-- Gallery browsing with responsive masonry layout
-- Albums, search, filters, reactions, and photo metadata editing
-- Map exploration with MapLibre, Mapbox, or AMap
-- JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, and Live/Motion Photo support
-  - HEIC/HEIF uploads are converted to JPEG, which replaces the upload as the
-    stored original; the metadata is carried over, so nothing else is lost
-- Local filesystem, S3-compatible, and OpenList storage
-- Automatic thumbnails, EXIF parsing, reverse geocoding, and durable queues
+- Masonry wall, albums, search, filters, reactions, and per-photo metadata editing
+- Map view with MapLibre, Mapbox, or AMap; automatic reverse geocoding
+- JPEG, PNG, WebP, GIF, BMP, TIFF, HEIC/HEIF, and Live/Motion Photos (HEIC is converted to JPEG on upload)
+- Local disk, S3-compatible object storage, or OpenList
+- Background queue for thumbnails, metadata, and location with retry
+- Six UI languages, light/dark themes, installable PWA
 
-## Quick Start
-
-### Docker
+## Quick start
 
 ```bash
 docker run -d --name memora -p 3000:3000 \
-  -v $(pwd)/data:/app/data --env-file .env \
+  -v "$(pwd)/data:/app/data" \
   ghcr.io/liushen-fork/memora:latest
 ```
 
-Keep the existing `./data:/app/data` mount when migrating from ChronoFrame. Storage and application settings can be changed from the dashboard, so most deployments need no extra environment variables.
+Or with Compose:
+
+```yaml
+services:
+  memora:
+    image: ghcr.io/liushen-fork/memora:latest
+    container_name: memora
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./data:/app/data
+```
+
+Open `http://localhost:3000`. The first visit runs a setup wizard: administrator account, site details, storage, and map provider. Everything it asks for can be changed later in the dashboard.
+
+No environment variables are required. The image already sets the listen address, data directory, database path, and media tool paths.
+
+**Back up the whole `data/` directory**, not just the database — the generated session key and, depending on the storage provider, your originals live there too.
 
 ## Configuration
 
-On first start, set an administrator email and password. The database, media files, map settings, storage provider, upload limit, language, theme, and footer link can then be configured in the dashboard.
+Only these are worth setting by hand:
 
-The usual `.env` only needs:
-
-```dotenv
-CFRAME_ADMIN_EMAIL=admin@example.com
-CFRAME_ADMIN_PASSWORD=change-this-password
-NUXT_SESSION_PASSWORD=use-a-long-random-secret
-```
-
-For local storage, keep the default `./data` directory. To use another storage provider, select it in **Dashboard → Settings → Storage** and enter its credentials. Map providers and API keys are configured in **Dashboard → Settings → Map and location**.
-
-Optional startup variables:
-
-| Variable | Purpose | Default |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | SQLite database path | `./data/app.sqlite3` |
-| `CFRAME_DATA_DIR` | Application data directory | `./data` |
-| `CFRAME_WEB_DIR` | Generated frontend directory | `./web/.output/public` |
-| `CFRAME_ADDR` | Listen address | `:3000` |
-| `CFRAME_MEDIA_MAX_MB` | Fallback media processing limit | `32` |
-| `CFRAME_FFMPEG_PATH` | FFmpeg executable | `ffmpeg` |
-| `CFRAME_FFPROBE_PATH` | FFprobe executable | `ffprobe` |
-| `EXIFTOOL_PATH` | ExifTool executable | `exiftool` |
+| `MEMORA_SESSION_SECRET` | generated into `data/.session-secret` | Signs session cookies. Set it when several replicas must share sessions. |
+| `NUXT_SESSION_PASSWORD` | — | Upstream's name for the same secret, still accepted. |
+| `CFRAME_SESSION_SECRET` | — | Deprecated old name; the log warns when it is used. |
+| `CFRAME_ADMIN_NAME` / `CFRAME_ADMIN_EMAIL` / `CFRAME_ADMIN_PASSWORD` | `admin` / empty / empty | Pre-fills the setup wizard; it does not create or change an account by itself. |
+| `DATABASE_URL` | `./data/app.sqlite3` | SQLite file. |
+| `CFRAME_DATA_DIR` | `./data` | Data directory. |
+| `CFRAME_WEB_DIR` | `./web/.output/public` | Generated frontend. |
+| `CFRAME_ADDR` | `:3000` | Listen address. |
+| `CFRAME_WORKERS` | the queue's own setting | Number of media workers to start with. |
+| `CFRAME_MEDIA_MAX_MB` | `32` | Fallback media processing limit. |
+| `CFRAME_FFMPEG_PATH` / `CFRAME_FFPROBE_PATH` / `EXIFTOOL_PATH` | `ffmpeg` / `ffprobe` / `exiftool` | Media tools. |
+| `NUXT_OAUTH_GITHUB_CLIENT_ID` / `_SECRET` | empty | Enables GitHub sign-in. |
 
-The maximum upload/processing size is configurable at runtime under **System Settings → File processing** and defaults to 32MB. Environment variables are retained for compatibility and automation.
+The session secret is resolved in this order: an environment variable, then `data/.session-secret`, then a newly generated key written to that file with mode `0600`. A key that is already stored is reused, so restarts keep clients signed in.
 
-### Local Development
+Storage, map, upload limit, language, theme, home view, header layout, and social links are all dashboard settings — see **Dashboard → Settings**.
 
-Requirements: Go 1.23+, Node.js 18+, pnpm 9+, FFmpeg, and ExifTool. Run all commands from the repository root.
+## Development
 
-Install frontend dependencies once:
+Requirements: Go 1.25+, Node.js 22+, pnpm, FFmpeg, and ExifTool.
 
 ```bash
-pnpm --dir web install
+pnpm --dir web install          # once
+pnpm --dir web dev:debug        # Go API on :3000, Nuxt on :3001
 ```
 
-For day-to-day development, start the Go API and the hot-reloading frontend together:
+Open `http://127.0.0.1:3001`. The dev server proxies `/api`, `/storage`, `/image`, and `/thumb` to the Go process. The backend reads a root `.env` when present.
+
+To run the production-shaped static frontend instead:
 
 ```bash
-pnpm --dir web dev:debug
+pnpm --dir web generate         # build the static client
+go run ./cmd/memora             # serve it and the API on :3000
 ```
 
-Open <http://127.0.0.1:3001>. The Go backend runs on port `3000`; the Nuxt development server proxies `/api`, `/storage`, `/image`, and `/thumb` to it. The backend reads the root `.env` file when present. Leave it absent for the local-storage defaults, or copy `.env.example` and set the values needed for your setup. Set `MEMORA_BACKEND_ORIGIN` before starting the frontend to proxy to a different backend address.
-
-To test the production-shaped static frontend instead of hot reload:
+Before submitting a change:
 
 ```bash
-pnpm --dir web generate
-go run ./cmd/memora
-```
-
-Open <http://127.0.0.1:3000>. The Go process serves `web/.output/public` and the API on the same port. Set `CFRAME_FFMPEG_PATH`, `CFRAME_FFPROBE_PATH`, and `EXIFTOOL_PATH` when the media tools are not on `PATH`.
-
-Before committing, run:
-
-```bash
+gofmt -l cmd/memora
+go vet ./cmd/...
 go test ./...
-pnpm --dir web generate
+cd web && npx oxlint && npx nuxi generate
 ```
 
-## Project Layout
+`npm run build` is a no-op on Windows; run `npx nuxi generate` directly from `web/`.
+
+## Project layout
 
 ```text
-web/                  Static Nuxt frontend source
-cmd/memora/           Go server, API handlers, queue, and storage adapters
-data/                 SQLite database and mounted media (do not replace)
-Dockerfile            Production image definition
+cmd/memora/    Go server: API handlers, queue, storage adapters, schema
+web/           Nuxt frontend (static output in web/.output/public)
+data/          SQLite database, generated secret, and local media
+Dockerfile     Production image (Go binary + static frontend)
 ```
 
-## Contributing
+## Credits and license
 
-Pull requests are welcome. Run `go test ./...` and `pnpm --dir web generate` before submitting changes.
-
-## Credits
-
-Memora is inspired by and substantially based on [HoshinoSuzumi/chronoframe](https://github.com/HoshinoSuzumi/chronoframe). Please see the original project for its design history and upstream work.
-
-## License
-
-Memora is released under the MIT License. See [LICENSE](LICENSE).
+Based on [HoshinoSuzumi/ChronoFrame](https://github.com/HoshinoSuzumi/ChronoFrame). Released under the MIT License; see [LICENSE](LICENSE).

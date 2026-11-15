@@ -41,7 +41,7 @@
 | NUXT_PUBLIC_OAUTH_GITHUB_ENABLED         | 是否启用 GitHub OAuth 登录                           | `false`                               | 否                                                                    |
 | NUXT_OAUTH_GITHUB_CLIENT_ID              | GitHub OAuth 应用的 Client ID                        | 无                                    | 否(可选,用于 GitHub 登录)                                             |
 | NUXT_OAUTH_GITHUB_CLIENT_SECRET          | GitHub OAuth 应用的 Client Secret                    | 无                                    | 否(可选,用于 GitHub 登录)                                             |
-| NUXT_SESSION_PASSWORD                    | 用于加密会话的密码，32 位随机字符串                  | 无                                    | 是                                                                    |
+| MEMORA_SESSION_SECRET                   | 会话 Cookie 的签名密钥。留空时首次启动会生成到 `data/.session-secret`。`NUXT_SESSION_PASSWORD` 视为同一个密钥；`CFRAME_SESSION_SECRET` 已弃用但仍可读取 | 自动生成 | 否 |
 | CFRAME_WORKERS                           | 进程启动时队列同时处理的任务数（1-8）。后台队列页面可以在运行中修改同一个数值。 | `5` | 否 |
 | CFRAME_OG_FONT                           | 绘制链接预览卡片所使用的字体文件。留空则使用 Go 字体，中日韩文字改用系统自带字体 | 无 | 否 |
 | NUXT_PUBLIC_GTAG_ID                      | Google Analytics 追踪 ID                             | 无                                    | 否                                                                    |
