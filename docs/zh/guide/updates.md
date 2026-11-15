@@ -32,18 +32,30 @@ Docker 挂载必须保持原样：
 
 ### 容器目录权限
 
-生产镜像会使用专用的非 root 用户和用户组 `memora` 运行。首次启动前，请将宿主机挂载
-目录授权给这个身份。不要直接假定固定的 UID/GID，应从实际镜像中读取：
+镜像会在服务启动前把挂载的数据目录交给非 root 用户 `memora`。它只在这一步以
+root 身份启动，检查 `/app/data`（或 `MEMORA_DATA_DIR`）的所有者，仅当其中有属于
+其他用户的条目时才递归修改所有者——从以 root 运行的 ChronoFrame 镜像升级而来的
+安装正是这种状态。服务本身始终以 `memora` 运行，只有 entrypoint 在启动服务前
+短暂使用 root。
+
+```text
+entrypoint: taking ownership of /app/data for the memora user
+```
+
+因此默认的 `./data:/app/data` 挂载不需要手动 `chown`。只有 entrypoint 无法以
+root 运行时才需要：使用 `--user` 启动容器、Kubernetes 的 `securityContext` 禁止
+root，或者替换了 entrypoint。此时请从实际镜像中读取数字 ID，不要假定固定的
+UID/GID：
 
 ```bash
 docker run --rm --entrypoint id ghcr.io/liushen-fork/memora:1.1.2 memora
 # 示例输出：uid=100(memora) gid=101(memora)
 sudo chown -R 100:101 data
-sudo chmod -R u+rwX data
 ```
 
-将命令中的 `100:101` 替换为镜像打印出的 UID/GID。从 ChronoFrame 迁移已有 `data/`
-目录后也要执行同样的授权，否则 SQLite、日志、缩略图和生成媒体可能因权限不足而失败。
+挂载不可读时，服务会在启动阶段以
+`open /app/data/.session-secret: permission denied` 之类的错误退出，容器会不断
+重启，直到该目录可写。
 
 ## 从 ChronoFrame 迁移到 Memora
 

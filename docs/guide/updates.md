@@ -36,22 +36,32 @@ Do not delete or recreate `data/app.sqlite3` during an upgrade.
 
 ### Container permissions
 
-The production image runs as the dedicated unprivileged `memora` user and
-group. Before the first start, make the host-mounted directory writable by
-that identity. Resolve the numeric IDs from the image instead of assuming a
-fixed UID/GID:
+The image hands the mounted data directory to its unprivileged `memora` user
+before the server starts. It begins as root for that single step, checks the
+ownership of `/app/data` (or `MEMORA_DATA_DIR`), and takes ownership only when
+something there belongs to another user — the state an install leaves behind
+when it was created by a ChronoFrame image that ran as root. The server always
+runs as `memora`; only the entrypoint has root, and only until it starts it.
+
+```text
+entrypoint: taking ownership of /app/data for the memora user
+```
+
+The default `./data:/app/data` mount therefore needs no manual `chown`. One is
+needed only when the entrypoint cannot run as root: a container started with
+`--user`, a Kubernetes `securityContext` that forbids root, or a replaced
+entrypoint. Resolve the numeric IDs from the image rather than assuming a fixed
+UID/GID:
 
 ```bash
 docker run --rm --entrypoint id ghcr.io/liushen-fork/memora:1.1.2 memora
 # Example output: uid=100(memora) gid=101(memora)
 sudo chown -R 100:101 data
-sudo chmod -R u+rwX data
 ```
 
-Replace `100:101` with the UID/GID printed by your image. Apply the same
-ownership to an existing `data/` directory after migrating from ChronoFrame;
-otherwise SQLite, logs, thumbnails, and generated media may fail with
-permission errors.
+An unreadable mount stops the server at startup with an error such as
+`open /app/data/.session-secret: permission denied`, and the container is
+restarted until the directory is writable.
 
 ## ChronoFrame to Memora
 

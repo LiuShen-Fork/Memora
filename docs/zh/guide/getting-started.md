@@ -106,6 +106,10 @@ NUXT_OAUTH_GITHUB_CLIENT_SECRET=
 docker run -d --name memora -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env ghcr.io/liushen-fork/memora:latest
 ```
 
+容器只会在启动前短暂以 root 运行，把 `data/` 的所有者改为镜像内的非 root 用户
+`memora`，随后以该用户运行服务，因此无需手动 `chown`。绕过 entrypoint 的情况见
+[容器目录权限](/zh/guide/updates#容器目录权限)。
+
 ### Docker Compose 部署
 
 推荐使用 Docker Compose 进行生产环境部署，便于管理和配置。

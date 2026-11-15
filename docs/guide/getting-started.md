@@ -114,6 +114,11 @@ docker run -d \
   ghcr.io/liushen-fork/memora:latest
 ```
 
+The container starts as root only long enough to make `data/` writable by its
+unprivileged `memora` user, then runs the server as that user; no manual
+`chown` is needed. See [Container permissions](/guide/updates#container-permissions)
+for the cases where the entrypoint is bypassed.
+
 ### Docker Compose
 
 Create `docker-compose.yml`:
