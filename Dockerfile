@@ -1,4 +1,9 @@
-FROM node:22.22.3-alpine AS web-build
+# Nothing in the frontend or the Go build depends on the machine the image runs
+# on: the bundle is plain JavaScript, and with CGO off Go cross-compiles. Both
+# stages therefore run on the build machine, once, and the arm64 image copies
+# their result instead of rebuilding it under QEMU — an emulated pnpm install
+# alone used to cost hours.
+FROM --platform=$BUILDPLATFORM node:22.22.3-alpine AS web-build
 ARG MEMORA_VERSION=dev
 ENV MEMORA_VERSION=$MEMORA_VERSION
 ENV PNPM_HOME="/pnpm"
@@ -15,13 +20,16 @@ RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build:deps \
     && NODE_OPTIONS="--max-old-space-size=8192" pnpm generate \
     && find .output/public -type f -name '*.map' -delete
 
-FROM golang:1.25-alpine AS go-build
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-build
+# TARGETARCH is set by BuildKit for every target platform; the compiler runs
+# natively here and emits the arm64 binary itself.
+ARG TARGETARCH
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd ./cmd
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/memora ./cmd/memora
+    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /out/memora ./cmd/memora
 
 # FFmpeg gained HEIC/HEIF reading in 7.0; the 6.1 build shipped with Alpine 3.22
 # cannot open HEIC uploads at all.
