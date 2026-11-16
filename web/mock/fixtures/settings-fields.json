@@ -178,6 +178,23 @@
           "type": "tabs"
         },
         "value": "system"
+      },
+      {
+        "defaultValue": "",
+        "description": "settings.app.socialLinks.description",
+        "enum": null,
+        "isPublic": true,
+        "isReadonly": false,
+        "isSecret": false,
+        "key": "socialLinks",
+        "label": "settings.app.socialLinks.label",
+        "namespace": "app",
+        "type": "string",
+        "ui": {
+          "required": false,
+          "type": "input"
+        },
+        "value": "[\"https://github.com/LiuShen-Fork\",\"https://x.com/memora\",\"https://space.bilibili.com/1\"]"
       }
     ],
     "namespace": "app"
