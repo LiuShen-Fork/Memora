@@ -36,7 +36,8 @@ const { currentPhotoIndex, isViewerOpen } = storeToRefs(useViewerState())
 const MASONRY_GAP = 4
 
 const masonryWrapper = ref<HTMLElement>()
-const showFloatingActions = ref(false)
+// 顶栏收窄和「回到顶部」共用同一个判断：过了首屏才算滚起来。
+const showFloatingActions = useScrolledPast()
 const dateRange = ref<string>()
 const visibleCities = ref<string>()
 const visiblePhotos = ref(new Set<number>())
@@ -257,23 +258,12 @@ const updateDateRange = () => {
 
 watch(locale, () => updateDateRange())
 
-const handleScroll = () => {
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  showFloatingActions.value = scrollTop > 500
-}
-
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll, { passive: true })
-
   nextTick(() => {
     if (currentPhotoIndex.value) {
       scrollToPhoto(currentPhotoIndex.value)
     }
   })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
 })
 
 const handleOpenViewer = (index: number) => {

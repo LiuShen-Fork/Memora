@@ -58,15 +58,18 @@ const scrollToTop = () => {
 
 <template>
   <div class="masonry-corner">
+    <!-- 只动 opacity 和 translate，曲线用前段快、后段拖长的 ease-out：停
+         在中间时看起来还在往上去。以前还带一个 scale-90——胶囊上有
+         backdrop-filter，缩放等于让浏览器逐帧重算那一层模糊，快速滚动时
+         就会闪。 -->
     <Transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="opacity-0 translate-y-1 scale-90"
-      leave-active-class="transition duration-150 ease-in"
-      leave-to-class="opacity-0 translate-y-1 scale-90"
+      enter-active-class="transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+      enter-from-class="opacity-0 translate-y-2"
+      leave-active-class="transition-[opacity,translate] duration-200 ease-in"
+      leave-to-class="opacity-0 translate-y-1"
     >
       <BackToTop
         v-if="isScrolled"
-        class="origin-bottom-right"
         @click="scrollToTop"
       />
     </Transition>

@@ -192,24 +192,11 @@ const scrollToTop = () => {
   })
 }
 
-const showFloatingActions = ref(false)
-
-const handleScroll = () => {
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  showFloatingActions.value = scrollTop > 500
-}
+const showFloatingActions = useScrolledPast()
 
 const goBackToAlbums = () => {
   router.push('/albums')
 }
-
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll, { passive: true })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
 
 useHead({
   title: computed(() => {
@@ -550,16 +537,17 @@ useHead({
 
     <!-- 回到顶部：和照片墙右下角那颗同一个组件、同一种胶囊，只是相册页
          下面没有站点胶囊，所以它自己贴着角；而且照片墙永远压在照片上，
-         相册的照片却可能早早排完，下面是白纸，所以这里用实一点的那版。 -->
+         相册的照片却可能早早排完，下面是白纸，所以这里用实一点的那版。
+         动效也只走 opacity 和 translate，理由见照片墙那一份。 -->
     <Transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="opacity-0 translate-y-1 scale-90"
-      leave-active-class="transition duration-150 ease-in"
-      leave-to-class="opacity-0 translate-y-1 scale-90"
+      enter-active-class="transition-[opacity,translate] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+      enter-from-class="opacity-0 translate-y-2"
+      leave-active-class="transition-[opacity,translate] duration-200 ease-in"
+      leave-to-class="opacity-0 translate-y-1"
     >
       <div
         v-if="showFloatingActions"
-        class="fixed right-3 bottom-3 z-40 origin-bottom-right"
+        class="fixed right-3 bottom-3 z-40"
       >
         <BackToTop
           class="gallery-capsule--solid"
