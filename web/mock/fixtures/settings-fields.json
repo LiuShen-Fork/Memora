@@ -194,7 +194,7 @@
           "required": false,
           "type": "input"
         },
-        "value": "[\"https://github.com/LiuShen-Fork\",\"https://x.com/memora\",\"https://space.bilibili.com/1\"]"
+        "value": "[\"https://github.com/willow-god\",\"https://www.liushen.fun/\",\"https://blog.liushen.fun/\"]"
       }
     ],
     "namespace": "app"
