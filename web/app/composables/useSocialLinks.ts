@@ -3,7 +3,8 @@
  *
  * 设置里存的是一段 JSON 数组文本（`app:socialLinks`），服务器已经校验过
  * 每一条都是 https 地址；这里只负责把它变成图标和平台名。认不出的地址仍
- * 然会显示，用一个通用的链接图标——自定义站点同样应该能挂上去。
+ * 然会显示——自定义站点同样应该能挂上去，个人主页给房子、博客给本子，实在
+ * 看不出是什么的才用一个通用的链接图标。
  */
 export interface SocialLink {
   href: string
@@ -64,16 +65,25 @@ export function parseSocialLinks(value: unknown, keepEmpty = false): string[] {
 }
 
 export function resolveSocialPlatform(href: string): { label: string; icon: string } {
-  let host = ''
+  let url: URL
   try {
-    host = new URL(href).hostname.toLowerCase().replace(/^www\./, '')
+    url = new URL(href)
   } catch {
     return { label: href, icon: 'tabler:link' }
   }
+  const host = url.hostname.toLowerCase().replace(/^www\./, '')
   for (const platform of platforms) {
     if (platform.domains.some((domain) => host === domain || host.endsWith(`.${domain}`))) {
       return { label: platform.label, icon: platform.icon }
     }
+  }
+  // 不属于任何平台时，按它是什么来挑图标：`blog.` 开头的是一个本子，根地址
+  // 是一个人的站点、给一座房子，指向站内某一页的仍是通用链接。没有这一步，
+  // 个人主页和个人博客会在角落并排放两个一模一样的回形针。
+  const [firstLabel = ''] = host.split('.')
+  if (firstLabel.includes('blog')) return { label: host, icon: 'tabler:notebook' }
+  if (url.pathname === '' || url.pathname === '/') {
+    return { label: host, icon: 'tabler:home' }
   }
   return { label: host, icon: 'tabler:link' }
 }
