@@ -59,12 +59,12 @@ jobs:
       # cannot be read off a package.json here and is written out instead. It
       # is the same one web/package.json pins in packageManager.
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.34.1
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22.22.3
           cache: pnpm
