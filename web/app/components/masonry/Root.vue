@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { motion } from 'motion-v'
 interface Props {
   photos: Photo[]
   columns?: number | 'auto'
@@ -263,13 +262,6 @@ const handleScroll = () => {
   showFloatingActions.value = scrollTop > 500
 }
 
-const scrollToTop = () => {
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth',
-  })
-}
-
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
 
@@ -324,28 +316,6 @@ watch(currentPhotoIndex, (newIndex) => {
 
 <template>
   <div class="relative w-full">
-    <!-- Back to Top Button -->
-    <motion.div
-      v-if="showFloatingActions"
-      class="fixed bottom-6 right-6 z-50"
-      :initial="{ opacity: 0, scale: 0.8 }"
-      :animate="{ opacity: 1, scale: 1 }"
-      :exit="{ opacity: 0, scale: 0.8 }"
-      :transition="{ duration: 0.2 }"
-    >
-      <UTooltip :text="$t('ui.action.backtotop.tooltip')">
-        <UButton
-          variant="soft"
-          color="neutral"
-          class="cursor-pointer bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm flex justify-center items-center rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-800 transition-all duration-300 border border-neutral-200/50 dark:border-neutral-700/50"
-          icon="tabler:arrow-up"
-          size="lg"
-          :aria-label="$t('ui.action.backtotop.ariaLabel')"
-          @click="scrollToTop"
-        />
-      </UTooltip>
-    </motion.div>
-
     <div
       class="lg:px-0 lg:pb-0"
       :class="isMobile ? 'pb-1' : 'py-1'"

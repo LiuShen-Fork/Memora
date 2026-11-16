@@ -139,7 +139,12 @@ const isWallPath = computed(() => ["/", "/photos"].includes(route.path));
     </div>
   </header>
 
-  <MasonryItemFooterLinks v-if="isWallPath" />
+  <!-- 右下角那一摞：「回到顶部」在滚动之后出现，和站点胶囊、社交链接一起
+       停在同一个角上。 -->
+  <MasonryItemFooterLinks
+    v-if="isWallPath"
+    :is-scrolled="isScrolled"
+  />
 </template>
 
 <style scoped>
