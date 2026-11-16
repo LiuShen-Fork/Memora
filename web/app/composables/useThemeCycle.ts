@@ -7,9 +7,12 @@
 export function useThemeCycle() {
   const colorMode = useColorMode()
 
+  // 图标说的是眼睛现在看到的东西，不是点下去会变成什么：深色配月亮，
+  // 浅色配太阳。跟随系统没有自己的样子，留一个显示器图标，好让人知道自己
+  // 处在三态里的哪一态。
   const themeIcon = computed(() => {
-    if (colorMode.preference === 'dark') return 'tabler:sun'
-    if (colorMode.preference === 'light') return 'tabler:moon'
+    if (colorMode.preference === 'dark') return 'tabler:moon'
+    if (colorMode.preference === 'light') return 'tabler:sun'
     return 'tabler:device-desktop'
   })
 
