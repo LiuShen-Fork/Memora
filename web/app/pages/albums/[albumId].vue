@@ -548,27 +548,25 @@ useHead({
       </div>
     </template>
 
-    <!-- Back to Top Button -->
-    <motion.div
-      v-if="showFloatingActions"
-      class="fixed bottom-6 right-6 z-50"
-      :initial="{ opacity: 0, scale: 0.8 }"
-      :animate="{ opacity: 1, scale: 1 }"
-      :exit="{ opacity: 0, scale: 0.8 }"
-      :transition="{ duration: 0.2 }"
+    <!-- 回到顶部：和照片墙右下角那颗同一个组件、同一种胶囊，只是相册页
+         下面没有站点胶囊，所以它自己贴着角；而且照片墙永远压在照片上，
+         相册的照片却可能早早排完，下面是白纸，所以这里用实一点的那版。 -->
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 translate-y-1 scale-90"
+      leave-active-class="transition duration-150 ease-in"
+      leave-to-class="opacity-0 translate-y-1 scale-90"
     >
-      <UTooltip :text="$t('ui.action.backtotop.tooltip')">
-        <UButton
-          variant="soft"
-          color="neutral"
-          class="cursor-pointer bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm flex justify-center items-center rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-800 transition-all duration-300 border border-neutral-200/50 dark:border-neutral-700/50"
-          icon="tabler:arrow-up"
-          size="lg"
-          :aria-label="$t('ui.action.backtotop.ariaLabel')"
+      <div
+        v-if="showFloatingActions"
+        class="fixed right-3 bottom-3 z-40 origin-bottom-right"
+      >
+        <BackToTop
+          class="gallery-capsule--solid"
           @click="scrollToTop"
         />
-      </UTooltip>
-    </motion.div>
+      </div>
+    </Transition>
   </div>
 </template>
 
