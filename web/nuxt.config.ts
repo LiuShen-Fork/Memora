@@ -62,6 +62,20 @@ export default defineNuxtConfig({
   // for the vector one first and the manifest makes the site installable.
   app: {
     head: {
+      // The page background, published with the document instead of the bundled
+      // stylesheet. The browser paints a frame before that stylesheet arrives,
+      // and its default canvas is white — on a reload in dark mode that frame
+      // is the white flash. The two colours are --ui-bg for each mode (see
+      // assets/css/tailwind.css); the media query covers the moment before the
+      // color-mode script has put its class on <html>.
+      style: [
+        {
+          innerHTML:
+            'html{background-color:#fff;color-scheme:light}' +
+            'html.dark{background-color:#171717;color-scheme:dark}' +
+            '@media (prefers-color-scheme:dark){html:not(.light){background-color:#171717;color-scheme:dark}}',
+        },
+      ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon-96x96.png' },
