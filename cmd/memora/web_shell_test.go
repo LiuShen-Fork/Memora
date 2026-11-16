@@ -42,6 +42,20 @@ func TestTheShellShowsASkeletonUntilTheAppMounts(t *testing.T) {
 	if !strings.Contains(body, `/web-app-manifest-192x192.png`) {
 		t.Fatalf("the skeleton has no avatar: %s", body)
 	}
+	// Dark mode has to follow the class the color-mode script puts on <html>,
+	// not the operating system: someone who picked dark in the app on a light
+	// machine gets a white screen for as long as the bundle takes otherwise.
+	if !strings.Contains(body, `html.dark .cf-splash{background:#171717}`) {
+		t.Fatalf("the skeleton ignores the theme the app chose: %s", body)
+	}
+	// The media query is the fallback for a browser that never ran the
+	// color-mode script, so it must stay behind the chosen class.
+	if strings.Index(body, "prefers-color-scheme:dark") > strings.Index(body, "html.dark .cf-splash") {
+		t.Fatalf("the operating system wins over the chosen theme: %s", body)
+	}
+	if strings.Contains(body, "cf-splash-ring") || strings.Contains(body, "cf-splash-avatar") {
+		t.Fatalf("the skeleton still draws the old ring around the icon: %s", body)
+	}
 	if response.Header().Get("Content-Length") != itoa(int64(len(body))) {
 		t.Fatalf("Content-Length does not match the body it describes")
 	}
