@@ -1,6 +1,10 @@
 package main
 
-import "bytes"
+import (
+	"bytes"
+	"html"
+	"strings"
+)
 
 // The generated frontend renders on the client: until the bundle has arrived
 // and Vue has mounted, the page the browser was handed is empty, and on a slow
@@ -9,9 +13,12 @@ import "bytes"
 // Vue clears it the moment the app mounts — no script has to take it down.
 
 // splashSkeleton is the same loading mark the app draws while it is setting
-// itself up — an arc sweeping around the site icon — painted with inline
+// itself up — an arc sweeping around the site's avatar — painted with inline
 // styles because no stylesheet has loaded yet. It carries no text: the
 // language is not known before the app boots.
+//
+// The picture is filled in per request, so the splash shows the avatar an
+// administrator uploaded instead of the site icon once there is one.
 //
 // Nothing is drawn behind the icon: the mark has transparent corners, so a
 // plate or a ring around it reads as a border the icon does not have.
@@ -32,7 +39,7 @@ const splashSkeleton = `<div class="cf-splash" aria-hidden="true">` +
 	`<circle cx="48" cy="48" r="45" stroke="url(#cf-splash-gradient)" stroke-width="3" ` +
 	`stroke-linecap="round" stroke-dasharray="66 217"/>` +
 	`</svg>` +
-	`<img class="cf-splash-mark" src="/web-app-manifest-192x192.png" alt="">` +
+	`<img class="cf-splash-mark" src="` + splashMarkToken + `" alt="">` +
 	`</div></div>` +
 	`<style>` +
 	`.cf-splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#fff}` +
@@ -57,10 +64,29 @@ const splashSkeleton = `<div class="cf-splash" aria-hidden="true">` +
 	`@media (prefers-reduced-motion:reduce){.cf-splash-glow,.cf-splash-arc,.cf-splash-mark{animation:none}}` +
 	`</style>`
 
+// splashMarkToken is where the picture goes in splashSkeleton. It is a plain
+// string rather than a format verb because the stylesheet below is full of
+// percent signs.
+const splashMarkToken = "%SPLASH-MARK%"
+
+// defaultSplashMark is what the skeleton draws until an administrator uploads
+// an avatar: the site's own icon.
+const defaultSplashMark = "/web-app-manifest-192x192.png"
+
+// splashMark is the picture the splash draws — the uploaded avatar when there
+// is one, the site icon otherwise, which is the same choice the app itself
+// makes once it is running.
+func (a *App) splashMark() string {
+	if avatar := a.avatarURL(); avatar != "" {
+		return avatar
+	}
+	return defaultSplashMark
+}
+
 // injectSplash puts the skeleton inside the application's root element. A
 // shell without that element (an older bundle, or a page someone replaced) is
 // served untouched rather than guessed at.
-func injectSplash(page []byte) []byte {
+func injectSplash(page []byte, mark string) []byte {
 	const marker = `id="__nuxt"`
 	start := bytes.Index(page, []byte(marker))
 	if start < 0 {
@@ -71,9 +97,10 @@ func injectSplash(page []byte) []byte {
 		return page
 	}
 	at := start + end + 1
-	out := make([]byte, 0, len(page)+len(splashSkeleton))
+	skeleton := strings.Replace(splashSkeleton, splashMarkToken, html.EscapeString(mark), 1)
+	out := make([]byte, 0, len(page)+len(skeleton))
 	out = append(out, page[:at]...)
-	out = append(out, splashSkeleton...)
+	out = append(out, skeleton...)
 	out = append(out, page[at:]...)
 	return out
 }

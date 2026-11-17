@@ -42,6 +42,9 @@ func TestTheShellShowsASkeletonUntilTheAppMounts(t *testing.T) {
 	if !strings.Contains(body, `/web-app-manifest-192x192.png`) {
 		t.Fatalf("the skeleton has no avatar: %s", body)
 	}
+	if strings.Contains(body, splashMarkToken) {
+		t.Fatalf("the skeleton was served with its picture left blank: %s", body)
+	}
 	// Dark mode has to follow the class the color-mode script puts on <html>,
 	// not the operating system: someone who picked dark in the app on a light
 	// machine gets a white screen for as long as the bundle takes otherwise.
@@ -58,6 +61,45 @@ func TestTheShellShowsASkeletonUntilTheAppMounts(t *testing.T) {
 	}
 	if response.Header().Get("Content-Length") != itoa(int64(len(body))) {
 		t.Fatalf("Content-Length does not match the body it describes")
+	}
+}
+
+// The splash is the first thing a visitor sees, so it should already be the
+// site they are visiting: once an administrator uploads an avatar, the icon the
+// app would draw is not what belongs there any more.
+func TestTheSkeletonShowsTheUploadedAvatar(t *testing.T) {
+	shell := `<!DOCTYPE html><html><head></head><body><div id="__nuxt"></div></body></html>`
+	app := shellApp(t, shell)
+	avatar := "https://cdn.example.com/avatars/avatar-0123456789abcdef.webp"
+	if err := app.updateSetting("app", "avatarUrl", avatar, nil, false); err != nil {
+		t.Fatal(err)
+	}
+
+	body := assetRequest(t, app, "/", nil).Body.String()
+	if !strings.Contains(body, `src="`+avatar+`"`) {
+		t.Fatalf("the skeleton does not draw the uploaded avatar: %s", body)
+	}
+	if strings.Contains(body, defaultSplashMark) {
+		t.Fatalf("the site icon is drawn over the uploaded avatar: %s", body)
+	}
+}
+
+// The address lands in an attribute, so an address typed in by hand must not be
+// able to close it and add one of its own.
+func TestTheSkeletonEscapesTheAvatarAddress(t *testing.T) {
+	shell := `<!DOCTYPE html><html><head></head><body><div id="__nuxt"></div></body></html>`
+	app := shellApp(t, shell)
+	address := `https://example.com/avatar.webp"><script>alert(1)</script>`
+	if err := app.updateSetting("app", "avatarUrl", address, nil, false); err != nil {
+		t.Fatal(err)
+	}
+
+	body := assetRequest(t, app, "/", nil).Body.String()
+	if strings.Contains(body, "<script>alert(1)</script>") {
+		t.Fatalf("the avatar address escaped its attribute: %s", body)
+	}
+	if !strings.Contains(body, `src="https://example.com/avatar.webp&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"`) {
+		t.Fatalf("the avatar address was not written into the attribute: %s", body)
 	}
 }
 
